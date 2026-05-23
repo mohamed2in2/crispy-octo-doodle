@@ -1,0 +1,234 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
+import { useToast } from "@/components/ui/Toast";
+
+async function readJson<T>(res: Response): Promise<T | null> {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+interface Teacher {
+  id: string;
+  name: string;
+  role: string;
+  _count?: { courses?: number };
+  createdAt?: string | Date;
+}
+
+export default function SuperadminPage() {
+  const router = useRouter();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [newTeacher, setNewTeacher] = useState({ name: "", password: "" });
+  const [activeSection, setActiveSection] = useState("overview");
+
+  const fetchTeachers = async () => {
+    const res = await fetch("/api/admin/teachers", { credentials: "include" });
+    if (res.status === 403) {
+      toastError("انتهت جلسة المشرف. سجّل الدخول من لوحة الإدارة.");
+      setLoading(false);
+      router.replace("/adminpanel");
+      return;
+    }
+    const data = await readJson<{ teachers?: Teacher[]; error?: string }>(res);
+    setTeachers(data?.teachers || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      await fetchTeachers();
+    };
+    loadTeachers();
+  }, []);
+
+  const createTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/admin/teachers", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newTeacher),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    setCreating(false);
+    if (res.ok) {
+      toastSuccess(`تم إنشاء حساب المدرس "${newTeacher.name}" بنجاح`);
+      setNewTeacher({ name: "", password: "" });
+      fetchTeachers();
+    } else {
+      toastError(data?.error || "تعذر إنشاء حساب المدرس");
+    }
+  };
+
+  const deleteTeacher = async (teacherId: string, teacherName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف حساب المدرس "${teacherName}"؟`)) return;
+
+    const res = await fetch(`/api/admin/teachers/${teacherId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      toastSuccess(`تم حذف حساب المدرس "${teacherName}" بنجاح`);
+      fetchTeachers();
+    } else {
+      toastError(data.error || "تعذر حذف حساب المدرس");
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/adminpanel");
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-950 text-white">
+      <AdminSidebar
+        role="superadmin"
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        onLogout={handleLogout}
+      />
+
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">
+            {activeSection === "overview" ? "نظرة عامة" : "إنشاء حساب مدرس"}
+          </h1>
+          <div className="flex items-center gap-3">
+            <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/30">
+              👑 المشرف العام
+            </span>
+            <DarkModeToggle />
+          </div>
+        </div>
+
+        <div className="p-6">
+          {activeSection === "overview" && (
+            <>
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                  <div className="text-3xl font-black text-blue-400">{teachers.length}</div>
+                  <div className="text-gray-400 text-sm mt-1">مدرس مسجل</div>
+                </div>
+                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                  <div className="text-3xl font-black text-green-400">
+                    {teachers.reduce((a: number, t: Teacher) => a + (t._count?.courses || 0), 0)}
+                  </div>
+                  <div className="text-gray-400 text-sm mt-1">إجمالي الكورسات</div>
+                </div>
+                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                  <div className="text-3xl font-black text-purple-400">✓</div>
+                  <div className="text-gray-400 text-sm mt-1">النظام يعمل بشكل جيد</div>
+                </div>
+              </div>
+
+              {/* Teachers list */}
+              <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+                <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                  <h2 className="font-bold text-white">قائمة المدرسين</h2>
+                  <button
+                    onClick={() => setActiveSection("create")}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    + إضافة مدرس
+                  </button>
+                </div>
+                {loading ? (
+                  <div className="p-8 text-center text-gray-500">جارٍ التحميل...</div>
+                ) : teachers.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <div className="text-4xl mb-2">👨‍🏫</div>
+                    <p>لا يوجد مدرسون بعد</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-700">
+                    {teachers.map((t) => (
+                      <div key={t.id} className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold">
+                            {t.name[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{t.name}</p>
+                            <p className="text-xs text-gray-400">{t._count?.courses || 0} كورس</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">
+                            {t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : ""}
+                          </span>
+                          <button
+                            onClick={() => deleteTeacher(t.id, t.name)}
+                            className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                            aria-label={`حذف ${t.name}`}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeSection === "create" && (
+            <div className="max-w-md">
+              <h2 className="text-xl font-bold text-white mb-6">إنشاء حساب مدرس جديد</h2>
+
+              <form onSubmit={createTeacher} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">اسم المدرس</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTeacher.name}
+                    onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="أ. محمد إبراهيم"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">كلمة المرور</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={newTeacher.password}
+                    onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors"
+                >
+                  {creating ? "جارٍ الإنشاء..." : "إنشاء الحساب"}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
