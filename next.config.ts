@@ -17,6 +17,21 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000", "127.0.0.1:3000", "*.app.github.dev"],
     },
   },
+
+  // Clerk configuration for custom domain
+  headers: async () => {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "SAMEORIGIN",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

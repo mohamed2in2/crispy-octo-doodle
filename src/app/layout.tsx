@@ -49,6 +49,8 @@ export default function RootLayout({
                   signUpUrl="/signup"
                   afterSignOutUrl="/login"
                   allowedRedirectOrigins={allowedOrigins}
+                  domain={process.env.NEXT_PUBLIC_CLERK_DOMAIN || "clerk.alasly.live"}
+                  proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}
                   sdkMetadata={{
                     name: "alasly-edtech",
                     version: "1.0.0",
