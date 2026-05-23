@@ -62,7 +62,12 @@ export async function DELETE() {
       }
 
       await prisma.user.delete({ where: { id: user.id } });
-      return NextResponse.json({ success: true });
+      
+      return NextResponse.json({ success: true }, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
     }
 
     const user = await prisma.user.findUnique({
@@ -75,7 +80,11 @@ export async function DELETE() {
 
     await clearAuthCookie();
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   } catch (error) {
     console.error("Error deleting user:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
