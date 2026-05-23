@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
+import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
 
 interface ProfileGuardProps {
   children: React.ReactNode;
@@ -13,7 +14,18 @@ interface ProfileGuardProps {
  * Redirects signed-in users with incomplete profiles to /complete-profile.
  */
 export function ProfileGuard({ children }: ProfileGuardProps) {
+  const { enabled: clerkEnabled } = useClerkRuntime();
+
+  if (!clerkEnabled) {
+    return <>{children}</>;
+  }
+
+  return <ClerkProfileGuard>{children}</ClerkProfileGuard>;
+}
+
+function ClerkProfileGuard({ children }: ProfileGuardProps) {
   const router = useRouter();
+
   const { isLoaded, isSignedIn } = useUser();
   const [signedInReady, setSignedInReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,13 +36,15 @@ export function ProfileGuard({ children }: ProfileGuardProps) {
     }
 
     let cancelled = false;
-    let timeout: NodeJS.Timeout;
+    let completed = false;
 
     const checkProfile = async () => {
       try {
         const me = await fetchMeWithRetry(8, 250);
         
         if (cancelled) return;
+
+        completed = true;
 
         if (!me) {
           console.warn("Profile check failed - user data unavailable");
@@ -54,8 +68,8 @@ export function ProfileGuard({ children }: ProfileGuardProps) {
       }
     };
 
-    timeout = setTimeout(() => {
-      if (!cancelled && !signedInReady) {
+    const timeout = setTimeout(() => {
+      if (!cancelled && !completed) {
         console.warn("Profile check timeout");
         setError("Profile check timed out. Please refresh.");
         setSignedInReady(true);

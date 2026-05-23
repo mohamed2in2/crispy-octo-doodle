@@ -6,6 +6,8 @@ import { useUser } from "@clerk/nextjs";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
+import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
+import { ClerkUnavailableNotice } from "@/components/auth/ClerkUnavailableNotice";
 
 function clerkDisplayName(clerkUser: ReturnType<typeof useUser>["user"]) {
   if (!clerkUser) return "";
@@ -16,6 +18,25 @@ function clerkDisplayName(clerkUser: ReturnType<typeof useUser>["user"]) {
 }
 
 export default function CompleteProfilePage() {
+  const { enabled: clerkEnabled } = useClerkRuntime();
+
+  if (!clerkEnabled) {
+    return (
+      <AuthShell title="إكمال البيانات الشخصية" subtitle="إكمال الملف الشخصي يتطلب Clerk على النطاق الإنتاجي" maxWidth="2xl">
+        <ClerkUnavailableNotice
+          title="المصادقة غير متاحة في هذا المعاينة"
+          message="هذا النطاق يعمل بدون Clerk حتى لا يظهر خطأ المفتاح الإنتاجي. افتح التطبيق على alasly.live أو أضف مفتاح Clerk تجريبي لتفعيل صفحة الملف الشخصي."
+          primaryLabel="العودة إلى الصفحة الرئيسية"
+          primaryHref="/"
+        />
+      </AuthShell>
+    );
+  }
+
+  return <ClerkCompleteProfilePage />;
+}
+
+function ClerkCompleteProfilePage() {
   const router = useRouter();
   const { isLoaded, isSignedIn, user: clerkUser } = useUser();
   const [form, setForm] = useState({

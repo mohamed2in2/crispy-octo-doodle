@@ -5,8 +5,29 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
+import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
+import { ClerkUnavailableNotice } from "@/components/auth/ClerkUnavailableNotice";
 
 export default function AuthCallbackPage() {
+  const { enabled: clerkEnabled } = useClerkRuntime();
+
+  if (!clerkEnabled) {
+    return (
+      <AuthShell title="مرحباً بك" subtitle="إعداد الحساب يتطلب Clerk على النطاق الإنتاجي">
+        <ClerkUnavailableNotice
+          title="المصادقة غير متاحة في هذا المعاينة"
+          message="انتقل إلى alasly.live أو فعّل مفتاح Clerk تجريبي حتى يكتمل ربط الحساب هنا."
+          primaryLabel="العودة إلى الصفحة الرئيسية"
+          primaryHref="/"
+        />
+      </AuthShell>
+    );
+  }
+
+  return <ClerkAuthCallbackPage />;
+}
+
+function ClerkAuthCallbackPage() {
   const router = useRouter();
   const { isLoaded, isSignedIn } = useUser();
   const [message, setMessage] = useState("جاري تجهيز حسابك...");

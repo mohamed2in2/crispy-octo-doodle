@@ -7,11 +7,26 @@ import { Footer } from "@/components/ui/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { StatsSection } from "@/components/home/StatsSection";
+import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
 
 export default function HomePage() {
+  const { enabled: clerkEnabled } = useClerkRuntime();
+
+  if (!clerkEnabled) {
+    return <HomePageShell isLoggedIn={false} />;
+  }
+
+  return <ClerkHomePage />;
+}
+
+function ClerkHomePage() {
   const { isLoaded, isSignedIn } = useUser();
   const isLoggedIn = isLoaded ? isSignedIn : false;
 
+  return <HomePageShell isLoggedIn={isLoggedIn} />;
+}
+
+function HomePageShell({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
       <Navbar user={null} />

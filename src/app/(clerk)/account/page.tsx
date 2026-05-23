@@ -7,8 +7,40 @@ import { Footer } from "@/components/ui/Footer";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
 import Link from "next/link";
+import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
 
 export default function AccountPage() {
+  const { enabled: clerkEnabled } = useClerkRuntime();
+
+  if (!clerkEnabled) {
+    return <GuestAccountPage />;
+  }
+
+  return <ClerkAccountPage />;
+}
+
+function GuestAccountPage() {
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
+      <Navbar user={null} />
+      <div className="flex-1 flex items-center justify-center px-4">
+        <div className="text-center max-w-md space-y-4">
+          <div className="text-6xl mb-2">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول غير متاح في هذه المعاينة</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm leading-7">
+            هذا النطاق يعمل بدون Clerk حتى لا يظهر خطأ المفتاح الإنتاجي. افتح التطبيق على alasly.live أو أضف مفتاح Clerk تجريبي لتفعيل الحساب هنا.
+          </p>
+          <Link href="/login" className="inline-flex px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors">
+            تسجيل الدخول
+          </Link>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+function ClerkAccountPage() {
   const router = useRouter();
   const { signOut } = useClerk();
   const { isLoaded, isSignedIn } = useUser();
