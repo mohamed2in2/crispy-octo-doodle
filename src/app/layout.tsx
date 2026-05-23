@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ClerkErrorBoundary } from "@/components/auth/ClerkErrorBoundary";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -17,6 +18,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const allowedOrigins = [
+    "localhost:3000",
+    "127.0.0.1:3000",
+  ];
+  
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    allowedOrigins.push(process.env.NEXT_PUBLIC_APP_URL);
+  }
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -31,18 +41,25 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ThemeProvider>
           <ToastProvider>
-            {clerkPublishableKey?.startsWith("pk_") ? (
-              <ClerkProvider
-                publishableKey={clerkPublishableKey}
-                signInUrl="/login"
-                signUpUrl="/signup"
-                afterSignOutUrl="/login"
-              >
-                {children}
-              </ClerkProvider>
-            ) : (
-              children
-            )}
+            <ClerkErrorBoundary>
+              {clerkPublishableKey?.startsWith("pk_") ? (
+                <ClerkProvider
+                  publishableKey={clerkPublishableKey}
+                  signInUrl="/login"
+                  signUpUrl="/signup"
+                  afterSignOutUrl="/login"
+                  allowedRedirectOrigins={allowedOrigins}
+                  sdkMetadata={{
+                    name: "alasly-edtech",
+                    version: "1.0.0",
+                  }}
+                >
+                  {children}
+                </ClerkProvider>
+              ) : (
+                children
+              )}
+            </ClerkErrorBoundary>
           </ToastProvider>
         </ThemeProvider>
       </body>

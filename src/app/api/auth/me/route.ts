@@ -9,9 +9,13 @@ export async function GET() {
 
     // Clerk student pages must not pick up teacher admin JWT from the same browser
     if (userId) {
-      const studentSession = await getStudentSessionWithRetry(3, 100);
+      const studentSession = await getStudentSessionWithRetry(2, 100);
       if (studentSession) {
-        return NextResponse.json({ user: studentSession });
+        return NextResponse.json({ user: studentSession }, {
+          headers: {
+            "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+          },
+        });
       }
     }
 
@@ -24,7 +28,11 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ user: session });
+    return NextResponse.json({ user: session }, {
+      headers: {
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+      },
+    });
   } catch (error) {
     console.error("GET /api/auth/me error:", error);
     const { userId } = await auth();

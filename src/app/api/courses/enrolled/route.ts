@@ -10,6 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "يجب تسجيل الدخول كطالب" }, { status: 401 });
     }
 
+    // Get enrolled courses with minimal data first
     const enrolledCourses = await prisma.course.findMany({
       where: {
         accessCodes: {
@@ -18,23 +19,34 @@ export async function GET() {
           },
         },
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        subject: true,
+        description: true,
+        thumbnailUrl: true,
+        educationalStage: true,
+        createdAt: true,
         teacher: { select: { id: true, name: true } },
         folders: {
-          include: {
-            videos: true,
-            quizzes: true,
+          select: {
+            id: true,
+            name: true,
+            order: true,
+            videos: {
+              select: { id: true, title: true, order: true },
+            },
+            quizzes: {
+              select: { id: true, title: true, timeLimitMinutes: true },
+            },
           },
           orderBy: { order: "asc" },
-        },
-        _count: {
-          select: { accessCodes: true },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // Get student's progress
+    // Get all progress records for this student at once
     const progress = await prisma.progress.findMany({
       where: { studentId: session.id },
       select: { videoId: true, watched: true },
@@ -42,16 +54,9 @@ export async function GET() {
 
     const progressMap = new Map(progress.map(p => [p.videoId, p.watched]));
 
-    // Add progress info to folders
-    const coursesWithProgress = enrolledCourses.map(course => ({
-      id: course.id,
-      title: course.title,
-      subject: course.subject,
-      description: course.description,
-      thumbnailUrl: course.thumbnailUrl,
-      educationalStage: course.educationalStage,
-      teacher: course.teacher,
-      folders: course.folders.map(folder => ({
+    // Build response with corrected progress calculation per course
+    const coursesWithProgress = enrolledCourses.map(course => {
+      const folders = course.folders.map(folder => ({
         id: folder.id,
         name: folder.name,
         order: folder.order,
@@ -66,10 +71,25 @@ export async function GET() {
           title: quiz.title,
           timeLimitMinutes: (quiz as any).timeLimitMinutes,
         })),
-      })),
-      totalVideos: course.folders.reduce((sum, f) => sum + f.videos.length, 0),
-      watchedVideos: Array.from(progressMap.values()).filter(Boolean).length,
-    }));
+      }));
+
+      // Calculate totals correctly per course
+      const totalVideos = folders.reduce((sum, f) => sum + f.videos.length, 0);
+      const watchedVideos = folders.reduce((sum, f) => sum + f.videos.filter((v) => v.watched).length, 0);
+
+      return {
+        id: course.id,
+        title: course.title,
+        subject: course.subject,
+        description: course.description,
+        thumbnailUrl: course.thumbnailUrl,
+        educationalStage: course.educationalStage,
+        teacher: course.teacher,
+        folders,
+        totalVideos,
+        watchedVideos,
+      };
+    });
 
     return NextResponse.json(
       {
@@ -78,7 +98,7 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
         },
       }
     );

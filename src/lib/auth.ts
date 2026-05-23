@@ -8,7 +8,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
-const CLERK_USER_TIMEOUT_MS = 8000;
+const CLERK_USER_TIMEOUT_MS = 3000;
 
 export interface JWTPayload {
   id: string;
@@ -73,73 +73,101 @@ async function syncClerkUserToDatabase(): Promise<SessionUser | null> {
     return null;
   }
 
-  const client = await clerkClient();
-  const clerkUserPromise = client.users.getUser(userId).catch((error) => {
-    console.error(`Failed to fetch Clerk user ${userId}:`, error);
-    return null;
-  });
-  const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => resolve(null), CLERK_USER_TIMEOUT_MS);
-  });
-
-  const clerkUser = await Promise.race([clerkUserPromise, timeoutPromise]);
-  if (!clerkUser) {
-    console.warn(`Could not fetch Clerk user ${userId} - will try database lookup`);
-    return null;
-  }
-
-  const primaryEmail = clerkUser.emailAddresses[0]?.emailAddress;
-
-  if (!primaryEmail) {
-    return null;
-  }
-
-  let user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!user) {
-    user = await prisma.user.findUnique({
-      where: { email: primaryEmail },
+  try {
+    const client = await clerkClient();
+    const clerkUserPromise = client.users.getUser(userId).catch((error) => {
+      console.warn(`Failed to fetch Clerk user ${userId}:`, error?.message);
+      return null;
+    });
+    
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.warn(`Clerk user fetch timeout for ${userId} after ${CLERK_USER_TIMEOUT_MS}ms`);
+        resolve(null);
+      }, CLERK_USER_TIMEOUT_MS);
     });
 
-    if (user) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { clerkId: userId },
+    const clerkUser = await Promise.race([clerkUserPromise, timeoutPromise]);
+    if (!clerkUser) {
+      console.warn(`Could not fetch Clerk user ${userId} - will try database lookup`);
+      // Still try to sync with database if we have a record
+      const dbUser = await prisma.user.findUnique({
+        where: { clerkId: userId },
+      });
+      if (dbUser) {
+        return {
+          id: dbUser.id,
+          clerkId: dbUser.clerkId || userId,
+          email: dbUser.email,
+          name: dbUser.name,
+          role: dbUser.role,
+          profileCompleted: dbUser.profileCompleted,
+          phone: dbUser.phone,
+          parentPhone: dbUser.parentPhone,
+          age: dbUser.age,
+          educationalStage: dbUser.educationalStage,
+          createdAt: dbUser.createdAt,
+        };
+      }
+      return null;
+    }
+
+    const primaryEmail = clerkUser.emailAddresses[0]?.emailAddress;
+
+    if (!primaryEmail) {
+      return null;
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email: primaryEmail },
+      });
+
+      if (user) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { clerkId: userId },
+        });
+      }
+    }
+
+    if (!user) {
+      const displayName = clerkUser.firstName || clerkUser.lastName
+        ? `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim()
+        : primaryEmail.split("@")[0] || "User";
+
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: primaryEmail,
+          name: displayName,
+          role: "student",
+          profileCompleted: false,
+        },
       });
     }
+
+    return {
+      id: user.id,
+      clerkId: user.clerkId || userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      profileCompleted: user.profileCompleted,
+      phone: user.phone,
+      parentPhone: user.parentPhone,
+      age: user.age,
+      educationalStage: user.educationalStage,
+      createdAt: user.createdAt,
+    };
+  } catch (error) {
+    console.error(`Unexpected error syncing Clerk user ${userId}:`, error);
+    return null;
   }
-
-  if (!user) {
-    const displayName = clerkUser.firstName || clerkUser.lastName
-      ? `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim()
-      : primaryEmail.split("@")[0] || "User";
-
-    user = await prisma.user.create({
-      data: {
-        clerkId: userId,
-        email: primaryEmail,
-        name: displayName,
-        role: "student",
-        profileCompleted: false,
-      },
-    });
-  }
-
-  return {
-    id: user.id,
-    clerkId: user.clerkId || userId,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    profileCompleted: user.profileCompleted,
-    phone: user.phone,
-    parentPhone: user.parentPhone,
-    age: user.age,
-    educationalStage: user.educationalStage,
-    createdAt: user.createdAt,
-  };
 }
 
 async function getJwtSession(): Promise<SessionUser | null> {

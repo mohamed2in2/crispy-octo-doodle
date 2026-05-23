@@ -71,8 +71,14 @@ export default function LibraryPage() {
     setLoading(true);
     try {
       const [userRes, coursesRes] = await Promise.all([
-        fetch("/api/auth/me", { credentials: "include", cache: "no-store" }),
-        fetch("/api/courses/enrolled", { credentials: "include", cache: "no-store" }),
+        fetch("/api/auth/me", { 
+          credentials: "include",
+          headers: { "Accept": "application/json" }
+        }),
+        fetch("/api/courses/enrolled", { 
+          credentials: "include",
+          headers: { "Accept": "application/json" }
+        }),
       ]);
 
       if (userRes.ok) {
