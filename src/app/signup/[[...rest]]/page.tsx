@@ -1,36 +1,144 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { SignUp } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { clerkAuthAppearance } from "@/lib/clerk-appearance";
-import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
-import { ClerkUnavailableNotice } from "@/components/auth/ClerkUnavailableNotice";
-
-const AUTH_CALLBACK = "/auth/callback";
+import { EDUCATIONAL_STAGES } from "@/types";
 
 export default function SignupPage() {
-  const { enabled: clerkEnabled } = useClerkRuntime();
+  const router = useRouter();
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    parentPhone: "",
+    age: "",
+    educationalStage: "",
+    password: "",
+    confirmPassword: "",
+    verificationCode: "",
+  });
+  const [sendingCode, setSendingCode] = useState(false);
+  const [signingUp, setSigningUp] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [codeMethod, setCodeMethod] = useState<"sms" | "verify" | "dev">("sms");
 
-  if (!clerkEnabled) {
-    return (
-      <AuthShell title="إنشاء حساب جديد" subtitle="إنشاء الحساب متاح فقط على النطاقات المفعلة لـ Clerk">
-        <ClerkUnavailableNotice
-          title="المصادقة غير متاحة في هذا المعاينة"
-          message="هذا النطاق يعمل بدون Clerk حتى لا يظهر خطأ المفتاح الإنتاجي. افتح التطبيق على alasly.live أو أضف مفتاح Clerk تجريبي لتفعيل إنشاء الحساب هنا."
-          primaryLabel="العودة إلى الصفحة الرئيسية"
-          primaryHref="/"
-          secondaryLabel="تسجيل الدخول"
-          secondaryHref="/login"
-        />
-      </AuthShell>
-    );
-  }
+  const canSendCode = useMemo(() => form.phone.trim().length >= 9, [form.phone]);
+
+  // sanitize phone for sending: always return E.164 (+20...) when possible
+  const formatForSend = (p: string) => {
+    const raw = String(p || "");
+    const digits = raw.replace(/\D/g, "");
+    // already in international with country code
+    if (digits.startsWith("20") && digits.length === 12) return `+${digits}`;
+    // local 01XXXXXXXXX -> +20XXXXXXXXXX
+    if (digits.startsWith("0") && digits.length === 11) return `+20${digits.slice(1)}`;
+    // if user provided 9-digit (without leading 0), assume local and add +20
+    if (digits.length === 9) return `+20${digits}`;
+    // if it already includes leading + and looks valid
+    if (raw.startsWith("+")) return raw;
+    return raw;
+  };
+
+  const sendCode = async () => {
+    if (!canSendCode) {
+      setError("أدخل رقم الطالب أولاً");
+      return;
+    }
+
+    setSendingCode(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch("/api/auth/phone/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formatForSend(form.phone) }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "فشل إرسال الكود");
+        return;
+      }
+
+      setCodeSent(true);
+      // If we got a debugCode (dev mode), autofill verification input to ease local testing
+      if (data?.debugCode) {
+        setForm((s) => ({ ...s, verificationCode: String(data.debugCode) }));
+        setCodeMethod("dev");
+        setSuccess(`تم إرسال رمز التحقق إلى رقم الطالب (DEV). الكود: ${data.debugCode}`);
+      } else if (data?.method === "verify") {
+        setCodeMethod("verify");
+        setSuccess("تم إرسال رمز التحقق عبر Twilio Verify إلى رقم الطالب");
+      } else {
+        setCodeMethod("sms");
+        setSuccess("تم إرسال رمز التحقق إلى رقم الطالب");
+      }
+    } catch {
+      setError("تعذر إرسال الكود. حاول مرة أخرى.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSigningUp(true);
+    setError("");
+    setSuccess("");
+
+    if (form.password !== form.confirmPassword) {
+      setError("كلمتا المرور غير متطابقتين");
+      setSigningUp(false);
+      return;
+    }
+
+    if (!codeSent) {
+      setError("يجب إرسال رمز التحقق أولاً");
+      setSigningUp(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          phone: formatForSend(form.phone),
+          parentPhone: formatForSend(form.parentPhone),
+          age: form.age,
+          educationalStage: form.educationalStage,
+          password: form.password,
+          verificationCode: form.verificationCode,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "تعذر إنشاء الحساب");
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("حدث خطأ في الاتصال بالخادم.");
+    } finally {
+      setSigningUp(false);
+    }
+  };
 
   return (
     <AuthShell
       title="إنشاء حساب جديد"
-      subtitle="انضم إلى منصة ALASLY وابدأ رحلتك التعليمية"
+      subtitle="سجل بيانات الطالب كاملة لبدء الدراسة فورًا"
+      maxWidth="2xl"
       footer={
         <>
           لديك حساب بالفعل؟{" "}
@@ -40,14 +148,158 @@ export default function SignupPage() {
         </>
       }
     >
-      <SignUp
-        routing="path"
-        path="/signup"
-        appearance={clerkAuthAppearance}
-        forceRedirectUrl={AUTH_CALLBACK}
-        fallbackRedirectUrl={AUTH_CALLBACK}
-        signInUrl="/login"
-      />
+      <div className="space-y-5">
+        {error && (
+          <div className="mb-5 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-5 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/10 p-4 sm:p-5 dark:bg-white/5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">اسم الطالب</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="أحمد محمد"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">العمر</label>
+                <input
+                  type="number"
+                  min={6}
+                  max={25}
+                  required
+                  value={form.age}
+                  onChange={(e) => setForm({ ...form, age: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="15"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم الطالب</label>
+                <input
+                  type="tel"
+                  dir="ltr"
+                  required
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^\d+]/g, "") })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-left"
+                  placeholder="01XXXXXXXXX"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">اكتب الرقم المصري بصيغة 01XXXXXXXXX أو +20XXXXXXXXXX</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم ولي الأمر</label>
+                <input
+                  type="tel"
+                  dir="ltr"
+                  required
+                  value={form.parentPhone}
+                  onChange={(e) => setForm({ ...form, parentPhone: e.target.value.replace(/[^\d+]/g, "") })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-left"
+                  placeholder="01XXXXXXXXX"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">لا تستخدم نفس الرقم للطالب وولي الأمر</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">الصف الدراسي</label>
+                <select
+                  required
+                  value={form.educationalStage}
+                  onChange={(e) => setForm({ ...form, educationalStage: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="">— اختر الصف الدراسي —</option>
+                  {EDUCATIONAL_STAGES.map((stage) => (
+                    <option key={stage.value} value={stage.value}>
+                      {stage.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">كلمة المرور</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="8 أحرف أو أكثر"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">تأكيد كلمة المرور</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="أعد كتابة كلمة المرور"
+                />
+              </div>
+
+              <div className="md:col-span-2 rounded-xl border border-sky-200/60 bg-sky-50/70 p-4 text-sm text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200">
+                {codeMethod === "verify" && "سيتم إرسال الرمز عبر Twilio Verify. أفضل خيار للإنتاج."}
+                {codeMethod === "sms" && "سيتم إرسال الرمز عبر SMS مباشرة إلى رقم الطالب."}
+                {codeMethod === "dev" && "وضع التطوير مفعّل: الكود محفوظ محليًا لتجربة التسجيل بدون SMS."}
+                {!codeSent && "اضغط إرسال كود التحقق بعد كتابة رقم الطالب الصحيح."}
+              </div>
+
+              <div className="md:col-span-2 grid sm:grid-cols-[1fr_auto] gap-3 items-end">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رمز التحقق</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.verificationCode}
+                    onChange={(e) => setForm({ ...form, verificationCode: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="أدخل الكود المرسل"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={sendCode}
+                  disabled={sendingCode || !canSendCode}
+                  className="h-12 px-5 rounded-xl bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                >
+                  {sendingCode ? "جارٍ الإرسال..." : codeSent ? "إعادة إرسال الكود" : "إرسال كود التحقق"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={signingUp}
+            className="w-full py-3.5 bg-gradient-to-l from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 disabled:opacity-60 text-white font-bold rounded-2xl transition-all shadow-lg shadow-sky-950/20"
+          >
+            {signingUp ? "جاري إنشاء الحساب..." : "إنشاء الحساب"}
+          </button>
+        </form>
+      </div>
     </AuthShell>
   );
 }

@@ -1,50 +1,15 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
-import Link from "next/link";
-import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
 
 export default function AccountPage() {
-  const { enabled: clerkEnabled } = useClerkRuntime();
-
-  if (!clerkEnabled) {
-    return <GuestAccountPage />;
-  }
-
-  return <ClerkAccountPage />;
-}
-
-function GuestAccountPage() {
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Navbar user={null} />
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center max-w-md space-y-4">
-          <div className="text-6xl mb-2">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول غير متاح في هذه المعاينة</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm leading-7">
-            هذا النطاق يعمل بدون Clerk حتى لا يظهر خطأ المفتاح الإنتاجي. افتح التطبيق على alasly.live أو أضف مفتاح Clerk تجريبي لتفعيل الحساب هنا.
-          </p>
-          <Link href="/login" className="inline-flex px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors">
-            تسجيل الدخول
-          </Link>
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
-}
-
-function ClerkAccountPage() {
   const router = useRouter();
-  const { signOut } = useClerk();
-  const { isLoaded, isSignedIn } = useUser();
-  const [signingOut, setSigningOut] = useState(false);
   const [user, setUser] = useState<{
     id: string;
     email: string;
@@ -56,23 +21,18 @@ function ClerkAccountPage() {
     createdAt?: string | Date;
   } | null>(null);
   const [resolved, setResolved] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      return;
-    }
-
     let cancelled = false;
 
     const loadProfile = async () => {
       try {
         const me = await fetchMeWithRetry(8, 250);
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         if (!me) {
           setUser(null);
@@ -100,34 +60,14 @@ function ClerkAccountPage() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, router]);
+  }, [router]);
 
-  if (!isLoaded || (isSignedIn && !resolved)) {
+  if (!resolved) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
         <Navbar user={null} />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
-        <Navbar user={null} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-6xl mb-4">🔒</div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">يجب تسجيل الدخول أولاً</h2>
-            <Link href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors">
-              تسجيل الدخول
-            </Link>
-          </div>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
         <Footer />
       </div>
@@ -139,17 +79,11 @@ function ClerkAccountPage() {
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
         <Navbar user={null} />
         <div className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center max-w-md">
-            <div className="text-6xl mb-4">⏳</div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">جاري مزامنة حسابك</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-              لم نتمكن من تحميل بياناتك بعد. أكمل ملفك الشخصي أو أعد المحاولة.
-            </p>
-            <Link
-              href="/complete-profile"
-              className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              إكمال البيانات
+          <div className="text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">يجب تسجيل الدخول أولاً</h2>
+            <Link href="/login" className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors">
+              تسجيل الدخول
             </Link>
           </div>
         </div>
@@ -165,7 +99,8 @@ function ClerkAccountPage() {
     setError("");
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      await signOut({ redirectUrl: "/login" });
+      router.push("/login");
+      router.refresh();
     } catch {
       setError("تعذر تسجيل الخروج. حاول مرة أخرى.");
       setSigningOut(false);
@@ -178,7 +113,7 @@ function ClerkAccountPage() {
     setDeleting(true);
     setError("");
 
-    const res = await fetch("/api/auth/me", { method: "DELETE" });
+    const res = await fetch("/api/auth/me", { method: "DELETE", credentials: "include" });
     const data = await res.json().catch(() => ({}));
 
     setDeleting(false);
@@ -189,6 +124,7 @@ function ClerkAccountPage() {
     }
 
     router.push("/login");
+    router.refresh();
   };
 
   return (
@@ -197,7 +133,6 @@ function ClerkAccountPage() {
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-8">حسابي</h1>
 
-        {/* Profile card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden mb-6">
           <div className="h-24 bg-gradient-to-r from-blue-600 to-indigo-600" />
           <div className="px-6 pb-6">
@@ -237,16 +172,9 @@ function ClerkAccountPage() {
           </div>
         </div>
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <Link href="/courses" className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md transition-all text-center">
-            <div className="text-3xl mb-2">📚</div>
-            <p className="font-semibold text-gray-900 dark:text-white">تصفح الكورسات</p>
-          </Link>
-          <Link href="/library" className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md transition-all text-center">
-            <div className="text-3xl mb-2">📖</div>
-            <p className="font-semibold text-gray-900 dark:text-white">مكتبتي</p>
-          </Link>
+        {error && <div className="mb-5 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
             type="button"
             onClick={handleSignOut}
@@ -254,27 +182,17 @@ function ClerkAccountPage() {
             className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-rose-300 dark:hover:border-rose-800 hover:shadow-md transition-all text-center disabled:opacity-60"
           >
             <div className="text-3xl mb-2">🚪</div>
-            <p className="font-semibold text-gray-900 dark:text-white">
-              {signingOut ? "جارٍ الخروج..." : "تسجيل الخروج"}
-            </p>
+            <p className="font-semibold text-gray-900 dark:text-white">{signingOut ? "جارٍ الخروج..." : "تسجيل الخروج"}</p>
           </button>
-        </div>
-
-        <div className="mt-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-red-800 dark:text-red-300">حذف الحساب</h2>
-              <p className="text-sm text-red-700/80 dark:text-red-200/80">سيتم حذف حسابك وكل البيانات المرتبطة به بشكل نهائي.</p>
-            </div>
-            <button
-              onClick={handleDeleteAccount}
-              disabled={deleting}
-              className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold transition-colors"
-            >
-              {deleting ? "جارٍ الحذف..." : "حذف حسابي"}
-            </button>
-          </div>
-          {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-800 hover:shadow-md transition-all text-center disabled:opacity-60"
+          >
+            <div className="text-3xl mb-2">🗑️</div>
+            <p className="font-semibold text-gray-900 dark:text-white">{deleting ? "جارٍ حذف الحساب..." : "حذف الحساب"}</p>
+          </button>
         </div>
       </main>
       <Footer />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { getStudentSessionWithRetry } from '@/lib/auth'
+import { normalizeEgyptPhone } from '@/lib/phone'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,51 +35,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let primaryEmail = session.email
-    let displayName = session.name || session.email.split('@')[0] || 'User'
-
-    if (session.clerkId) {
-      try {
-        const client = await clerkClient()
-        const clerkUser = await client.users.getUser(session.clerkId)
-        primaryEmail = clerkUser.emailAddresses[0]?.emailAddress || primaryEmail
-        displayName = clerkUser.firstName || clerkUser.lastName
-          ? `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim()
-          : displayName
-      } catch (clerkError) {
-        console.error('Failed to fetch Clerk user data:', clerkError)
-        // Continue with existing data
-      }
-    }
-
-    if (!primaryEmail) {
-      return NextResponse.json(
-        { error: 'لم يتم العثور على البريد الإلكتروني للحساب' },
-        { status: 400 }
-      )
-    }
-
     let user = await prisma.user.findUnique({
       where: { id: session.id },
     })
 
     if (!user) {
-      user = await prisma.user.findUnique({ where: { email: primaryEmail } })
-
-      if (user && session.clerkId) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { clerkId: session.clerkId },
-        })
-      }
+      user = await prisma.user.findUnique({ where: { email: session.email } })
     }
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          clerkId: session.clerkId || null,
-          email: primaryEmail,
-          name: displayName,
+          email: session.email,
+          name: session.name,
           role: 'student',
           profileCompleted: false,
         },
@@ -91,8 +59,8 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: {
         name: name.trim(),
-        phone: phoneStr,
-        parentPhone: parentPhoneStr,
+        phone: normalizeEgyptPhone(phoneStr),
+        parentPhone: normalizeEgyptPhone(parentPhoneStr),
         age: age ? parseInt(String(age)) : undefined,
         educationalStage: educationalStage.trim(),
         profileCompleted: true,

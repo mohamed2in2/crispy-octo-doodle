@@ -1,35 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useUser } from "@clerk/nextjs";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { StatsSection } from "@/components/home/StatsSection";
-import { useClerkRuntime } from "@/components/auth/ClerkRuntimeProvider";
+import type { MeUser } from "@/lib/fetch-me";
 
 export default function HomePage() {
-  const { enabled: clerkEnabled } = useClerkRuntime();
+  const [user, setUser] = useState<MeUser | null>(null);
 
-  if (!clerkEnabled) {
-    return <HomePageShell isLoggedIn={false} />;
-  }
+  useEffect(() => {
+    let cancelled = false;
 
-  return <ClerkHomePage />;
-}
+    const load = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { credentials: "include" });
+        const data = (await response.json()) as { user: MeUser | null };
+        if (!cancelled) {
+          setUser(data.user ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+        }
+      }
+    };
 
-function ClerkHomePage() {
-  const { isLoaded, isSignedIn } = useUser();
-  const isLoggedIn = isLoaded ? isSignedIn : false;
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  return <HomePageShell isLoggedIn={isLoggedIn} />;
-}
+  const isLoggedIn = Boolean(user);
 
-function HomePageShell({ isLoggedIn }: { isLoggedIn: boolean }) {
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
-      <Navbar user={null} />
+      <Navbar user={user ? { name: user.name, role: user.role } : null} />
       <main className="flex-1">
         <HeroSection isLoggedIn={isLoggedIn} />
         <FeaturesSection />
@@ -37,9 +47,7 @@ function HomePageShell({ isLoggedIn }: { isLoggedIn: boolean }) {
         {!isLoggedIn && (
           <section className="py-20 bg-blue-600">
             <div className="max-w-4xl mx-auto text-center px-4">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                ابدأ رحلتك التعليمية اليوم
-              </h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">ابدأ رحلتك التعليمية اليوم</h2>
               <p className="text-blue-100 text-lg mb-8">
                 انضم إلى آلاف الطلاب المصريين الذين يحققون نتائج رائعة مع منصتنا
               </p>

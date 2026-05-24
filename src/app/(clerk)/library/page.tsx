@@ -112,7 +112,12 @@ export default function LibraryPage() {
     if (sessionStorage.getItem("library-refresh")) {
       sessionStorage.removeItem("library-refresh");
     }
-    void loadLibrary();
+
+    const timer = setTimeout(() => {
+      void loadLibrary();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [loadLibrary]);
 
   const totalVideos = courses.reduce(

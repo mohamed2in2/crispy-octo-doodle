@@ -55,7 +55,7 @@ npm install
 ### 2. Configure environment
 Create a `.env.local` file:
 ```env
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-secret-key"
 SUPERADMIN_MASTER_PASSWORD="your-superadmin-password"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"

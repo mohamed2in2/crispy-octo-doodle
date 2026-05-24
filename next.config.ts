@@ -8,7 +8,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize package imports for faster bundling
     optimizePackageImports: [
-      "@clerk/nextjs",
       "framer-motion",
       "react",
       "react-dom",

@@ -39,6 +39,8 @@ const merged = {
   ...process.env,
 };
 
+const skipTwilioValidation = merged.TWILIO_BYPASS_VERIFICATION === "true";
+
 const REQUIRED = [
   {
     key: "DATABASE_URL",
@@ -49,28 +51,40 @@ const REQUIRED = [
         !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(v)
       );
     },
-    hint: "Use file:./prisma/dev.db (local) or a real Supabase PostgreSQL URI",
+    hint: "Use file:./dev.db (local) or a real Supabase PostgreSQL URI",
   },
   {
     key: "JWT_SECRET",
     test: (v) => v.length >= 16 && !/replace-with|your-secret|change-me/i.test(v),
     hint: "At least 16 characters; not a placeholder",
   },
-  {
-    key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-    test: (v) => v.startsWith("pk_"),
-    hint: "Clerk publishable key (pk_test_... or pk_live_...)",
-  },
-  {
-    key: "CLERK_SECRET_KEY",
-    test: (v) => v.startsWith("sk_"),
-    hint: "Clerk secret key (sk_test_... or sk_live_...)",
-  },
+  ...(skipTwilioValidation
+    ? []
+    : [
+        {
+          key: "TWILIO_ACCOUNT_SID",
+          test: (v) => /^AC[0-9a-fA-F]{32}$/.test(v),
+          hint: "Twilio account SID (starts with AC...)",
+        },
+        {
+          key: "TWILIO_AUTH_TOKEN",
+          test: (v, merged) => {
+            // Accept either the classic account auth token or an API key pair
+            if (v && v.length >= 24) return true;
+            if (merged.TWILIO_API_KEY_SID && merged.TWILIO_API_SECRET) return true;
+            return false;
+          },
+          hint: "Twilio Auth Token OR set TWILIO_API_KEY_SID & TWILIO_API_SECRET (preferred)",
+        },
+        {
+          key: "TWILIO_FROM_NUMBER",
+          test: (v) => /^\+?[1-9]\d{7,14}$/.test(v.replace(/\s+/g, "")),
+          hint: "Twilio sender number in E.164 format, e.g. +201XXXXXXXXX",
+        },
+      ]),
 ];
 
 const RECOMMENDED = [
-  "NEXT_PUBLIC_CLERK_SIGN_IN_URL",
-  "NEXT_PUBLIC_CLERK_SIGN_UP_URL",
   "NEXT_PUBLIC_SITE_URL",
 ];
 

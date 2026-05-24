@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface BunnyPlayerProps {
   embedUrl?: string;
@@ -9,15 +9,13 @@ interface BunnyPlayerProps {
 }
 
 export function BunnyPlayer({ embedUrl, fallbackEmbedUrl, title }: BunnyPlayerProps) {
-  const [src, setSrc] = useState(embedUrl || "");
+  const [useFallback, setUseFallback] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    setSrc(embedUrl || "");
-    setLoadError(false);
-  }, [embedUrl]);
-
-  const activeSrc = src || embedUrl || "";
+  const primarySrc = embedUrl || "";
+  const fallbackSrc = fallbackEmbedUrl || "";
+  const activeSrc = useFallback && fallbackSrc ? fallbackSrc : primarySrc;
 
   if (!activeSrc) {
     return (
@@ -30,12 +28,17 @@ export function BunnyPlayer({ embedUrl, fallbackEmbedUrl, title }: BunnyPlayerPr
   }
 
   const tryFallback = () => {
-    if (fallbackEmbedUrl && activeSrc !== fallbackEmbedUrl) {
-      setSrc(fallbackEmbedUrl);
+    if (fallbackSrc && activeSrc !== fallbackSrc) {
+      setUseFallback(true);
       setLoadError(false);
       return;
     }
     setLoadError(true);
+  };
+
+  const retry = () => {
+    setLoadError(false);
+    setReloadKey((k) => k + 1);
   };
 
   return (
@@ -55,7 +58,7 @@ export function BunnyPlayer({ embedUrl, fallbackEmbedUrl, title }: BunnyPlayerPr
       )}
       <div className="relative" style={{ paddingTop: "56.25%" }}>
         <iframe
-          key={activeSrc}
+          key={`${activeSrc}-${reloadKey}`}
           src={activeSrc}
           title={title || "Video Player"}
           className="absolute inset-0 h-full w-full"
@@ -69,7 +72,7 @@ export function BunnyPlayer({ embedUrl, fallbackEmbedUrl, title }: BunnyPlayerPr
       {loadError && (
         <div className="border-t border-amber-500/20 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
           تعذر تحميل الفيديو. جرّب مرة أخرى أو تواصل مع الدعم.
-          <button type="button" onClick={tryFallback} className="mr-2 underline hover:text-white">
+          <button type="button" onClick={retry} className="mr-2 underline hover:text-white">
             إعادة المحاولة
           </button>
         </div>

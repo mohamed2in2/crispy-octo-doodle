@@ -7,7 +7,15 @@ const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_URL_LENGTH = 500;
 const MIN_TITLE_LENGTH = 1;
 
-function validateCourseData(data: any): { valid: boolean; error?: string } {
+type CoursePatchInput = {
+  title?: string;
+  subject?: string;
+  educationalStage?: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+};
+
+function validateCourseData(data: CoursePatchInput): { valid: boolean; error?: string } {
   if (data.title !== undefined) {
     if (typeof data.title !== "string" || data.title.trim().length < MIN_TITLE_LENGTH) {
       return { valid: false, error: "العنوان مطلوب" };
@@ -96,7 +104,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
     }
 
-    const data = await req.json();
+    const data = (await req.json()) as CoursePatchInput;
 
     // Validate course data
     const validation = validateCourseData(data);
@@ -104,7 +112,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: CoursePatchInput = {};
 
     if (data.title !== undefined) {
       updateData.title = data.title.trim();

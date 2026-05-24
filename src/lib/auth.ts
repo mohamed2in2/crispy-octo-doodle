@@ -1,14 +1,17 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { createHash } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
+import { isPhoneVerificationBypassed, verifyCode as twilioVerifyCode } from "@/lib/twilio";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
+import { normalizeEgyptPhone } from "@/lib/phone";
 
 if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is not set. Please configure it in your .env.local file.");
+  throw new Error("JWT_SECRET environment variable is not set. Please configure it in your .env file.");
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
-const CLERK_USER_TIMEOUT_MS = 3000;
+const AUTH_COOKIE_NAME = "auth_token";
+const PHONE_VERIFY_COOKIE_NAME = "student_phone_verify";
 
 export interface JWTPayload {
   id: string;
@@ -33,8 +36,16 @@ export interface SessionUser {
   createdAt?: Date;
 }
 
+type PhoneChallengePayload = {
+  phone: string;
+  codeHash?: string;
+  method?: string;
+  iat?: number;
+  exp?: number;
+};
+
 export async function signToken(payload: Omit<JWTPayload, "iat" | "exp">) {
-  return await new SignJWT(payload as Record<string, unknown>)
+  return new SignJWT(payload as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -52,7 +63,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
-  cookieStore.set("auth_token", token, {
+  cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -63,116 +74,81 @@ export async function setAuthCookie(token: string) {
 
 export async function clearAuthCookie() {
   const cookieStore = await cookies();
-  cookieStore.delete("auth_token");
+  cookieStore.delete(AUTH_COOKIE_NAME);
 }
 
-async function syncClerkUserToDatabase(): Promise<SessionUser | null> {
-  const { userId } = await auth();
+function hashVerificationCode(code: string) {
+  return createHash("sha256").update(code).digest("hex");
+}
 
-  if (!userId) {
-    return null;
+export async function createPhoneVerificationChallenge(phone: string, code?: string, method?: string) {
+  const payload: Record<string, unknown> = { phone };
+  if (code) payload.codeHash = hashVerificationCode(code);
+  if (method) payload.method = method;
+
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("10m")
+    .sign(JWT_SECRET);
+}
+
+export async function setPhoneVerificationCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(PHONE_VERIFY_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 60 * 10,
+    path: "/",
+  });
+}
+
+export async function clearPhoneVerificationCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(PHONE_VERIFY_COOKIE_NAME);
+}
+
+export async function verifyPhoneVerificationCookie(phone: string, code: string) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(PHONE_VERIFY_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return false;
   }
 
   try {
-    const client = await clerkClient();
-    const clerkUserPromise = client.users.getUser(userId).catch((error) => {
-      console.warn(`Failed to fetch Clerk user ${userId}:`, error?.message);
-      return null;
-    });
-    
-    const timeoutPromise = new Promise<null>((resolve) => {
-      setTimeout(() => {
-        console.warn(`Clerk user fetch timeout for ${userId} after ${CLERK_USER_TIMEOUT_MS}ms`);
-        resolve(null);
-      }, CLERK_USER_TIMEOUT_MS);
-    });
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const challenge = payload as unknown as PhoneChallengePayload;
+    if (!challenge?.phone) return false;
+    const normalizedPhone = normalizeEgyptPhone(String(phone));
+    if (challenge.phone !== normalizedPhone) return false;
 
-    const clerkUser = await Promise.race([clerkUserPromise, timeoutPromise]);
-    if (!clerkUser) {
-      console.warn(`Could not fetch Clerk user ${userId} - will try database lookup`);
-      // Still try to sync with database if we have a record
-      const dbUser = await prisma.user.findUnique({
-        where: { clerkId: userId },
-      });
-      if (dbUser) {
-        return {
-          id: dbUser.id,
-          clerkId: dbUser.clerkId || userId,
-          email: dbUser.email,
-          name: dbUser.name,
-          role: dbUser.role,
-          profileCompleted: dbUser.profileCompleted,
-          phone: dbUser.phone,
-          parentPhone: dbUser.parentPhone,
-          age: dbUser.age,
-          educationalStage: dbUser.educationalStage,
-          createdAt: dbUser.createdAt,
-        };
-      }
-      return null;
+    if (isPhoneVerificationBypassed()) {
+      return true;
     }
 
-    const primaryEmail = clerkUser.emailAddresses[0]?.emailAddress;
-
-    if (!primaryEmail) {
-      return null;
-    }
-
-    let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!user) {
-      user = await prisma.user.findUnique({
-        where: { email: primaryEmail },
-      });
-
-      if (user) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { clerkId: userId },
-        });
+    // If the challenge indicates a Verify flow, delegate to Twilio Verify check
+    if (challenge.method === "verify") {
+      try {
+        return await twilioVerifyCode(normalizedPhone, code.trim());
+      } catch (e) {
+        console.error("Twilio verifyCode check failed:", e);
+        return false;
       }
     }
 
-    if (!user) {
-      const displayName = clerkUser.firstName || clerkUser.lastName
-        ? `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim()
-        : primaryEmail.split("@")[0] || "User";
-
-      user = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: primaryEmail,
-          name: displayName,
-          role: "student",
-          profileCompleted: false,
-        },
-      });
-    }
-
-    return {
-      id: user.id,
-      clerkId: user.clerkId || userId,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      profileCompleted: user.profileCompleted,
-      phone: user.phone,
-      parentPhone: user.parentPhone,
-      age: user.age,
-      educationalStage: user.educationalStage,
-      createdAt: user.createdAt,
-    };
-  } catch (error) {
-    console.error(`Unexpected error syncing Clerk user ${userId}:`, error);
-    return null;
+    if (!challenge.codeHash) return false;
+    const codeHash = hashVerificationCode(code.trim());
+    return challenge.codeHash === codeHash;
+  } catch {
+    return false;
   }
 }
 
 async function getJwtSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) {
     return null;
   }
@@ -189,29 +165,6 @@ async function getJwtSession(): Promise<SessionUser | null> {
       name: payload.name,
       role: payload.role,
       profileCompleted: true,
-    };
-  }
-
-  if (payload.role === "teacher") {
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-    });
-
-    if (!user || user.role !== "teacher") {
-      return null;
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      profileCompleted: user.profileCompleted,
-      phone: user.phone,
-      parentPhone: user.parentPhone,
-      age: user.age,
-      educationalStage: user.educationalStage,
-      createdAt: user.createdAt,
     };
   }
 
@@ -238,7 +191,6 @@ async function getJwtSession(): Promise<SessionUser | null> {
 }
 
 type SessionOptions = {
-  /** Student routes: Clerk student wins over teacher admin JWT in the same browser */
   preferStudent?: boolean;
 };
 
@@ -246,45 +198,20 @@ function isStudentRole(role: string) {
   return role === "student";
 }
 
-function isAdminRole(role: string) {
-  return role === "teacher" || role === "superadmin";
-}
-
 export async function getSession(options?: SessionOptions): Promise<SessionUser | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
-    const payload = token ? await verifyToken(token) : null;
-    const clerkSession = await syncClerkUserToDatabase();
-    const jwtSession = token ? await getJwtSession() : null;
+  const session = await getJwtSession();
 
-    if (options?.preferStudent) {
-      if (clerkSession && isStudentRole(clerkSession.role)) {
-        return clerkSession;
-      }
-      if (jwtSession && isStudentRole(jwtSession.role)) {
-        return jwtSession;
-      }
-      return null;
-    }
-
-    // Admin panel: teacher/superadmin JWT wins over Clerk in the same browser
-    if (payload && isAdminRole(payload.role)) {
-      return jwtSession;
-    }
-
-    if (clerkSession) {
-      return clerkSession;
-    }
-
-    return jwtSession;
-  } catch (error) {
-    console.error("Failed to get session:", error);
+  if (!session) {
     return null;
   }
+
+  if (options?.preferStudent && !isStudentRole(session.role)) {
+    return null;
+  }
+
+  return session;
 }
 
-/** Clerk student session for library, codes, courses, quizzes (ignores teacher admin cookie). */
 export async function getStudentSession(): Promise<SessionUser | null> {
   return getSession({ preferStudent: true });
 }
@@ -306,10 +233,7 @@ export async function getSessionWithRetry(
   return null;
 }
 
-export async function getStudentSessionWithRetry(
-  maxRetries = 5,
-  delayMs = 150
-): Promise<SessionUser | null> {
+export async function getStudentSessionWithRetry(maxRetries = 5, delayMs = 150): Promise<SessionUser | null> {
   return getSessionWithRetry(maxRetries, delayMs, { preferStudent: true });
 }
 

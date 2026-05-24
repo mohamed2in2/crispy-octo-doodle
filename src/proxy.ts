@@ -1,63 +1,92 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Define public routes that don't require authentication
-const isPublicRoute = createRouteMatcher([
+const JWT_SECRET = process.env.JWT_SECRET ? new TextEncoder().encode(process.env.JWT_SECRET) : null;
+
+const PUBLIC_PREFIXES = [
   "/",
-  "/login(.*)",
-  "/signup(.*)",
-  "/verify-email(.*)",
-  "/reset-password(.*)",
-  "/api/public(.*)",
+  "/login",
+  "/signup",
+  "/api/public",
   "/api/health",
-  "/api/auth/callback(.*)",
-]);
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/logout",
+  "/api/auth/phone/send-code",
+];
 
-// Routes that require authentication
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/library(.*)",
-  "/courses(.*)",
-  "/quizzes(.*)",
-  "/codes(.*)",
-  "/complete-profile(.*)",
-  "/adminpanel(.*)",
-  "/api/courses(.*)",
-  "/api/library(.*)",
-  "/api/quizzes(.*)",
-  "/api/progress(.*)",
-  "/api/auth/me(.*)",
-]);
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/library",
+  "/courses",
+  "/quizzes",
+  "/codes",
+  "/complete-profile",
+  "/account",
+  "/adminpanel",
+  "/api/courses",
+  "/api/library",
+  "/api/quizzes",
+  "/api/progress",
+  "/api/auth/me",
+  "/api/auth/complete-profile",
+];
 
-export default clerkMiddleware(async (auth, req: NextRequest) => {
-  const { userId } = await auth();
+function startsWithAny(pathname: string, prefixes: string[]) {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
 
-  // If it's a protected route and user is not authenticated, redirect to login
-  if (isProtectedRoute(req) && !userId) {
+async function hasValidSession(req: NextRequest) {
+  if (!JWT_SECRET) {
+    return false;
+  }
+
+  const token = req.cookies.get("auth_token")?.value;
+  if (!token) {
+    return false;
+  }
+
+  try {
+    await jwtVerify(token, JWT_SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export default async function proxy(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
+  const isPublic = startsWithAny(pathname, PUBLIC_PREFIXES);
+  const isProtected = startsWithAny(pathname, PROTECTED_PREFIXES);
+
+  const authed = await hasValidSession(req);
+
+  if (isProtected && !authed) {
     const loginUrl = new URL("/login", req.url);
-    // Add redirect parameter to return to the original page after login
-    loginUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
+    loginUrl.searchParams.set("redirect_url", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated and tries to access login/signup, redirect to dashboard
-  if ((req.nextUrl.pathname === "/login" || req.nextUrl.pathname === "/signup") && userId) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  if ((pathname === "/login" || pathname === "/signup") && authed) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // Allow the request to proceed
-  return NextResponse.next();
-});
+  if (!isPublic && !isProtected) {
+    return NextResponse.next();
+  }
 
-// Configure which routes proxy should run on
+  return NextResponse.next();
+}
+
 export const config = {
-  // Match all request paths except static files, next internals, etc
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
-

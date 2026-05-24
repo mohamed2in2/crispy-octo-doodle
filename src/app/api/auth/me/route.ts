@@ -1,31 +1,13 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { clearAuthCookie, getSession, getStudentSessionWithRetry } from "@/lib/auth";
+import { clearAuthCookie, getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-
-    // Clerk student pages must not pick up teacher admin JWT from the same browser
-    if (userId) {
-      const studentSession = await getStudentSessionWithRetry(2, 100);
-      if (studentSession) {
-        return NextResponse.json({ user: studentSession }, {
-          headers: {
-            "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
-          },
-        });
-      }
-    }
-
     const session = await getSession();
 
     if (!session) {
-      return NextResponse.json({
-        user: null,
-        clerkSignedIn: Boolean(userId),
-      });
+      return NextResponse.json({ user: null });
     }
 
     return NextResponse.json({ user: session }, {
@@ -35,12 +17,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error("GET /api/auth/me error:", error);
-    const { userId } = await auth();
-    return NextResponse.json({
-      user: null,
-      clerkSignedIn: Boolean(userId),
-      dbError: true,
-    });
+    return NextResponse.json({ user: null, dbError: true });
   }
 }
 
@@ -52,24 +29,6 @@ export async function DELETE() {
   }
 
   try {
-    if (session.clerkId) {
-      const user = await prisma.user.findUnique({
-        where: { clerkId: session.clerkId },
-      });
-
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-
-      await prisma.user.delete({ where: { id: user.id } });
-      
-      return NextResponse.json({ success: true }, {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      });
-    }
-
     const user = await prisma.user.findUnique({
       where: { id: session.id },
     });
