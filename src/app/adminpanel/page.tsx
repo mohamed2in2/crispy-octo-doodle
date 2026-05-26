@@ -13,10 +13,18 @@ async function readJson<T>(res: Response): Promise<T | null> {
   }
 }
 
+const TABS = [
+  { id: "teacher", label: "👨‍🏫 مدرس" },
+  { id: "staff_portal", label: "👥 مشرف / موظف" },
+  { id: "superadmin", label: "👑 المشرف العام" },
+] as const;
+
+type Tab = (typeof TABS)[number]["id"];
+
 export default function AdminPanelLoginPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"superadmin" | "teacher">("teacher");
-  const [form, setForm] = useState({ name: "", password: "" });
+  const [activeTab, setActiveTab] = useState<Tab>("teacher");
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +36,9 @@ export default function AdminPanelLoginPage() {
     const body =
       activeTab === "superadmin"
         ? { role: "superadmin", password: form.password }
-        : { role: "teacher", name: form.name, password: form.password };
+        : activeTab === "teacher"
+        ? { role: "teacher", name: form.name, password: form.password }
+        : { role: "staff_portal", email: form.email, password: form.password };
 
     const res = await fetch("/api/admin/login", {
       method: "POST",
@@ -39,13 +49,20 @@ export default function AdminPanelLoginPage() {
     const data = await readJson<{ error?: string; user?: { role?: string } }>(res);
     setLoading(false);
 
-    if (!res.ok) { setError(data?.error || "تعذر تسجيل الدخول"); return; }
+    if (!res.ok) { setError(data?.error ?? "تعذر تسجيل الدخول"); return; }
 
-    if (data?.user?.role === "superadmin") {
-      router.push("/adminpanel/superadmin");
-    } else {
+    const role = data?.user?.role;
+    if (role === "teacher") {
       router.push("/adminpanel/teacher");
+    } else {
+      router.push("/adminpanel/superadmin");
     }
+  };
+
+  const resetForm = (tab: Tab) => {
+    setActiveTab(tab);
+    setError("");
+    setForm({ name: "", email: "", password: "" });
   };
 
   return (
@@ -65,15 +82,17 @@ export default function AdminPanelLoginPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-900 p-1 rounded-xl mb-6">
-          {(["teacher", "superadmin"] as const).map((tab) => (
+          {TABS.map((tab) => (
             <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setError(""); setForm({ name: "", password: "" }); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === tab ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+              key={tab.id}
+              onClick={() => resetForm(tab.id)}
+              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+                activeTab === tab.id
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 hover:text-white"
               }`}
             >
-              {tab === "teacher" ? "👨‍🏫 مدرس" : "👑 المشرف العام"}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -85,6 +104,7 @@ export default function AdminPanelLoginPage() {
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
+          {/* Teacher: name field */}
           {activeTab === "teacher" && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">الاسم</label>
@@ -95,6 +115,21 @@ export default function AdminPanelLoginPage() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="اسم المدرس"
+              />
+            </div>
+          )}
+
+          {/* Admin / Staff: email field */}
+          {activeTab === "staff_portal" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">البريد الإلكتروني</label>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="admin@example.com"
               />
             </div>
           )}

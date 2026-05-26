@@ -32,9 +32,34 @@ export function Footer() {
           {/* Contact */}
           <div>
             <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">تواصل معنا</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/signup" className="hover:text-blue-500 transition-colors">إنشاء حساب</Link></li>
-              <li><Link href="/login" className="hover:text-blue-500 transition-colors">تسجيل الدخول</Link></li>
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5">📧</span>
+                <a href="mailto:contact@alasly.live" className="hover:text-blue-500 transition-colors break-all">
+                  contact@alasly.live
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>📞</span>
+                <a href="tel:+201090764334" className="hover:text-blue-500 transition-colors" dir="ltr">
+                  01090764334
+                </a>
+              </li>
+              <li className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-500 mb-1">هل تريد موقعاً مشابهاً؟</p>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>📞</span>
+                <a href="tel:+201101670389" className="hover:text-blue-500 transition-colors" dir="ltr">
+                  01101670389
+                </a>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5">📧</span>
+                <a href="mailto:ahmedehab2n5@gmail.com" className="hover:text-blue-500 transition-colors break-all">
+                  ahmedehab2n5@gmail.com
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -44,12 +69,12 @@ export function Footer() {
             © {new Date().getFullYear()} ALASLY. جميع الحقوق محفوظة.
           </p>
 
-          {/* Almost-hidden admin/teacher link: appears on hover */}
+          {/* Admin portal link — subtle but reachable without a student account */}
           <Link
-            href="/adminpanel/teacher"
-            title="Admin / Teacher Panel"
+            href="/adminpanel"
+            title="لوحة إدارة المنصة"
             className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
-            aria-label="Admin / Teacher Panel access"
+            aria-label="Admin Panel Login"
           >
             ⚙
           </Link>

@@ -12,8 +12,9 @@ async function run() {
       try {
         const n = normalizeEgyptPhone(p);
         console.log('normalize:', p, '=>', n);
-      } catch (e: any) {
-        console.log('normalize error for', p, ':', e.message);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.log('normalize error for', p, ':', message);
       }
     }
 

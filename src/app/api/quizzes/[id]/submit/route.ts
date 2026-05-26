@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getStudentSession();
+  const session = await getSession();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const { id: quizId } = await params;
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  const breakdown = quiz.questions.map((question) => {
+  const breakdown = quiz.questions.map((question: any) => {
     const yourAnswer = answers[question.id] ?? null;
     const isCorrect = yourAnswer === question.correctAnswer;
     return {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     };
   });
 
-  const correct = breakdown.filter((item) => item.isCorrect).length;
+  const correct = breakdown.filter((item: any) => item.isCorrect).length;
   const score = Number(((correct / totalQ) * 100).toFixed(2));
   const passed = score >= 50;
 

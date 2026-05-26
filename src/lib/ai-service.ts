@@ -1,4 +1,4 @@
-import { StudyPlanItem, AIApiResponse } from "@/types";
+import { StudyPlanItem } from "@/types";
 
 interface AIResponse {
   success: boolean;

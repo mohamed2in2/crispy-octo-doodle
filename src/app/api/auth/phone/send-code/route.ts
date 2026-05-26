@@ -8,12 +8,19 @@ import {
   generateVerificationCode,
   isTwilioVerifyEnabled,
   sendVerificationSms,
+  type TwilioSendResult,
 } from "@/lib/twilio";
 
 // Simple in-memory rate limiter (single-instance). For production use Redis or a shared store.
 const rateMap = new Map<string, { count: number; firstTs: number; lastTs: number }>();
 const RATE_WINDOW_MS = 60 * 1000; // 1 minute between sends to same number
 const MAX_PER_HOUR = 5;
+
+type SendCodeResponse = {
+  success: boolean;
+  method: TwilioSendResult["method"];
+  debugCode?: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const code = generateVerificationCode();
     const sendResult = await sendVerificationSms(normalizedPhone, code);
-    const method = (sendResult as any)?.method || (isTwilioVerifyEnabled() ? "verify" : "sms");
+    const method = sendResult.method || (isTwilioVerifyEnabled() ? "verify" : "sms");
 
     // update limiter only on success
     entry.count = entry.count + 1;
@@ -56,10 +63,9 @@ export async function POST(req: NextRequest) {
     rateMap.set(normalizedPhone, entry);
 
     // If DEV_SKIP_SMS returned the code, include it in response for dev convenience
-    const responseBody: any = { success: true };
-    responseBody.method = method;
-    if (sendResult && (sendResult as any).dev && (sendResult as any).code) {
-      responseBody.debugCode = (sendResult as any).code;
+    const responseBody: SendCodeResponse = { success: true, method };
+    if (sendResult.dev && sendResult.code) {
+      responseBody.debugCode = sendResult.code;
     }
 
     // create and set verification cookie (used for messaging flow). For Verify flow the cookie will still exist
@@ -69,8 +75,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(responseBody);
   } catch (error) {
-    console.error("Send phone verification code error:", (error as any)?.stack || String(error));
-    const msg = (error && (error as any).message) || String(error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Send phone verification code error:", error instanceof Error ? error.stack || msg : msg);
 
     if (msg.includes("Twilio credentials missing") || msg.includes("Authentication Error")) {
       return NextResponse.json({ error: "خطأ في إعدادات Twilio (مصادقة). تحقق من مفاتيح API الخاصة بك" }, { status: 502 });

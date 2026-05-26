@@ -7,6 +7,7 @@ import { Footer } from "@/components/ui/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
 import { StatsSection } from "@/components/home/StatsSection";
+import { ContactSection } from "@/components/home/ContactSection";
 import type { MeUser } from "@/lib/fetch-me";
 
 export default function HomePage() {
@@ -44,6 +45,7 @@ export default function HomePage() {
         <HeroSection isLoggedIn={isLoggedIn} />
         <FeaturesSection />
         <StatsSection />
+        <ContactSection />
         {!isLoggedIn && (
           <section className="py-20 bg-blue-600">
             <div className="max-w-4xl mx-auto text-center px-4">

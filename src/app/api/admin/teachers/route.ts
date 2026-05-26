@@ -2,15 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasPermission } from "@/lib/rbac";
 
 export async function GET() {
   const session = await getSession();
-  if (!session || session.role !== "superadmin") {
+  if (!session) return NextResponse.json({ error: "غير مصحح" }, { status: 401 });
+  if (!hasPermission(session.role, "view_teachers")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
   const teachers = await prisma.user.findMany({
     where: { role: "teacher" },
-    select: { id: true, name: true, email: true, createdAt: true, _count: { select: { courses: true } } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+      _count: { select: { courses: true } },
+      courses: { select: { id: true, title: true, subject: true }, orderBy: { createdAt: "desc" } },
+    },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ teachers });
@@ -18,7 +27,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "superadmin") {
+  if (!session) return NextResponse.json({ error: "غير مصحح" }, { status: 401 });
+  if (!hasPermission(session.role, "create_teacher")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 

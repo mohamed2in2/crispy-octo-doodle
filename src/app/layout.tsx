@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ErrorReporter } from "@/components/ErrorReporter";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
+          <ErrorReporter />
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
       </body>

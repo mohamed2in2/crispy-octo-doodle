@@ -1,7 +1,7 @@
 "use client";
 
 interface AdminSidebarProps {
-  role: "superadmin" | "teacher";
+  role: "superadmin" | "admin" | "staff" | "teacher";
   activeSection: string;
   setActiveSection: (s: string) => void;
   onLogout: () => void;
@@ -9,7 +9,31 @@ interface AdminSidebarProps {
 
 const superadminSections = [
   { id: "overview", icon: "📊", label: "نظرة عامة" },
+  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
+  { id: "deleted-students", icon: "�", label: "الطلاب المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
   { id: "create", icon: "➕", label: "إضافة مدرس" },
+  { id: "logs", icon: "📋", label: "سجلات النشاط" },
+  { id: "staff-accounts", icon: "👥", label: "المشرفون والموظفون" },
+  { id: "errors", icon: "🚨", label: "مراقبة الأخطاء" },
+];
+
+const adminSections = [
+  { id: "overview", icon: "📊", label: "نظرة عامة" },
+  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
+  { id: "deleted-students", icon: "📏", label: "الطلاب المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
+  { id: "create", icon: "➕", label: "إضافة مدرس" },
+  { id: "logs", icon: "📋", label: "سجلات النشاط" },
+  { id: "staff-accounts", icon: "👥", label: "المشرفون والموظفون" },
+];
+
+const staffSections = [
+  { id: "overview", icon: "📊", label: "نظرة عامة" },
+  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
+  { id: "deleted-students", icon: "📏", label: "الطلاب المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
+  { id: "logs", icon: "📋", label: "سجلات النشاط" },
 ];
 
 const teacherSections = [
@@ -20,8 +44,19 @@ const teacherSections = [
   { id: "students", icon: "👨‍🎓", label: "الطلاب" },
 ];
 
+const ROLE_BADGE: Record<string, string> = {
+  superadmin: "👑 المشرف العام",
+  admin: "🛠️ مشرف",
+  staff: "👤 موظف",
+  teacher: "👨‍🏫 مدرس",
+};
+
 export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }: AdminSidebarProps) {
-  const sections = role === "superadmin" ? superadminSections : teacherSections;
+  const sections =
+    role === "superadmin" ? superadminSections
+    : role === "admin"   ? adminSections
+    : role === "staff"   ? staffSections
+    : teacherSections;
 
   return (
     <aside className="w-64 bg-gray-900 border-l border-gray-800 flex flex-col min-h-screen">
@@ -33,7 +68,7 @@ export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }
           </div>
           <div>
             <p className="font-bold text-white text-sm">منصة التعليم</p>
-            <p className="text-xs text-gray-400">{role === "superadmin" ? "المشرف العام" : "لوحة المدرس"}</p>
+            <p className="text-xs text-gray-400">{ROLE_BADGE[role] ?? role}</p>
           </div>
         </div>
       </div>

@@ -12,7 +12,7 @@ export async function GET() {
 
     return NextResponse.json({ user: session }, {
       headers: {
-        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       },
     });
   } catch (error) {

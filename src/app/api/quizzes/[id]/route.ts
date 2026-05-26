@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getStudentSession();
+  const session = await getSession();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const { id: quizId } = await params;
@@ -37,7 +37,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const isStudent = session.role === "student";
   const questions = isStudent
-    ? quiz.questions.map(({ correctAnswer: _ca, ...q }) => q)
+    ? quiz.questions.map((question: any) => {
+        const { correctAnswer: _ca, ...q } = question;
+        return q;
+      })
     : quiz.questions;
 
   return NextResponse.json({

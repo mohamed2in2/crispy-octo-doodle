@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
 import { useToast } from "@/components/ui/Toast";
+import { StudentsSection } from "@/components/admin/superadmin/StudentsSection";
+import { TeachersSection } from "@/components/admin/superadmin/TeachersSection";
+import { ConfirmActionModal } from "@/components/admin/superadmin/ConfirmActionModal";
+import { ActivityLogsSection } from "@/components/admin/superadmin/ActivityLogsSection";
+import { DeletedStudentsSection } from "@/components/admin/superadmin/DeletedStudentsSection";
+import { StaffAccountsSection } from "@/components/admin/superadmin/StaffAccountsSection";
+import { ErrorMonitorSection } from "@/components/admin/superadmin/ErrorMonitorSection";
 
 async function readJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
@@ -18,10 +25,20 @@ async function readJson<T>(res: Response): Promise<T | null> {
 interface Teacher {
   id: string;
   name: string;
-  role: string;
+  email?: string;
   _count?: { courses?: number };
+  courses?: { id: string; title: string; subject: string }[];
   createdAt?: string | Date;
 }
+
+const SECTION_TITLES: Record<string, string> = {
+  overview: "نظرة عامة",
+  students: "إدارة الطلاب",
+  teachers: "إدارة المدرسين",
+  create: "إنشاء حساب مدرس",
+  "staff-accounts": "المشرفون والموظفون",
+  errors: "مراقبة الأخطاء والتحذيرات",
+};
 
 export default function SuperadminPage() {
   const router = useRouter();
@@ -31,10 +48,12 @@ export default function SuperadminPage() {
   const [creating, setCreating] = useState(false);
   const [newTeacher, setNewTeacher] = useState({ name: "", password: "" });
   const [activeSection, setActiveSection] = useState("overview");
+  const [deleteTargetTeacher, setDeleteTargetTeacher] = useState<Teacher | null>(null);
+  const [userRole, setUserRole] = useState<"superadmin" | "admin" | "staff">("superadmin");
 
   const fetchTeachers = async () => {
     const res = await fetch("/api/admin/teachers", { credentials: "include" });
-    if (res.status === 403) {
+    if (res.status === 401) {
       toastError("انتهت جلسة المشرف. سجّل الدخول من لوحة الإدارة.");
       setLoading(false);
       router.replace("/adminpanel");
@@ -46,10 +65,14 @@ export default function SuperadminPage() {
   };
 
   useEffect(() => {
-    const loadTeachers = async () => {
+    const init = async () => {
+      const meRes = await fetch("/api/auth/me", { credentials: "include" });
+      const meData = await meRes.json() as { user?: { role?: string } };
+      const role = meData?.user?.role;
+      if (role === "admin" || role === "staff") setUserRole(role);
       await fetchTeachers();
     };
-    loadTeachers();
+    void init();
   }, []);
 
   const createTeacher = async (e: React.FormEvent) => {
@@ -72,20 +95,20 @@ export default function SuperadminPage() {
     }
   };
 
-  const deleteTeacher = async (teacherId: string, teacherName: string) => {
-    if (!confirm(`هل أنت متأكد من حذف حساب المدرس "${teacherName}"؟`)) return;
-
+  const deleteTeacher = async (teacherId: string, teacherName: string, actionPassword: string) => {
     const res = await fetch(`/api/admin/teachers/${teacherId}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionPassword }),
     });
-    const data = await res.json().catch(() => ({}));
-
+    const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
       toastSuccess(`تم حذف حساب المدرس "${teacherName}" بنجاح`);
+      setDeleteTargetTeacher(null);
       fetchTeachers();
     } else {
-      toastError(data.error || "تعذر حذف حساب المدرس");
+      throw new Error(data?.error ?? "تعذر حذف حساب المدرس");
     }
   };
 
@@ -97,7 +120,7 @@ export default function SuperadminPage() {
   return (
     <div className="flex min-h-screen bg-gray-950 text-white">
       <AdminSidebar
-        role="superadmin"
+        role={userRole}
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         onLogout={handleLogout}
@@ -107,7 +130,7 @@ export default function SuperadminPage() {
         {/* Header */}
         <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-white">
-            {activeSection === "overview" ? "نظرة عامة" : "إنشاء حساب مدرس"}
+            {SECTION_TITLES[activeSection] ?? activeSection}
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/30">
@@ -174,7 +197,7 @@ export default function SuperadminPage() {
                             {t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : ""}
                           </span>
                           <button
-                            onClick={() => deleteTeacher(t.id, t.name)}
+                            onClick={() => setDeleteTargetTeacher(t)}
                             className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
                             aria-label={`حذف ${t.name}`}
                           >
@@ -188,6 +211,31 @@ export default function SuperadminPage() {
               </div>
             </>
           )}
+
+          {activeSection === "students" && <StudentsSection userRole={userRole} />}
+
+          {activeSection === "deleted-students" && <DeletedStudentsSection userRole={userRole} />}
+
+          {activeSection === "logs" && <ActivityLogsSection />}
+
+          {activeSection === "staff-accounts" && <StaffAccountsSection userRole={userRole} />}
+
+          {activeSection === "errors" && <ErrorMonitorSection />}
+
+          {deleteTargetTeacher && (
+            <ConfirmActionModal
+              title="حذف حساب المدرس نهائياً"
+              description={`تحذير: سيتم حذف حساب المدرس "‏${deleteTargetTeacher.name}‏" وجميع كورساته نهائياً.`}
+              actionLabel="حذف نهائياً"
+              variant="danger"
+              onConfirm={(password) =>
+                deleteTeacher(deleteTargetTeacher.id, deleteTargetTeacher.name, password)
+              }
+              onClose={() => setDeleteTargetTeacher(null)}
+            />
+          )}
+
+          {activeSection === "teachers" && <TeachersSection userRole={userRole} />}
 
           {activeSection === "create" && (
             <div className="max-w-md">

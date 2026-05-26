@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const phoneStr = String(phone).trim()
-    const parentPhoneStr = String(parentPhone).trim()
+    const normalizedPhone = normalizeEgyptPhone(String(phone).trim())
+    const normalizedParentPhone = normalizeEgyptPhone(String(parentPhone).trim())
 
-    if (phoneStr === parentPhoneStr) {
+    if (normalizedPhone === normalizedParentPhone) {
       return NextResponse.json(
         { error: 'رقم الطالب لا يمكن أن يكون نفس رقم الوالد/الوالدة' },
         { status: 400 }
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: {
         name: name.trim(),
-        phone: normalizeEgyptPhone(phoneStr),
-        parentPhone: normalizeEgyptPhone(parentPhoneStr),
+        phone: normalizedPhone,
+        parentPhone: normalizedParentPhone,
         age: age ? parseInt(String(age)) : undefined,
         educationalStage: educationalStage.trim(),
         profileCompleted: true,

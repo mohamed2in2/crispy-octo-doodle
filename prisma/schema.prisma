@@ -17,8 +17,10 @@ model User {
   parentPhone      String?
   age              Int?
   educationalStage String?
-  role             String    @default("student") // student | teacher | superadmin
+  role             String    @default("student") // student | teacher | superadmin | admin | staff
   isActive         Boolean   @default(true)
+  isDeleted        Boolean   @default(false)
+  deletedAt        DateTime?
   profileCompleted Boolean   @default(false)
   lastLoginAt      DateTime?
   createdAt        DateTime  @default(now())
@@ -37,6 +39,7 @@ model User {
   @@index([role])
   @@index([educationalStage])
   @@index([email])
+  @@index([isDeleted])
 }
 
 model Course {
@@ -181,4 +184,38 @@ model CourseAnalytics {
   averageScore    Float    @default(0)
   lastUpdatedAt   DateTime @updatedAt
   createdAt       DateTime @default(now())
+}
+
+// Client-side error / warning reports captured from the whole site.
+model ClientError {
+  id        String   @id @default(cuid())
+  type      String   // "error" | "warning" | "unhandled_promise" | "api_error"
+  message   String
+  stack     String?
+  url       String?
+  userAgent String?
+  userId    String?
+  userRole  String?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Audit trail for all sensitive admin actions.
+// Intentionally no FK to User so logs survive account deletions.
+model ActivityLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  adminName  String
+  action     String
+  targetType String
+  targetId   String
+  targetName String
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([adminId])
+  @@index([createdAt])
 }
