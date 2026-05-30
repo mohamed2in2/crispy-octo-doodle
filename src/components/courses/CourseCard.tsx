@@ -13,6 +13,10 @@ interface CourseCardProps {
     teacher: { id: string; name: string };
     _count?: { accessCodes: number };
     hasAccess?: boolean;
+    isPaid?: boolean;
+    price?: number | null;
+    discountPercent?: number | null;
+    discountExpiresAt?: string | null;
   };
   onCodeApplied: () => void;
 }
@@ -34,6 +38,13 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [code, setCode] = useState("");
   const [applying, setApplying] = useState(false);
+
+  const now = new Date();
+  const discountActive =
+    course.discountPercent != null &&
+    course.discountPercent > 0 &&
+    (course.discountExpiresAt == null || new Date(course.discountExpiresAt) > now);
+  const effectivelyFree = !course.isPaid || (discountActive && course.discountPercent === 100);
 
   const applyCode = async () => {
     if (!code.trim()) return;
@@ -86,10 +97,20 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
         ) : (
           <div className="flex h-full w-full items-center justify-center text-6xl">📚</div>
         )}
-        <div className="absolute right-3 top-3">
+        <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${subjectClass}`}>
             {course.subject}
           </span>
+          {effectivelyFree && (
+            <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow">
+              مجاني
+            </span>
+          )}
+          {discountActive && !effectivelyFree && (
+            <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white shadow">
+              -{course.discountPercent}%
+            </span>
+          )}
         </div>
       </div>
 
@@ -100,38 +121,61 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
         <p className="mb-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
           <span>👨‍🏫</span> {course.teacher.name}
         </p>
-        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+        <p className="mb-2 text-xs text-gray-400 dark:text-gray-500">
           {STAGE_LABELS[course.educationalStage ?? ""] || course.educationalStage || ""}
         </p>
 
+        {course.isPaid && course.price != null && (
+          <div className="mb-3 flex items-baseline gap-2">
+            {discountActive ? (
+              <>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  {Math.round(course.price * (1 - (course.discountPercent ?? 0) / 100))} جنيه
+                </span>
+                <span className="text-xs text-gray-400 line-through">{course.price} جنيه</span>
+              </>
+            ) : (
+              <span className="text-sm font-bold text-gray-900 dark:text-white">{course.price} جنيه</span>
+            )}
+          </div>
+        )}
+
         <div className="mt-auto space-y-2">
+          <button
+            onClick={() => router.push(`/courses/${course.id}`)}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+          >
+            عرض الكورس
+          </button>
           {course.hasAccess && (
             <button
-              onClick={() => router.push(`/courses/${course.id}`)}
+              onClick={() => router.push(`/courses/${course.id}/learn`)}
               className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
             >
               ادخل الكورس
             </button>
           )}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && applyCode()}
-              placeholder="أدخل كود الوصول"
-              maxLength={8}
-              className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center font-mono text-sm tracking-widest text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              dir="ltr"
-            />
-            <button
-              onClick={applyCode}
-              disabled={applying || !code.trim()}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-            >
-              {applying ? "..." : "تفعيل"}
-            </button>
-          </div>
+          {!effectivelyFree && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && applyCode()}
+                placeholder="أدخل كود الوصول"
+                maxLength={8}
+                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center font-mono text-sm tracking-widest text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                dir="ltr"
+              />
+              <button
+                onClick={applyCode}
+                disabled={applying || !code.trim()}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                {applying ? "..." : "تفعيل"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

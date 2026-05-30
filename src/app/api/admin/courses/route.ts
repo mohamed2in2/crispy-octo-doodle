@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const educationalStage = typeof body.educationalStage === "string" ? body.educationalStage.trim() : "";
     const description = typeof body.description === "string" ? body.description.trim() : "";
     const thumbnailUrl = typeof body.thumbnailUrl === "string" ? body.thumbnailUrl.trim() : "";
+    const contactPhone = typeof body.contactPhone === "string" ? body.contactPhone.trim() : null;
 
     // Validate required fields
     if (!title) {
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
         thumbnailUrl: thumbnailUrl || null,
         educationalStage,
         teacherId: session.id,
+        contactPhone: contactPhone || null,
       },
     });
 

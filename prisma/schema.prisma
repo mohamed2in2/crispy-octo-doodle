@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -34,7 +35,19 @@ model User {
   progress         Progress[]
   quizResults      QuizResult[]
   studyPlans       DailyStudyPlan[] @relation("StudentStudyPlans")
-  
+
+  // AI system relations
+  aiConversations  AIConversation[] @relation("StudentAIConversations")
+  feedbacks        StudentFeedback[] @relation("StudentFeedbacks")
+  gradeRequests    GradeAdjustmentRequest[] @relation("StudentGradeRequests")
+  aiInsights       AIStudentInsight[] @relation("StudentAIInsights")
+  supportTickets   SupportTicket[] @relation("StudentTickets")
+
+  // Teacher relations (AI system)
+  receivedFeedbacks StudentFeedback[] @relation("TeacherFeedbacks")
+  assignedTickets  SupportTicket[] @relation("AssignedTickets")
+  reviewedGradeReqs GradeAdjustmentRequest[] @relation("TeacherGradeRequests")
+
   // Indexes for faster queries
   @@index([role])
   @@index([educationalStage])
@@ -51,11 +64,21 @@ model Course {
   educationalStage String
   teacherId        String
   teacher          User      @relation("TeacherCourses", fields: [teacherId], references: [id], onDelete: Cascade)
+  isPaid           Boolean   @default(false)
+  price            Float?
+  discountPercent  Float?
+  discountExpiresAt DateTime?
+  contactPhone     String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   folders          Folder[]
   accessCodes      AccessCode[]
+
+  // AI system relations
+  feedbacks        StudentFeedback[]
+  gradeRequests    GradeAdjustmentRequest[]
+  supportTickets   SupportTicket[]
 
   @@index([teacherId])
   @@index([educationalStage])
@@ -99,6 +122,7 @@ model Quiz {
 
   questions QuizQuestion[]
   results   QuizResult[]
+  gradeRequests GradeAdjustmentRequest[]
 
   @@index([folderId])
 }
@@ -154,6 +178,7 @@ model QuizResult {
   quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   score       Float
   totalQ      Int
+  allowRetake Boolean  @default(false)
   completedAt DateTime @default(now())
 
   @@unique([studentId, quizId])
@@ -217,5 +242,126 @@ model ActivityLog {
 
   @@index([action])
   @@index([adminId])
+  @@index([createdAt])
+}
+
+// AI Assistant conversations with students
+model AIConversation {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     User     @relation("StudentAIConversations", fields: [studentId], references: [id], onDelete: Cascade)
+  role        String   // "user" | "assistant" | "system"
+  content     String   // The message content
+  context     String?  // JSON: what data AI had access to when responding
+  actions     String?  // JSON: any actions AI took (adjust grades, create tickets, etc.)
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+  @@index([createdAt])
+}
+
+// Student feedback about teachers and courses
+model StudentFeedback {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     User     @relation("StudentFeedbacks", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     User     @relation("TeacherFeedbacks", fields: [teacherId], references: [id], onDelete: Cascade)
+  type        String   // "teacher_rating" | "course_feedback" | "took_elsewhere" | "difficulty" | "other"
+  rating      Int?     // 1-5 for teacher ratings
+  content     String   // The feedback text
+  isResolved  Boolean  @default(false)
+  resolution  String?  // How it was resolved
+  aiAnalyzed  Boolean  @default(false) // Whether AI has processed this
+  aiInsights  String?  // AI analysis of the feedback
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([teacherId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Grade adjustment requests (student/AI initiated, teacher approved)
+model GradeAdjustmentRequest {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       User     @relation("StudentGradeRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  requestedBy   String   // "student" | "ai"
+  currentScore  Float
+  requestedScore Float?
+  reason        String   // Why adjustment is requested
+  aiAnalysis    String?  // AI's reasoning for flagging this
+  evidence      String?  // JSON: wrong answers, correct answers, etc.
+  status        String   @default("pending") // pending | ai_reviewed | approved | rejected
+  teacherId     String?
+  teacher       User?    @relation("TeacherGradeRequests", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacherNotes  String?  // Teacher's response
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([teacherId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// AI-generated student insights and analysis
+model AIStudentInsight {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         User     @relation("StudentAIInsights", fields: [studentId], references: [id], onDelete: Cascade)
+  type            String   // "weak_area" | "strength" | "recommendation" | "risk_alert" | "progress"
+  category        String   // "math" | "physics" | etc. or "general"
+  title           String   // Short title
+  description     String   // Detailed insight
+  confidence      Float    // 0-1 confidence score
+  dataSnapshot    String   // JSON: what data this insight was based on
+  isRead          Boolean  @default(false)
+  isActioned      Boolean  @default(false) // Whether student/teacher acted on this
+  actionTaken     String?  // What action was taken
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([type])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// Student support tickets (for AI or teacher handling)
+model SupportTicket {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         User     @relation("StudentTickets", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title           String
+  description     String
+  type            String   // "technical" | "academic" | "teacher_issue" | "content_error" | "other"
+  priority        String   @default("normal") // low | normal | high | urgent
+  status          String   @default("open") // open | ai_handling | escalated | resolved | closed
+  aiHandled       Boolean  @default(false)
+  aiResponse      String?  // AI's response if it handled it
+  assignedTo      String?  // Teacher or admin ID
+  assignedUser    User?    @relation("AssignedTickets", fields: [assignedTo], references: [id], onDelete: SetNull)
+  resolution      String?  // Final resolution
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([status])
+  @@index([priority])
   @@index([createdAt])
 }

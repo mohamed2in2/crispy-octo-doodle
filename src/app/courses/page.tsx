@@ -4,6 +4,7 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { StudentInsights } from "@/components/ai/StudentInsights";
 import { EDUCATIONAL_STAGES, SUBJECTS } from "@/types";
 
 interface Course {
@@ -14,6 +15,11 @@ interface Course {
   educationalStage?: string;
   thumbnailUrl?: string;
   teacher: { id: string; name: string };
+  isPaid?: boolean;
+  price?: number | null;
+  discountPercent?: number | null;
+  discountExpiresAt?: string | null;
+  hasAccess?: boolean;
 }
 
 export default function CoursesPage() {
@@ -119,6 +125,13 @@ export default function CoursesPage() {
             </select>
           </div>
         </div>
+
+        {/* AI Insights for logged-in students */}
+        {user?.role === "student" && (
+          <div className="mb-6">
+            <StudentInsights compact />
+          </div>
+        )}
 
         {/* Results count */}
         {!loading && (

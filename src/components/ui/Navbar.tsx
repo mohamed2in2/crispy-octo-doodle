@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/", label: "الرئيسية" },
   { href: "/courses", label: "الكورسات" },
   { href: "/library", label: "مكتبتي" },
+  { href: "/environments", label: "البيئات" },
   { href: "/account", label: "حسابي" },
 ];
 

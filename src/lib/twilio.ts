@@ -1,4 +1,5 @@
 import { normalizeEgyptPhone } from "@/lib/phone";
+import { randomInt } from "crypto";
 
 const TWILIO_API_BASE = "https://api.twilio.com/2010-04-01";
 const TWILIO_VERIFY_BASE = "https://verify.twilio.com/v2";
@@ -175,5 +176,5 @@ export async function verifyCode(phone: string, code: string) {
 }
 
 export function generateVerificationCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(100000 + randomInt(900000));
 }

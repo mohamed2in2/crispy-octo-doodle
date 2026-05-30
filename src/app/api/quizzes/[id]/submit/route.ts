@@ -39,6 +39,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const totalQ = quiz.questions.length;
   if (!totalQ) return NextResponse.json({ error: "الاختبار بدون أسئلة" }, { status: 400 });
 
+  // Block retake unless teacher allowed it
+  const existingResult = await prisma.quizResult.findUnique({
+    where: { studentId_quizId: { studentId: session.id, quizId } },
+  });
+  if (existingResult && !existingResult.allowRetake) {
+    return NextResponse.json(
+      { error: "لقد أجبت على هذا الاختبار بالفعل. تواصل مع المدرس للسماح بإعادة المحاولة." },
+      { status: 409 }
+    );
+  }
+
   const limitMinutes = (quiz as any).timeLimitMinutes ?? 30;
   if (startedAt && !Number.isNaN(startedAt.getTime())) {
     const elapsedSeconds = Math.floor((Date.now() - startedAt.getTime()) / 1000);
@@ -69,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const result = await prisma.quizResult.upsert({
     where: { studentId_quizId: { studentId: session.id, quizId } },
-    update: { score, totalQ, completedAt: new Date() },
+    update: { score, totalQ, completedAt: new Date(), allowRetake: false },
     create: { studentId: session.id, quizId, score, totalQ },
   });
 

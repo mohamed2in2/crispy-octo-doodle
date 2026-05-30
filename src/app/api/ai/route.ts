@@ -1,33 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 
-async function callOpenAI(messages: { role: string; content: string }[]) {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "";
+const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
+const PRIMARY_MODEL = process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-20241022";
+
+const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || "";
+const BACKUP_API_URL = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/models";
+const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
+
+async function callPrimary(messages: { role: string; content: string }[]) {
+  const sys = messages.find((m) => m.role === "system")?.content || "";
+  const userMsgs = messages.filter((m) => m.role !== "system");
+  const res = await fetch(PRIMARY_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "x-api-key": PRIMARY_API_KEY,
+      "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({ model: "gpt-3.5-turbo", messages }),
+    body: JSON.stringify({
+      model: PRIMARY_MODEL,
+      max_tokens: 1200,
+      system: sys,
+      messages: userMsgs.map((m) => ({ role: m.role, content: m.content })),
+    }),
     signal: AbortSignal.timeout(10000),
   });
-  if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+  if (!res.ok) throw new Error(`Primary AI error: ${res.status}`);
   const data = await res.json();
-  return data.choices[0].message.content;
+  return data.content[0].text;
 }
 
-async function callGemini(messages: { role: string; content: string }[]) {
+async function callBackup(messages: { role: string; content: string }[]) {
   const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      signal: AbortSignal.timeout(10000),
-    }
-  );
-  if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
+  const url = `${BACKUP_API_URL}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1200 },
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Backup AI error: ${res.status}`);
   const data = await res.json();
   return data.candidates[0].content.parts[0].text;
 }
@@ -66,19 +83,19 @@ export async function POST(req: NextRequest) {
 
   let reply: string;
 
-  // Try primary API (OpenAI), fallback to Gemini, then static fallback
+  // Try primary API (Claude), fallback to Gemini, then static fallback
   try {
-    if (process.env.OPENAI_API_KEY) {
-      reply = await callOpenAI(formattedMessages);
+    if (PRIMARY_API_KEY) {
+      reply = await callPrimary(formattedMessages);
     } else {
-      throw new Error("No OpenAI key");
+      throw new Error("No primary AI key");
     }
   } catch {
     try {
-      if (process.env.GEMINI_API_KEY) {
-        reply = await callGemini(formattedMessages);
+      if (BACKUP_API_KEY) {
+        reply = await callBackup(formattedMessages);
       } else {
-        throw new Error("No Gemini key");
+        throw new Error("No backup AI key");
       }
     } catch {
       reply = generateFallbackPlan(courses || []);

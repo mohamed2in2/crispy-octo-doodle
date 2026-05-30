@@ -36,6 +36,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const isStudent = session.role === "student";
+
+  // Check if student already completed this quiz
+  if (isStudent) {
+    const existingResult = await prisma.quizResult.findUnique({
+      where: { studentId_quizId: { studentId: session.id, quizId } },
+    });
+    if (existingResult && !existingResult.allowRetake) {
+      return NextResponse.json({
+        alreadyCompleted: true,
+        result: {
+          score: existingResult.score,
+          totalQ: existingResult.totalQ,
+          completedAt: existingResult.completedAt,
+        },
+        quiz: {
+          id: quiz.id,
+          title: quiz.title,
+          courseId: quiz.folder.courseId,
+          course: quiz.folder.course,
+        },
+      });
+    }
+  }
+
   const questions = isStudent
     ? quiz.questions.map((question: any) => {
         const { correctAnswer: _ca, ...q } = question;

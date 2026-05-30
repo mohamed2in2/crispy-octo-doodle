@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
 import { useToast } from "@/components/ui/Toast";
+import { TeacherRequests } from "@/components/admin/TeacherRequests";
+import { TeacherFeedback } from "@/components/admin/TeacherFeedback";
+import { TeacherQuizResults } from "@/components/admin/TeacherQuizResults";
 import { EDUCATIONAL_STAGES, SUBJECTS } from "@/types";
 
 async function readJson<T>(res: Response): Promise<T | null> {
@@ -25,6 +28,11 @@ interface Course {
   educationalStage?: string;
   folders?: Folder[];
   _count?: { accessCodes?: number };
+  isPaid?: boolean;
+  price?: number | null;
+  discountPercent?: number | null;
+  discountExpiresAt?: string | null;
+  contactPhone?: string | null;
 }
 
 interface Folder {
@@ -55,7 +63,7 @@ export default function TeacherDashboardPage() {
   const [creatingCourse, setCreatingCourse] = useState(false);
   // Forms
   const [newCourse, setNewCourse] = useState({
-    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "",
+    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "",
   });
   const [newFolder, setNewFolder] = useState("");
   const [newVideo, setNewVideo] = useState({ title: "", bunnyId: "", folderId: "" });
@@ -70,7 +78,15 @@ export default function TeacherDashboardPage() {
     description: "",
     thumbnailUrl: "",
     educationalStage: "",
+    contactPhone: "",
   });
+  const [pricingSettings, setPricingSettings] = useState({
+    isPaid: false,
+    price: "",
+    discountPercent: "",
+    discountExpiresAt: "",
+  });
+  const [savingPricing, setSavingPricing] = useState(false);
 
   const notify = (type: "success" | "error", text: string) => {
     if (type === "success") toastSuccess(text);
@@ -144,6 +160,7 @@ export default function TeacherDashboardPage() {
       description: newCourse.description.trim(),
       thumbnailUrl: newCourse.thumbnailUrl.trim(),
       educationalStage: newCourse.educationalStage.trim(),
+      contactPhone: newCourse.contactPhone.trim() || null,
     };
 
     if (!payload.title || !payload.subject || !payload.educationalStage) {
@@ -162,7 +179,7 @@ export default function TeacherDashboardPage() {
 
       if (res.ok) {
         notify("success", "✅ تم إنشاء الكورس بنجاح");
-        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "" });
+        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "" });
         await fetchCourses();
       setActiveSection("courses");
       } else {
@@ -280,10 +297,43 @@ export default function TeacherDashboardPage() {
       description: course.description || "",
       thumbnailUrl: course.thumbnailUrl || "",
       educationalStage: course.educationalStage || "",
+      contactPhone: course.contactPhone || "",
+    });
+    setPricingSettings({
+      isPaid: course.isPaid ?? false,
+      price: course.price != null ? String(course.price) : "",
+      discountPercent: course.discountPercent != null ? String(course.discountPercent) : "",
+      discountExpiresAt: course.discountExpiresAt
+        ? new Date(course.discountExpiresAt).toISOString().slice(0, 16)
+        : "",
     });
     fetchFolders(course.id);
     fetchCodes(course.id);
     setActiveSection("courses");
+  };
+
+  const savePricingSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse) return;
+    setSavingPricing(true);
+    const res = await fetch(`/api/admin/courses/${selectedCourse.id}/pricing`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        isPaid: pricingSettings.isPaid,
+        price: pricingSettings.price ? parseFloat(pricingSettings.price) : null,
+        discountPercent: pricingSettings.discountPercent ? parseFloat(pricingSettings.discountPercent) : null,
+        discountExpiresAt: pricingSettings.discountExpiresAt || null,
+      }),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    setSavingPricing(false);
+    if (res.ok) {
+      notify("success", "✅ تم حفظ إعدادات التسعير");
+      fetchCourses();
+    } else {
+      notify("error", data?.error || "تعذر حفظ إعدادات التسعير");
+    }
   };
 
   const saveCourseSettings = async (e: React.FormEvent) => {
@@ -293,7 +343,7 @@ export default function TeacherDashboardPage() {
     const res = await fetch(`/api/admin/courses/${selectedCourse.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(courseSettings),
+      body: JSON.stringify({ ...courseSettings, contactPhone: courseSettings.contactPhone || null }),
     });
     const data = await readJson<{ course?: Course; error?: string }>(res);
 
@@ -318,9 +368,12 @@ export default function TeacherDashboardPage() {
           <h1 className="text-xl font-bold text-white">
             {activeSection === "dashboard" && "لوحة التحكم"}
             {activeSection === "courses" && (selectedCourse ? `📚 ${selectedCourse.title}` : "الكورسات")}
+            {activeSection === "quiz-results" && "نتائج الاختبارات"}
             {activeSection === "create-course" && "كورس جديد"}
             {activeSection === "codes" && "أكواد الوصول"}
             {activeSection === "students" && "الطلاب"}
+            {activeSection === "requests" && "طلبات الطلاب"}
+            {activeSection === "feedback" && "ملاحظات الطلاب"}
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30">
@@ -439,13 +492,16 @@ export default function TeacherDashboardPage() {
                           placeholder="المرحلة الدراسية"
                           className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <input
-                          type="url"
-                          value={courseSettings.thumbnailUrl}
-                          onChange={(e) => setCourseSettings({ ...courseSettings, thumbnailUrl: e.target.value })}
-                          placeholder="رابط الصورة المصغرة"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 md:col-span-2"
-                        />
+                        <div className="md:col-span-2">
+                          <input
+                            type="url"
+                            value={courseSettings.thumbnailUrl}
+                            onChange={(e) => setCourseSettings({ ...courseSettings, thumbnailUrl: e.target.value })}
+                            placeholder="رابط الصورة المصغرة"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <p className="mt-1 text-xs text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
+                        </div>
                         <textarea
                           rows={3}
                           value={courseSettings.description}
@@ -453,13 +509,118 @@ export default function TeacherDashboardPage() {
                           placeholder="وصف الكورس"
                           className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none md:col-span-2"
                         />
+                        <input
+                          type="tel"
+                          value={courseSettings.contactPhone}
+                          onChange={(e) => setCourseSettings({ ...courseSettings, contactPhone: e.target.value })}
+                          placeholder="رقم واتسآب (مفعول فقط في الكورسات المدفوعة)"
+                          dir="ltr"
+                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 md:col-span-2"
+                        />
                         <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm rounded-lg md:col-span-2">
                           حفظ الإعدادات
                         </button>
                       </form>
                     </div>
 
-                    {/* Add Folder */}
+                    {/* Pricing Settings */}
+                    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 lg:col-span-2">
+                      <h3 className="font-bold mb-4">💰 تسعير الكورس</h3>
+                      <form onSubmit={savePricingSettings} className="space-y-4">
+                        {/* Free / Paid toggle */}
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={() => setPricingSettings({ ...pricingSettings, isPaid: false })}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                              !pricingSettings.isPaid
+                                ? "bg-emerald-600 border-emerald-500 text-white"
+                                : "bg-gray-900 border-gray-600 text-gray-400 hover:border-gray-500"
+                            }`}
+                          >
+                            مجاني
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPricingSettings({ ...pricingSettings, isPaid: true })}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                              pricingSettings.isPaid
+                                ? "bg-blue-600 border-blue-500 text-white"
+                                : "bg-gray-900 border-gray-600 text-gray-400 hover:border-gray-500"
+                            }`}
+                          >
+                            مدفوع
+                          </button>
+                        </div>
+
+                        {pricingSettings.isPaid && (
+                          <div className="space-y-3 border border-blue-900/40 bg-blue-950/20 rounded-xl p-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">السعر الأصلي (جنيه) *</label>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={pricingSettings.price}
+                                onChange={(e) => setPricingSettings({ ...pricingSettings, price: e.target.value })}
+                                placeholder="مثال: 150"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                dir="ltr"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Discount section */}
+                        <div className="border border-orange-900/30 bg-orange-950/10 rounded-xl p-4 space-y-3">
+                          <p className="text-xs font-bold text-orange-400 uppercase tracking-wide">خصم محدود المدة (اختياري)</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">نسبة الخصم %</label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={pricingSettings.discountPercent}
+                                onChange={(e) => setPricingSettings({ ...pricingSettings, discountPercent: e.target.value })}
+                                placeholder="مثال: 20"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                dir="ltr"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">تاريخ انتهاء العرض</label>
+                              <input
+                                type="datetime-local"
+                                value={pricingSettings.discountExpiresAt}
+                                onChange={(e) => setPricingSettings({ ...pricingSettings, discountExpiresAt: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                dir="ltr"
+                              />
+                            </div>
+                          </div>
+                          {pricingSettings.discountPercent && pricingSettings.isPaid && pricingSettings.price && (
+                            <p className="text-xs text-orange-300">
+                              السعر بعد الخصم: <strong>{(parseFloat(pricingSettings.price) * (1 - parseFloat(pricingSettings.discountPercent) / 100)).toFixed(2)} جنيه</strong>
+                            </p>
+                          )}
+                          {pricingSettings.discountPercent && !pricingSettings.isPaid && (
+                            <p className="text-xs text-orange-300">الخصم يُطبق فقط على الكورسات المدفوعة.</p>
+                          )}
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={savingPricing}
+                          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm font-bold rounded-xl transition-colors"
+                        >
+                          {savingPricing ? "جارٍ الحفظ..." : "حفظ إعدادات التسعير"}
+                        </button>
+                      </form>
+                    </div>
+
+                  {/* Add Folder */}
                     <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">
                       <h3 className="font-bold mb-4">📁 إضافة محاضرة</h3>
                       <form onSubmit={createFolder} className="flex gap-2">
@@ -670,12 +831,19 @@ export default function TeacherDashboardPage() {
                   <input type="url" value={newCourse.thumbnailUrl} onChange={(e) => setNewCourse({ ...newCourse, thumbnailUrl: e.target.value })}
                     placeholder="https://example.com/image.jpg" dir="ltr"
                     className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p className="mt-1 text-xs text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">وصف الكورس</label>
                   <textarea rows={3} value={newCourse.description} onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                     placeholder="وصف مختصر للكورس..."
                     className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">رقم واتسآب لبيع الأكواد <span className="text-gray-500 font-normal">(مدفوع فقط)</span></label>
+                  <input type="tel" value={newCourse.contactPhone} onChange={(e) => setNewCourse({ ...newCourse, contactPhone: e.target.value })}
+                    placeholder="مثال: 01012345678" dir="ltr"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <button type="submit" disabled={creatingCourse} className="w-full py-3.5 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-700 hover:opacity-95 disabled:opacity-60 text-white font-semibold rounded-xl transition-opacity shadow-lg shadow-blue-900/30">
                   {creatingCourse ? "جارٍ إنشاء الكورس..." : "إنشاء الكورس"}
@@ -815,6 +983,15 @@ export default function TeacherDashboardPage() {
               )}
             </div>
           )}
+
+          {/* QUIZ RESULTS — view scores + allow retakes */}
+          {activeSection === "quiz-results" && <TeacherQuizResults />}
+
+          {/* REQUESTS — grade adjustments + tickets */}
+          {activeSection === "requests" && <TeacherRequests />}
+
+          {/* FEEDBACK — student feedback about teacher/courses */}
+          {activeSection === "feedback" && <TeacherFeedback />}
         </div>
       </div>
     </div>

@@ -7,13 +7,14 @@ interface AIResponse {
 }
 
 const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "demo-key";
-const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.openai.com/v1/chat/completions";
+const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
 
 const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || "demo-backup-key";
-const BACKUP_API_URL = process.env.AI_BACKUP_BASE_URL || "https://api.anthropic.com/v1/messages";
+const BACKUP_API_URL = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/models";
+const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
 
 /**
- * Call primary AI API to generate study plan
+ * Call primary AI API (Claude) to generate study plan
  */
 async function callPrimaryAI(prompt: string): Promise<AIResponse> {
   try {
@@ -21,29 +22,24 @@ async function callPrimaryAI(prompt: string): Promise<AIResponse> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${PRIMARY_API_KEY}`,
+        "x-api-key": PRIMARY_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1024,
+        system: "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.",
+        messages: [{ role: "user", content: prompt }],
       }),
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
       throw new Error(`Primary API failed: ${response.statusText}`);
     }
 
-    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const planText = data.choices[0]?.message.content || "[]";
+    const data = await response.json() as { content: Array<{ text: string }> };
+    const planText = data.content[0]?.text || "[]";
 
     // Parse and validate JSON
     const plan = JSON.parse(planText);
@@ -60,21 +56,27 @@ async function callPrimaryAI(prompt: string): Promise<AIResponse> {
 }
 
 /**
- * Call backup AI API as fallback
+ * Call backup AI API (Gemini) as fallback
  */
 async function callBackupAI(prompt: string): Promise<AIResponse> {
   try {
-    const response = await fetch(BACKUP_API_URL, {
+    const systemPrompt = "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.";
+    const combinedPrompt = `${systemPrompt}\n\n${prompt}`;
+    
+    const url = `${BACKUP_API_URL}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": BACKUP_API_KEY,
       },
       body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
-        max_tokens: 1024,
-        system: "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.",
-        messages: [{ role: "user", content: prompt }],
+        contents: [{
+          parts: [{ text: combinedPrompt }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        },
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -83,8 +85,8 @@ async function callBackupAI(prompt: string): Promise<AIResponse> {
       throw new Error(`Backup API failed: ${response.statusText}`);
     }
 
-    const data = await response.json() as { content: Array<{ text: string }> };
-    const planText = data.content[0]?.text || "[]";
+    const data = await response.json() as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
+    const planText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
     const plan = JSON.parse(planText);
     if (!Array.isArray(plan)) throw new Error("Invalid plan format");

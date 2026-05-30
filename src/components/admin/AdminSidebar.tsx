@@ -39,9 +39,12 @@ const staffSections = [
 const teacherSections = [
   { id: "dashboard", icon: "📊", label: "لوحة التحكم" },
   { id: "courses", icon: "📚", label: "الكورسات" },
+  { id: "quiz-results", icon: "📝", label: "نتائج الاختبارات" },
   { id: "create-course", icon: "➕", label: "كورس جديد" },
   { id: "codes", icon: "🔑", label: "أكواد الوصول" },
   { id: "students", icon: "👨‍🎓", label: "الطلاب" },
+  { id: "requests", icon: "🎫", label: "طلبات الطلاب" },
+  { id: "feedback", icon: "💬", label: "ملاحظات الطلاب" },
 ];
 
 const ROLE_BADGE: Record<string, string> = {

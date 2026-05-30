@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      const redirectTo = searchParams.get("redirect_url") || "/";
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("تعذر الاتصال بالخادم. حاول مرة أخرى.");
@@ -85,7 +87,12 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">كلمة المرور</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">كلمة المرور</label>
+              <Link href="/forgot-password" className="text-xs text-sky-600 dark:text-sky-400 hover:underline">
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
             <input
               type="password"
               required

@@ -66,6 +66,10 @@ export default function QuizPage() {
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [alreadyCompleted, setAlreadyCompleted] = useState<{
+    score: number; totalQ: number; completedAt: string;
+    quizTitle: string; courseId: string;
+  } | null>(null);
 
   const totalQuestions = quiz?.questions.length ?? 0;
   const answeredCount = useMemo(() => Object.values(answers).filter(Boolean).length, [answers]);
@@ -89,6 +93,17 @@ export default function QuizPage() {
             return;
           }
           throw new Error(data.error || "تعذر تحميل الاختبار");
+        }
+
+        if (data.alreadyCompleted) {
+          setAlreadyCompleted({
+            score: data.result.score,
+            totalQ: data.result.totalQ,
+            completedAt: data.result.completedAt,
+            quizTitle: data.quiz.title,
+            courseId: data.quiz.courseId,
+          });
+          return;
         }
 
         setQuiz(data.quiz);
@@ -184,6 +199,47 @@ export default function QuizPage() {
           <div className="rounded-3xl border border-white/60 bg-white/80 p-10 text-center text-slate-500 shadow-xl backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-400">
             جارٍ تجهيز الاختبار...
           </div>
+        ) : alreadyCompleted ? (
+          <section className="rounded-[2rem] border border-white/50 bg-white/85 p-6 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85 sm:p-8">
+            <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">نتيجتك السابقة</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white sm:text-3xl">{alreadyCompleted.quizTitle}</h1>
+
+            <div className="mt-6 rounded-3xl border border-sky-200 bg-sky-50 p-6 text-center dark:border-sky-900/40 dark:bg-sky-950/30">
+              <div className="text-5xl font-black text-sky-600 dark:text-sky-400">
+                {Math.round(alreadyCompleted.score)}%
+              </div>
+              <p className="mt-2 text-lg font-bold text-slate-800 dark:text-slate-200">
+                {Math.round(alreadyCompleted.score) >= 50 ? "ناجح ✓" : "راسب ✕"}
+              </p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                الدرجة: {Math.round(alreadyCompleted.score)}% من {alreadyCompleted.totalQ} سؤال
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                تاريخ الحل: {new Date(alreadyCompleted.completedAt).toLocaleString("ar-EG")}
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-900/40 dark:bg-amber-950/30">
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                🔒 لا يمكن إعادة الاختبار إلا بإذن من المدرس
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={() => router.push(`/courses/${alreadyCompleted.courseId}`)}
+                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-900"
+              >
+                العودة للكورس
+              </button>
+              <button
+                onClick={() => router.push("/library")}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+              >
+                مكتبتي
+              </button>
+            </div>
+          </section>
         ) : error && !result ? (
           <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center shadow-xl dark:border-red-900/40 dark:bg-red-950/30">
             <p className="mb-4 text-red-700 dark:text-red-300">{error}</p>

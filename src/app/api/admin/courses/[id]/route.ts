@@ -13,6 +13,7 @@ type CoursePatchInput = {
   educationalStage?: string;
   description?: string | null;
   thumbnailUrl?: string | null;
+  contactPhone?: string | null;
 };
 
 function validateCourseData(data: CoursePatchInput): { valid: boolean; error?: string } {
@@ -128,6 +129,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     if (data.thumbnailUrl !== undefined) {
       updateData.thumbnailUrl = data.thumbnailUrl ? data.thumbnailUrl.trim() : null;
+    }
+    if (data.contactPhone !== undefined) {
+      updateData.contactPhone = data.contactPhone ? data.contactPhone.trim() : null;
     }
 
     const updated = await prisma.course.update({

@@ -14,18 +14,26 @@ const ADMIN_PANEL_PREFIXES = [
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/library",
-  "/courses",
   "/quizzes",
   "/codes",
   "/complete-profile",
   "/account",
-  "/api/courses",
   "/api/library",
   "/api/quizzes",
   "/api/progress",
   "/api/auth/me",
   "/api/auth/complete-profile",
 ];
+
+/** Paths under /courses that require auth (the learning room) */
+function isProtectedCourseRoute(pathname: string) {
+  return /^\/courses\/[^/]+\/learn(\/.*)?$/.test(pathname);
+}
+
+/** Public API routes under /api/courses that need no session */
+function isPublicCoursesApi(pathname: string) {
+  return pathname === "/api/courses" || /^\/api\/courses(\/[^/]+\/preview)?$/.test(pathname);
+}
 
 function startsWithAny(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -61,6 +69,18 @@ export default async function proxy(req: NextRequest) {
   // Admin sub-pages: redirect to /adminpanel login if no session
   if (startsWithAny(pathname, ADMIN_PANEL_PREFIXES) && !authed) {
     return NextResponse.redirect(new URL("/adminpanel", req.url));
+  }
+
+  // Learning room inside courses — auth required
+  if (isProtectedCourseRoute(pathname) && !authed) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("redirect_url", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Protect /api/courses/* except public preview endpoint
+  if (pathname.startsWith("/api/courses") && !isPublicCoursesApi(pathname) && !authed) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
   // Student routes: redirect to /login if no session

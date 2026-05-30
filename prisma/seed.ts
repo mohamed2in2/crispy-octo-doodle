@@ -1,6 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/prisma";
+import { normalizeEgyptPhone } from "../src/lib/phone";
 
 type SeedCourseInput = {
   title: string;
@@ -8,6 +9,11 @@ type SeedCourseInput = {
   description: string;
   educationalStage: string;
   thumbnailUrl: string;
+  isPaid?: boolean;
+  price?: number;
+  contactPhone?: string;
+  discountPercent?: number;
+  discountExpiresAt?: Date;
   folders: Array<{
     name: string;
     videos: Array<{ title: string; bunnyId: string }>;
@@ -75,6 +81,11 @@ async function saveCourse(teacherId: string, courseInput: SeedCourseInput) {
     description: courseInput.description,
     educationalStage: courseInput.educationalStage,
     thumbnailUrl: courseInput.thumbnailUrl,
+    isPaid: courseInput.isPaid ?? false,
+    price: courseInput.price ?? null,
+    contactPhone: courseInput.contactPhone ?? null,
+    discountPercent: courseInput.discountPercent ?? null,
+    discountExpiresAt: courseInput.discountExpiresAt ?? null,
     folders: {
       create: courseInput.folders.map((folder, folderIndex) => ({
         name: folder.name,
@@ -126,6 +137,10 @@ async function main() {
   const teacherPass = await bcrypt.hash("teacher123", 10);
   const studentPass = await bcrypt.hash("student123", 10);
 
+  // ── 0. Wipe existing courses (cascades folders/videos/quizzes/codes/progress) ──
+  console.log("Deleting existing courses...");
+  await prisma.course.deleteMany();
+
   // ── 1. Teachers ────────────────────────────────────────────────────────────
   console.log("Seeding teachers...");
   const teachers = await Promise.all(
@@ -142,13 +157,14 @@ async function main() {
   // ── 2. Students ────────────────────────────────────────────────────────────
   console.log("Seeding students...");
   const students = await Promise.all(
-    STUDENTS.map((s) =>
-      prisma.user.upsert({
+    STUDENTS.map((s) => {
+      const normalizedPhone = normalizeEgyptPhone(s.phone);
+      return prisma.user.upsert({
         where: { email: s.email },
-        update: { name: s.name, password: studentPass, role: "student", educationalStage: s.stage, age: s.age, phone: s.phone, profileCompleted: true },
-        create: { name: s.name, email: s.email, password: studentPass, role: "student", educationalStage: s.stage, age: s.age, phone: s.phone, profileCompleted: true },
-      })
-    )
+        update: { name: s.name, password: studentPass, role: "student", educationalStage: s.stage, age: s.age, phone: normalizedPhone, profileCompleted: true },
+        create: { name: s.name, email: s.email, password: studentPass, role: "student", educationalStage: s.stage, age: s.age, phone: normalizedPhone, profileCompleted: true },
+      });
+    })
   );
 
   // ── 3. Courses ─────────────────────────────────────────────────────────────
@@ -158,7 +174,9 @@ async function main() {
     title: "تأسيس الجبر للصف الثالث الإعدادي",
     subject: "رياضيات", educationalStage: "prep_3",
     description: "شرح مبسط خطوة بخطوة للجبر مع تدريبات واختبارات قصيرة.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/algebra/800/400",
+    isPaid: true, price: 120, contactPhone: "01012345601",
+    discountPercent: 100, discountExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     folders: [
       { name: "الحدود الجبرية", videos: [{ title: "مقدمة الحدود الجبرية", bunnyId: "alge-v1" }, { title: "عمليات على الحدود", bunnyId: "alge-v2" }],
         quizzes: [{ title: "اختبار الحدود", questions: [
@@ -178,7 +196,9 @@ async function main() {
     title: "فيزياء الحركة للصف الأول الثانوي",
     subject: "فيزياء", educationalStage: "sec_1",
     description: "أساسيات الحركة والسرعة والتسارع مع مسائل محلولة بالتفصيل.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/physics/800/400",
+    isPaid: true, price: 150, contactPhone: "01098765432",
+    discountPercent: 30, discountExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     folders: [
       { name: "مفاهيم الحركة", videos: [{ title: "المسافة والإزاحة", bunnyId: "phys-v1" }, { title: "السرعة المتوسطة", bunnyId: "phys-v2" }],
         quizzes: [{ title: "اختبار الحركة", questions: [
@@ -198,7 +218,7 @@ async function main() {
     title: "النحو والصرف للصف الأول الثانوي",
     subject: "لغة عربية", educationalStage: "sec_1",
     description: "قواعد اللغة العربية من نحو وصرف بأسلوب واضح ومبسط.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/arabic/800/400",
     folders: [
       { name: "المبتدأ والخبر", videos: [{ title: "تعريف المبتدأ والخبر", bunnyId: "arab-v1" }, { title: "أنواع الخبر", bunnyId: "arab-v2" }],
         quizzes: [{ title: "اختبار المبتدأ والخبر", questions: [
@@ -218,7 +238,9 @@ async function main() {
     title: "الكيمياء العضوية للصف الثاني الثانوي",
     subject: "كيمياء", educationalStage: "sec_2",
     description: "مفاهيم الكيمياء العضوية والهيدروكربونات بشرح وافٍ وأمثلة عملية.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/chemistry/800/400",
+    isPaid: true, price: 200, contactPhone: "01155556677",
+    discountPercent: 50, discountExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     folders: [
       { name: "الهيدروكربونات", videos: [{ title: "الألكانات والألكينات", bunnyId: "chem-v1" }, { title: "الألكاينات والبنزين", bunnyId: "chem-v2" }],
         quizzes: [{ title: "اختبار الهيدروكربونات", questions: [
@@ -238,7 +260,7 @@ async function main() {
     title: "علم الأحياء - الخلية والوراثة",
     subject: "أحياء", educationalStage: "sec_2",
     description: "دراسة الخلية الحية وأسس علم الوراثة المندلية والجزيئية.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1576086213369-97a306d36557?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/biology/800/400",
     folders: [
       { name: "بناء الخلية", videos: [{ title: "أجزاء الخلية ووظائفها", bunnyId: "biol-v1" }, { title: "الغشاء الخلوي", bunnyId: "biol-v2" }],
         quizzes: [{ title: "اختبار الخلية", questions: [
@@ -258,7 +280,8 @@ async function main() {
     title: "تاريخ مصر الحديث والمعاصر",
     subject: "تاريخ", educationalStage: "sec_1",
     description: "تاريخ مصر من الحملة الفرنسية حتى الجمهورية بأسلوب قصصي شيق.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/history/800/400",
+    isPaid: true, price: 100, contactPhone: "01233334455",
     folders: [
       { name: "مصر في القرن التاسع عشر", videos: [{ title: "الحملة الفرنسية وآثارها", bunnyId: "hist-v1" }, { title: "محمد علي وبناء الدولة", bunnyId: "hist-v2" }],
         quizzes: [{ title: "اختبار القرن التاسع عشر", questions: [
@@ -278,7 +301,8 @@ async function main() {
     title: "English Grammar for Secondary - Level 2",
     subject: "لغة إنجليزية", educationalStage: "sec_2",
     description: "Comprehensive English grammar course covering tenses, conditionals, and advanced structures.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/english/800/400",
+    isPaid: true, price: 175, contactPhone: "01066667788",
     folders: [
       { name: "Tenses & Aspects", videos: [{ title: "Present Perfect vs Past Simple", bunnyId: "engl-v1" }, { title: "Future Forms", bunnyId: "engl-v2" }],
         quizzes: [{ title: "Tenses Quiz", questions: [
@@ -298,7 +322,8 @@ async function main() {
     title: "رياضيات الصف الثاني الثانوي",
     subject: "رياضيات", educationalStage: "sec_2",
     description: "المثلثات والدوال وحساب المثلثات والتفاضل المبسط.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/geometry/800/400",
+    isPaid: true, price: 130, contactPhone: "01012345601",
     folders: [
       { name: "حساب المثلثات", videos: [{ title: "الزوايا والمثلثات", bunnyId: "math2-v1" }, { title: "النسب المثلثية", bunnyId: "math2-v2" }],
         quizzes: [{ title: "اختبار المثلثات", questions: [
@@ -318,7 +343,8 @@ async function main() {
     title: "الفيزياء والطاقة للصف الثالث الثانوي",
     subject: "فيزياء", educationalStage: "sec_3",
     description: "الطاقة وأشكالها وتحولاتها والفيزياء الحديثة بأسلوب تحليلي.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1635070041409-cb6c0d3cf3c0?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/energy/800/400",
+    isPaid: true, price: 180, contactPhone: "01098765432",
     folders: [
       { name: "أشكال الطاقة", videos: [{ title: "الطاقة الحركية والكامنة", bunnyId: "phys2-v1" }, { title: "الطاقة الكهربائية", bunnyId: "phys2-v2" }],
         quizzes: [{ title: "اختبار الطاقة", questions: [
@@ -338,7 +364,7 @@ async function main() {
     title: "الأدب العربي في العصر الحديث",
     subject: "لغة عربية", educationalStage: "sec_2",
     description: "دراسة الشعر والنثر في العصر الحديث مع أبرز الأدباء والتيارات.",
-    thumbnailUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80",
+    thumbnailUrl: "https://picsum.photos/seed/literature/800/400",
     folders: [
       { name: "الشعر الحديث", videos: [{ title: "مدارس الشعر الحديث", bunnyId: "lit-v1" }, { title: "أبرز شعراء النهضة", bunnyId: "lit-v2" }],
         quizzes: [{ title: "اختبار الشعر الحديث", questions: [
