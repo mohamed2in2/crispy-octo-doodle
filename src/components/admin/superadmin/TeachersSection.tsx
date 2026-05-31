@@ -33,8 +33,21 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
   const fetchTeachers = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/teachers", { credentials: "include" });
-      const data = (await res.json()) as { teachers?: Teacher[] };
-      setTeachers(data.teachers ?? []);
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error("/api/admin/teachers failed:", res.status, txt);
+        throw new Error(txt || "تعذر جلب المدرسين");
+      }
+
+      let data: { teachers?: Teacher[] } | undefined;
+      try {
+        data = (await res.json()) as { teachers?: Teacher[] };
+      } catch (err) {
+        console.error("Invalid JSON from /api/admin/teachers:", err);
+        throw new Error("تعذر جلب المدرسين");
+      }
+
+      setTeachers(data?.teachers ?? []);
     } finally {
       setLoading(false);
     }

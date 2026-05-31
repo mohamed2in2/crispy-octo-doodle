@@ -10,19 +10,24 @@ export async function GET() {
   if (!hasPermission(session.role, "view_teachers")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
-  const teachers = await prisma.user.findMany({
-    where: { role: "teacher" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      _count: { select: { courses: true } },
-      courses: { select: { id: true, title: true, subject: true }, orderBy: { createdAt: "desc" } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json({ teachers });
+  try {
+    const teachers = await prisma.user.findMany({
+      where: { role: "teacher" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        _count: { select: { courses: true } },
+        courses: { select: { id: true, title: true, subject: true }, orderBy: { createdAt: "desc" } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ teachers });
+  } catch (error) {
+    console.error("Teachers GET error:", error);
+    return NextResponse.json({ error: "تعذر جلب المدرسين" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
