@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 1000;
@@ -14,6 +15,8 @@ type CoursePatchInput = {
   description?: string | null;
   thumbnailUrl?: string | null;
   contactPhone?: string | null;
+  maxWatchCount?: number | null;
+  homeworkUrl?: string | null;
 };
 
 function validateCourseData(data: CoursePatchInput): { valid: boolean; error?: string } {
@@ -113,7 +116,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const updateData: CoursePatchInput = {};
+    const updateData: Prisma.CourseUpdateInput = {};
 
     if (data.title !== undefined) {
       updateData.title = data.title.trim();
@@ -132,6 +135,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     if (data.contactPhone !== undefined) {
       updateData.contactPhone = data.contactPhone ? data.contactPhone.trim() : null;
+    }
+    if (data.maxWatchCount !== undefined) {
+      if (data.maxWatchCount === null) {
+        updateData.maxWatchCount = 3; // reset to default
+      } else if (typeof data.maxWatchCount === "number" && data.maxWatchCount >= 1 && data.maxWatchCount <= 99) {
+        updateData.maxWatchCount = data.maxWatchCount;
+      } else {
+        return NextResponse.json({ error: "عدد المشاهدات يجب أن يكون بين 1 و 99" }, { status: 400 });
+      }
+    }
+    if (data.homeworkUrl !== undefined) {
+      if (data.homeworkUrl !== null && data.homeworkUrl.trim().length > 0 && !isValidUrl(data.homeworkUrl)) {
+        return NextResponse.json({ error: "رابط الواجب غير صحيح" }, { status: 400 });
+      }
+      updateData.homeworkUrl = data.homeworkUrl ? data.homeworkUrl.trim() : null;
     }
 
     const updated = await prisma.course.update({

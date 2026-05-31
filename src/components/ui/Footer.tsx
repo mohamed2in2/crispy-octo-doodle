@@ -31,7 +31,7 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">تواصل معنا</h4>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">للاستفسارات العامة</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <span className="mt-0.5">📧</span>
@@ -41,18 +41,12 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <span>📞</span>
-                <a href="tel:+201090764334" className="hover:text-blue-500 transition-colors" dir="ltr">
-                  01090764334
+                <a href="tel:+201285353604" className="hover:text-blue-500 transition-colors" dir="ltr">
+                  01285353604
                 </a>
               </li>
               <li className="pt-2 border-t border-slate-200 dark:border-slate-700">
                 <p className="text-xs text-slate-500 dark:text-slate-500 mb-1">هل تريد موقعاً مشابهاً؟</p>
-              </li>
-              <li className="flex items-center gap-2">
-                <span>📞</span>
-                <a href="tel:+201101670389" className="hover:text-blue-500 transition-colors" dir="ltr">
-                  01101670389
-                </a>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5">📧</span>

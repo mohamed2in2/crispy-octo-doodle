@@ -26,7 +26,7 @@ const apiKey = process.env.TWILIO_API_KEY_SID;
 const apiSecret = process.env.TWILIO_API_SECRET;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const from = process.env.TWILIO_FROM_NUMBER;
-const to = process.env.TEST_TWILIO_TO || '+201101670389';
+const to = process.env.TEST_TWILIO_TO || '+201012345678';
 
 async function run() {
   try {

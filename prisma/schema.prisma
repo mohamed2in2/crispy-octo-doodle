@@ -28,24 +28,24 @@ model User {
   updatedAt        DateTime  @updatedAt
 
   // Teacher relations
-  courses          Course[]  @relation("TeacherCourses")
+  courses Course[] @relation("TeacherCourses")
 
   // Student relations
-  accessCodes      AccessCode[] @relation("StudentCodes")
-  progress         Progress[]
-  quizResults      QuizResult[]
-  studyPlans       DailyStudyPlan[] @relation("StudentStudyPlans")
+  accessCodes AccessCode[]     @relation("StudentCodes")
+  progress    Progress[]
+  quizResults QuizResult[]
+  studyPlans  DailyStudyPlan[] @relation("StudentStudyPlans")
 
   // AI system relations
-  aiConversations  AIConversation[] @relation("StudentAIConversations")
-  feedbacks        StudentFeedback[] @relation("StudentFeedbacks")
-  gradeRequests    GradeAdjustmentRequest[] @relation("StudentGradeRequests")
-  aiInsights       AIStudentInsight[] @relation("StudentAIInsights")
-  supportTickets   SupportTicket[] @relation("StudentTickets")
+  aiConversations AIConversation[]         @relation("StudentAIConversations")
+  feedbacks       StudentFeedback[]        @relation("StudentFeedbacks")
+  gradeRequests   GradeAdjustmentRequest[] @relation("StudentGradeRequests")
+  aiInsights      AIStudentInsight[]       @relation("StudentAIInsights")
+  supportTickets  SupportTicket[]          @relation("StudentTickets")
 
   // Teacher relations (AI system)
-  receivedFeedbacks StudentFeedback[] @relation("TeacherFeedbacks")
-  assignedTickets  SupportTicket[] @relation("AssignedTickets")
+  receivedFeedbacks StudentFeedback[]        @relation("TeacherFeedbacks")
+  assignedTickets   SupportTicket[]          @relation("AssignedTickets")
   reviewedGradeReqs GradeAdjustmentRequest[] @relation("TeacherGradeRequests")
 
   // Indexes for faster queries
@@ -56,29 +56,31 @@ model User {
 }
 
 model Course {
-  id               String    @id @default(cuid())
-  title            String
-  subject          String
-  description      String?
-  thumbnailUrl     String?
-  educationalStage String
-  teacherId        String
-  teacher          User      @relation("TeacherCourses", fields: [teacherId], references: [id], onDelete: Cascade)
-  isPaid           Boolean   @default(false)
-  price            Float?
-  discountPercent  Float?
+  id                String    @id @default(cuid())
+  title             String
+  subject           String
+  description       String?
+  thumbnailUrl      String?
+  educationalStage  String
+  teacherId         String
+  teacher           User      @relation("TeacherCourses", fields: [teacherId], references: [id], onDelete: Cascade)
+  isPaid            Boolean   @default(false)
+  price             Float?
+  discountPercent   Float?
   discountExpiresAt DateTime?
-  contactPhone     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  contactPhone      String?
+  maxWatchCount     Int       @default(3) // how many times a student can watch any video in this course
+  homeworkUrl       String? // optional homework link for this course
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  folders          Folder[]
-  accessCodes      AccessCode[]
+  folders     Folder[]
+  accessCodes AccessCode[]
 
   // AI system relations
-  feedbacks        StudentFeedback[]
-  gradeRequests    GradeAdjustmentRequest[]
-  supportTickets   SupportTicket[]
+  feedbacks      StudentFeedback[]
+  gradeRequests  GradeAdjustmentRequest[]
+  supportTickets SupportTicket[]
 
   @@index([teacherId])
   @@index([educationalStage])
@@ -92,64 +94,84 @@ model Folder {
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  videos    Video[]
-  quizzes   Quiz[]
+  videos  Video[]
+  quizzes Quiz[]
 
   @@index([courseId])
 }
 
 model Video {
-  id       String   @id @default(cuid())
-  title    String
-  bunnyId  String
-  order    Int      @default(0)
-  folderId String
-  folder   Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  title     String
+  bunnyId   String
+  order     Int      @default(0)
+  folderId  String
+  folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  progress Progress[]
+  progress      Progress[]
+  watchSessions VideoWatchSession[]
 
   @@index([folderId])
 }
 
-model Quiz {
-  id        String         @id @default(cuid())
-  title     String
-  timeLimitMinutes Int     @default(30)
-  folderId  String
-  folder    Folder         @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  createdAt DateTime       @default(now())
+// Tracks per-video watch sessions (1 student = 1 session record per watch attempt)
+model VideoWatchSession {
+  id            String    @id @default(cuid())
+  sessionToken  String    @unique @default(cuid())
+  videoId       String
+  video         Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  studentId     String
+  startedAt     DateTime  @default(now())
+  expiresAt     DateTime
+  endedAt       DateTime?
+  usedWatchSlot Boolean   @default(true) // counts against the student's watch limit
+  ipAddress     String?
+  userAgent     String?
 
-  questions QuizQuestion[]
-  results   QuizResult[]
+  @@index([videoId])
+  @@index([studentId])
+  @@index([sessionToken])
+}
+
+model Quiz {
+  id               String   @id @default(cuid())
+  title            String
+  timeLimitMinutes Int      @default(30)
+  folderId         String
+  folder           Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  questions     QuizQuestion[]
+  results       QuizResult[]
   gradeRequests GradeAdjustmentRequest[]
 
   @@index([folderId])
 }
 
 model QuizQuestion {
-  id            String  @id @default(cuid())
+  id            String @id @default(cuid())
   quizId        String
-  quiz          Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
   question      String
   optionA       String
   optionB       String
   optionC       String
   optionD       String
-  correctAnswer String  // "A" | "B" | "C" | "D"
-  order         Int     @default(0)
+  correctAnswer String // "A" | "B" | "C" | "D"
+  order         Int    @default(0)
 }
 
 model AccessCode {
-  id        String   @id @default(cuid())
-  code      String   @unique
+  id        String    @id @default(cuid())
+  code      String    @unique
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   studentId String?
-  student   User?    @relation("StudentCodes", fields: [studentId], references: [id], onDelete: SetNull)
-  isActive  Boolean  @default(true)
+  student   User?     @relation("StudentCodes", fields: [studentId], references: [id], onDelete: SetNull)
+  isActive  Boolean   @default(true)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([courseId])
   @@index([studentId])
@@ -157,12 +179,12 @@ model AccessCode {
 }
 
 model Progress {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   studentId String
-  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   videoId   String
-  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  watched   Boolean  @default(false)
+  video     Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  watched   Boolean   @default(false)
   watchedAt DateTime?
 
   @@unique([studentId, videoId])
@@ -187,14 +209,14 @@ model QuizResult {
 }
 
 model DailyStudyPlan {
-  id              String   @id @default(cuid())
-  studentId       String
-  student         User     @relation("StudentStudyPlans", fields: [studentId], references: [id], onDelete: Cascade)
-  planDate        DateTime
-  content         String   // JSON string containing the study plan
-  status          String   @default("pending") // pending | in_progress | completed
-  lastUpdatedAt   DateTime @updatedAt
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  studentId     String
+  student       User     @relation("StudentStudyPlans", fields: [studentId], references: [id], onDelete: Cascade)
+  planDate      DateTime
+  content       String // JSON string containing the study plan
+  status        String   @default("pending") // pending | in_progress | completed
+  lastUpdatedAt DateTime @updatedAt
+  createdAt     DateTime @default(now())
 
   @@unique([studentId, planDate])
   @@index([studentId])
@@ -202,19 +224,19 @@ model DailyStudyPlan {
 }
 
 model CourseAnalytics {
-  id              String   @id @default(cuid())
-  courseId        String   @unique
-  totalEnrollments Int     @default(0)
-  totalViews      Int      @default(0)
-  averageScore    Float    @default(0)
-  lastUpdatedAt   DateTime @updatedAt
-  createdAt       DateTime @default(now())
+  id               String   @id @default(cuid())
+  courseId         String   @unique
+  totalEnrollments Int      @default(0)
+  totalViews       Int      @default(0)
+  averageScore     Float    @default(0)
+  lastUpdatedAt    DateTime @updatedAt
+  createdAt        DateTime @default(now())
 }
 
 // Client-side error / warning reports captured from the whole site.
 model ClientError {
   id        String   @id @default(cuid())
-  type      String   // "error" | "warning" | "unhandled_promise" | "api_error"
+  type      String // "error" | "warning" | "unhandled_promise" | "api_error"
   message   String
   stack     String?
   url       String?
@@ -247,14 +269,14 @@ model ActivityLog {
 
 // AI Assistant conversations with students
 model AIConversation {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     User     @relation("StudentAIConversations", fields: [studentId], references: [id], onDelete: Cascade)
-  role        String   // "user" | "assistant" | "system"
-  content     String   // The message content
-  context     String?  // JSON: what data AI had access to when responding
-  actions     String?  // JSON: any actions AI took (adjust grades, create tickets, etc.)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("StudentAIConversations", fields: [studentId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant" | "system"
+  content   String // The message content
+  context   String? // JSON: what data AI had access to when responding
+  actions   String? // JSON: any actions AI took (adjust grades, create tickets, etc.)
+  createdAt DateTime @default(now())
 
   @@index([studentId])
   @@index([createdAt])
@@ -262,22 +284,22 @@ model AIConversation {
 
 // Student feedback about teachers and courses
 model StudentFeedback {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     User     @relation("StudentFeedbacks", fields: [studentId], references: [id], onDelete: Cascade)
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  teacherId   String
-  teacher     User     @relation("TeacherFeedbacks", fields: [teacherId], references: [id], onDelete: Cascade)
-  type        String   // "teacher_rating" | "course_feedback" | "took_elsewhere" | "difficulty" | "other"
-  rating      Int?     // 1-5 for teacher ratings
-  content     String   // The feedback text
-  isResolved  Boolean  @default(false)
-  resolution  String?  // How it was resolved
-  aiAnalyzed  Boolean  @default(false) // Whether AI has processed this
-  aiInsights  String?  // AI analysis of the feedback
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  studentId  String
+  student    User     @relation("StudentFeedbacks", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId  String
+  teacher    User     @relation("TeacherFeedbacks", fields: [teacherId], references: [id], onDelete: Cascade)
+  type       String // "teacher_rating" | "course_feedback" | "took_elsewhere" | "difficulty" | "other"
+  rating     Int? // 1-5 for teacher ratings
+  content    String // The feedback text
+  isResolved Boolean  @default(false)
+  resolution String? // How it was resolved
+  aiAnalyzed Boolean  @default(false) // Whether AI has processed this
+  aiInsights String? // AI analysis of the feedback
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([studentId])
   @@index([courseId])
@@ -288,26 +310,26 @@ model StudentFeedback {
 
 // Grade adjustment requests (student/AI initiated, teacher approved)
 model GradeAdjustmentRequest {
-  id            String   @id @default(cuid())
-  studentId     String
-  student       User     @relation("StudentGradeRequests", fields: [studentId], references: [id], onDelete: Cascade)
-  quizId        String
-  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  courseId      String
-  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  requestedBy   String   // "student" | "ai"
-  currentScore  Float
+  id             String    @id @default(cuid())
+  studentId      String
+  student        User      @relation("StudentGradeRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  quizId         String
+  quiz           Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  requestedBy    String // "student" | "ai"
+  currentScore   Float
   requestedScore Float?
-  reason        String   // Why adjustment is requested
-  aiAnalysis    String?  // AI's reasoning for flagging this
-  evidence      String?  // JSON: wrong answers, correct answers, etc.
-  status        String   @default("pending") // pending | ai_reviewed | approved | rejected
-  teacherId     String?
-  teacher       User?    @relation("TeacherGradeRequests", fields: [teacherId], references: [id], onDelete: SetNull)
-  teacherNotes  String?  // Teacher's response
-  reviewedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  reason         String // Why adjustment is requested
+  aiAnalysis     String? // AI's reasoning for flagging this
+  evidence       String? // JSON: wrong answers, correct answers, etc.
+  status         String    @default("pending") // pending | ai_reviewed | approved | rejected
+  teacherId      String?
+  teacher        User?     @relation("TeacherGradeRequests", fields: [teacherId], references: [id], onDelete: SetNull)
+  teacherNotes   String? // Teacher's response
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([studentId])
   @@index([courseId])
@@ -318,20 +340,20 @@ model GradeAdjustmentRequest {
 
 // AI-generated student insights and analysis
 model AIStudentInsight {
-  id              String   @id @default(cuid())
-  studentId       String
-  student         User     @relation("StudentAIInsights", fields: [studentId], references: [id], onDelete: Cascade)
-  type            String   // "weak_area" | "strength" | "recommendation" | "risk_alert" | "progress"
-  category        String   // "math" | "physics" | etc. or "general"
-  title           String   // Short title
-  description     String   // Detailed insight
-  confidence      Float    // 0-1 confidence score
-  dataSnapshot    String   // JSON: what data this insight was based on
-  isRead          Boolean  @default(false)
-  isActioned      Boolean  @default(false) // Whether student/teacher acted on this
-  actionTaken     String?  // What action was taken
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(cuid())
+  studentId    String
+  student      User     @relation("StudentAIInsights", fields: [studentId], references: [id], onDelete: Cascade)
+  type         String // "weak_area" | "strength" | "recommendation" | "risk_alert" | "progress"
+  category     String // "math" | "physics" | etc. or "general"
+  title        String // Short title
+  description  String // Detailed insight
+  confidence   Float // 0-1 confidence score
+  dataSnapshot String // JSON: what data this insight was based on
+  isRead       Boolean  @default(false)
+  isActioned   Boolean  @default(false) // Whether student/teacher acted on this
+  actionTaken  String? // What action was taken
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([studentId])
   @@index([type])
@@ -341,23 +363,23 @@ model AIStudentInsight {
 
 // Student support tickets (for AI or teacher handling)
 model SupportTicket {
-  id              String   @id @default(cuid())
-  studentId       String
-  student         User     @relation("StudentTickets", fields: [studentId], references: [id], onDelete: Cascade)
-  courseId        String?
-  course          Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  title           String
-  description     String
-  type            String   // "technical" | "academic" | "teacher_issue" | "content_error" | "other"
-  priority        String   @default("normal") // low | normal | high | urgent
-  status          String   @default("open") // open | ai_handling | escalated | resolved | closed
-  aiHandled       Boolean  @default(false)
-  aiResponse      String?  // AI's response if it handled it
-  assignedTo      String?  // Teacher or admin ID
-  assignedUser    User?    @relation("AssignedTickets", fields: [assignedTo], references: [id], onDelete: SetNull)
-  resolution      String?  // Final resolution
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String   @id @default(cuid())
+  studentId    String
+  student      User     @relation("StudentTickets", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId     String?
+  course       Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title        String
+  description  String
+  type         String // "technical" | "academic" | "teacher_issue" | "content_error" | "other"
+  priority     String   @default("normal") // low | normal | high | urgent
+  status       String   @default("open") // open | ai_handling | escalated | resolved | closed
+  aiHandled    Boolean  @default(false)
+  aiResponse   String? // AI's response if it handled it
+  assignedTo   String? // Teacher or admin ID
+  assignedUser User?    @relation("AssignedTickets", fields: [assignedTo], references: [id], onDelete: SetNull)
+  resolution   String? // Final resolution
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([studentId])
   @@index([courseId])

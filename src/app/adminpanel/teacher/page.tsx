@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
 import { useToast } from "@/components/ui/Toast";
@@ -26,6 +27,8 @@ interface Course {
   description?: string;
   thumbnailUrl?: string;
   educationalStage?: string;
+  maxWatchCount?: number | null;
+  homeworkUrl?: string | null;
   folders?: Folder[];
   _count?: { accessCodes?: number };
   isPaid?: boolean;
@@ -38,7 +41,7 @@ interface Course {
 interface Folder {
   id: string;
   name: string;
-  videos?: Array<{ id: string }>;
+  videos?: Array<{ id: string; title: string; bunnyId?: string }>;
   quizzes?: Array<{ id: string }>;
   _count?: { videos?: number; quizzes?: number };
 }
@@ -79,6 +82,8 @@ export default function TeacherDashboardPage() {
     thumbnailUrl: "",
     educationalStage: "",
     contactPhone: "",
+    maxWatchCount: 3,
+    homeworkUrl: "",
   });
   const [pricingSettings, setPricingSettings] = useState({
     isPaid: false,
@@ -97,6 +102,7 @@ export default function TeacherDashboardPage() {
     if (!selectedCourse) return;
     const res = await fetch("/api/admin/students", {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId, courseId: selectedCourse.id, action }),
     });
@@ -110,7 +116,7 @@ export default function TeacherDashboardPage() {
   };
 
   const fetchCourses = useCallback(async () => {
-    const res = await fetch("/api/admin/courses");
+    const res = await fetch("/api/admin/courses", { credentials: "include" });
     if (res.status === 403) { router.push("/adminpanel"); return; }
     const data = await readJson<{ courses?: Course[] }>(res);
     setCourses(data?.courses || []);
@@ -118,13 +124,13 @@ export default function TeacherDashboardPage() {
   }, [router]);
 
   const fetchFolders = async (courseId: string) => {
-    const res = await fetch(`/api/admin/courses/${courseId}/folders`);
+    const res = await fetch(`/api/admin/courses/${courseId}/folders`, { credentials: "include" });
     const data = await readJson<{ folders?: Folder[] }>(res);
     setFolders(data?.folders || []);
   };
 
   const fetchCodes = async (courseId: string) => {
-    const res = await fetch(`/api/admin/codes?courseId=${courseId}`);
+    const res = await fetch(`/api/admin/codes?courseId=${courseId}`, { credentials: "include" });
     const data = await readJson<{ codes?: AccessCode[] }>(res);
     setCodes(data?.codes || []);
   };
@@ -132,7 +138,7 @@ export default function TeacherDashboardPage() {
   useEffect(() => {
     const loadCourses = async () => {
       try {
-        const res = await fetch("/api/admin/courses");
+          const res = await fetch("/api/admin/courses", { credentials: "include" });
         if (res.status === 403) { router.push("/adminpanel"); return; }
 
         const data = await readJson<{ courses?: Course[] }>(res);
@@ -170,11 +176,12 @@ export default function TeacherDashboardPage() {
 
     setCreatingCourse(true);
     try {
-      const res = await fetch("/api/admin/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        const res = await fetch("/api/admin/courses", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       const data = await readJson<{ error?: string }>(res);
 
       if (res.ok) {
@@ -194,7 +201,7 @@ export default function TeacherDashboardPage() {
 
   const deleteCourse = async (courseId: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا الكورس؟")) return;
-      const res = await fetch(`/api/admin/courses/${courseId}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/courses/${courseId}`, { method: "DELETE", credentials: "include" });
       const data = await readJson<{ error?: string }>(res);
       if (res.ok) {
         notify("success", "✅ تم حذف الكورس بنجاح");
@@ -210,6 +217,7 @@ export default function TeacherDashboardPage() {
     if (!selectedCourse || !newFolder.trim()) return;
     const res = await fetch(`/api/admin/courses/${selectedCourse.id}/folders`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newFolder }),
     });
@@ -228,6 +236,7 @@ export default function TeacherDashboardPage() {
     if (!newVideo.folderId) return;
     const res = await fetch(`/api/admin/folders/${newVideo.folderId}/videos`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: newVideo.title, bunnyId: newVideo.bunnyId }),
     });
@@ -241,11 +250,30 @@ export default function TeacherDashboardPage() {
     }
   };
 
+  const deleteVideo = async (videoId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الفيديو؟")) return;
+    if (!selectedCourse) return;
+    const res = await fetch(`/api/admin/courses/${selectedCourse.id}/videos`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId }),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    if (res.ok) {
+      if (selectedCourse) fetchFolders(selectedCourse.id);
+      notify("success", "✅ تم حذف الفيديو بنجاح");
+    } else {
+      notify("error", data?.error || "تعذر حذف الفيديو");
+    }
+  };
+
   const addQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuiz.folderId) return;
     const res = await fetch(`/api/admin/folders/${newQuiz.folderId}/quizzes`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: newQuiz.title, questions: newQuiz.questions, timeLimitMinutes: newQuiz.timeLimitMinutes }),
     });
@@ -262,6 +290,7 @@ export default function TeacherDashboardPage() {
   const generateCodes = async (courseId: string, count: number) => {
     const res = await fetch("/api/admin/codes", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ courseId, count }),
     });
@@ -277,6 +306,7 @@ export default function TeacherDashboardPage() {
   const toggleCode = async (codeId: string, isActive: boolean) => {
     const res = await fetch("/api/admin/codes", {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ codeId, isActive }),
     });
@@ -298,6 +328,8 @@ export default function TeacherDashboardPage() {
       thumbnailUrl: course.thumbnailUrl || "",
       educationalStage: course.educationalStage || "",
       contactPhone: course.contactPhone || "",
+      maxWatchCount: course.maxWatchCount ?? 3,
+      homeworkUrl: course.homeworkUrl || "",
     });
     setPricingSettings({
       isPaid: course.isPaid ?? false,
@@ -316,16 +348,17 @@ export default function TeacherDashboardPage() {
     e.preventDefault();
     if (!selectedCourse) return;
     setSavingPricing(true);
-    const res = await fetch(`/api/admin/courses/${selectedCourse.id}/pricing`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isPaid: pricingSettings.isPaid,
-        price: pricingSettings.price ? parseFloat(pricingSettings.price) : null,
-        discountPercent: pricingSettings.discountPercent ? parseFloat(pricingSettings.discountPercent) : null,
-        discountExpiresAt: pricingSettings.discountExpiresAt || null,
-      }),
-    });
+        const res = await fetch(`/api/admin/courses/${selectedCourse.id}/pricing`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isPaid: pricingSettings.isPaid,
+            price: pricingSettings.price ? parseFloat(pricingSettings.price) : null,
+            discountPercent: pricingSettings.discountPercent ? parseFloat(pricingSettings.discountPercent) : null,
+            discountExpiresAt: pricingSettings.discountExpiresAt || null,
+          }),
+        });
     const data = await readJson<{ error?: string }>(res);
     setSavingPricing(false);
     if (res.ok) {
@@ -342,8 +375,14 @@ export default function TeacherDashboardPage() {
 
     const res = await fetch(`/api/admin/courses/${selectedCourse.id}`, {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...courseSettings, contactPhone: courseSettings.contactPhone || null }),
+      body: JSON.stringify({
+        ...courseSettings,
+        contactPhone: courseSettings.contactPhone || null,
+        homeworkUrl: courseSettings.homeworkUrl || null,
+        maxWatchCount: courseSettings.maxWatchCount,
+      }),
     });
     const data = await readJson<{ course?: Course; error?: string }>(res);
 
@@ -442,7 +481,14 @@ export default function TeacherDashboardPage() {
                       <div key={c.id} className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => selectCourse(c)}>
                           {c.thumbnailUrl ? (
-                            <img src={c.thumbnailUrl} alt={c.title} className="w-12 h-12 rounded-xl object-cover" />
+                            <Image
+                              src={c.thumbnailUrl}
+                              alt={c.title}
+                              width={48}
+                              height={48}
+                              className="w-12 h-12 rounded-xl object-cover"
+                              unoptimized
+                            />
                           ) : (
                             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📚</div>
                           )}
@@ -516,6 +562,24 @@ export default function TeacherDashboardPage() {
                           placeholder="رقم واتسآب (مفعول فقط في الكورسات المدفوعة)"
                           dir="ltr"
                           className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 md:col-span-2"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          max={99}
+                          value={courseSettings.maxWatchCount}
+                          onChange={(e) => setCourseSettings({ ...courseSettings, maxWatchCount: Number(e.target.value) || 3 })}
+                          placeholder="عدد المشاهدات المسموح بها لكل طالب"
+                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 md:col-span-2"
+                          dir="ltr"
+                        />
+                        <input
+                          type="url"
+                          value={courseSettings.homeworkUrl}
+                          onChange={(e) => setCourseSettings({ ...courseSettings, homeworkUrl: e.target.value })}
+                          placeholder="رابط صفحة الواجب المنزلي"
+                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 md:col-span-2"
+                          dir="ltr"
                         />
                         <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm rounded-lg md:col-span-2">
                           حفظ الإعدادات
@@ -642,6 +706,22 @@ export default function TeacherDashboardPage() {
                             <div className="text-xs text-gray-400 flex gap-4">
                               <span>🎬 {f.videos?.length || 0} فيديو</span>
                               <span>📝 {f.quizzes?.length || 0} اختبار</span>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              {f.videos?.map((video) => (
+                                <div key={video.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-950/60 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-white truncate">🎬 {video.title}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteVideo(video.id)}
+                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-red-300 hover:text-white hover:bg-red-500/20 transition-colors"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         ))}

@@ -1,15 +1,53 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { buildBunnyEmbedUrl, isBunnyEmbedSigningEnabled } from "@/lib/bunny-stream";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getStudentSession();
   if (!session) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
   const { id } = await params;
+  const token = req.nextUrl.searchParams.get("token");
+
+  if (session.role === "student" && !token) {
+    return NextResponse.json({ error: "يجب بدء جلسة مشاهدة أولاً" }, { status: 403 });
+  }
+
+  if (token) {
+    const watchSession = await prisma.videoWatchSession.findUnique({
+      where: { sessionToken: token },
+      include: {
+        video: {
+          include: {
+            folder: {
+              select: {
+                course: { select: { id: true, teacherId: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!watchSession) {
+      return NextResponse.json({ error: "الجلسة غير موجودة" }, { status: 404 });
+    }
+
+    if (watchSession.studentId !== session.id) {
+      return NextResponse.json({ error: "غير مصرح بهذه الجلسة" }, { status: 403 });
+    }
+
+    if (watchSession.videoId !== id) {
+      return NextResponse.json({ error: "الفيديو لا يتطابق مع الجلسة" }, { status: 400 });
+    }
+
+    if (watchSession.expiresAt < new Date()) {
+      return NextResponse.json({ error: "انتهت جلسة المشاهدة" }, { status: 403 });
+    }
+  }
 
   const video = await prisma.video.findUnique({
     where: { id },

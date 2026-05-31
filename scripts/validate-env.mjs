@@ -126,9 +126,14 @@ for (const key of RECOMMENDED) {
 }
 
 if (merged.DATABASE_URL?.includes("file:")) {
-  console.warn(
-    "\nWARN: DATABASE_URL uses file: — this project uses PostgreSQL (PrismaPg). Use postgresql://..."
-  );
+  const sqlitePath = merged.DATABASE_URL.replace(/^file:/, "");
+  if (process.platform !== "win32" && /^[A-Za-z]:[\\/]/.test(sqlitePath)) {
+    console.warn(
+      "\nWARN: DATABASE_URL points to a Windows SQLite path on a non-Windows system. Use file:./prisma/dev.db instead."
+    );
+  } else {
+    console.log("\nOK: DATABASE_URL is using SQLite for local development.");
+  }
 }
 
 if (failed > 0) {

@@ -10,10 +10,10 @@ async function importFresh<T>(specifier: string): Promise<T> {
 async function testPhoneNormalization() {
   const { normalizeEgyptPhone, formatDisplayPhone } = await importFresh<typeof import('../src/lib/phone.ts')>('../src/lib/phone.ts');
 
-  assert.equal(normalizeEgyptPhone('01101670389'), '+201101670389');
-  assert.equal(normalizeEgyptPhone('+201101670389'), '+201101670389');
-  assert.equal(normalizeEgyptPhone('201101670389'), '+201101670389');
-  assert.equal(formatDisplayPhone('+201101670389'), '01101670389');
+  assert.equal(normalizeEgyptPhone('01012345678'), '+201012345678');
+  assert.equal(normalizeEgyptPhone('+201012345678'), '+201012345678');
+  assert.equal(normalizeEgyptPhone('201012345678'), '+201012345678');
+  assert.equal(formatDisplayPhone('+201012345678'), '01012345678');
   assert.throws(() => normalizeEgyptPhone('12345'), /رقم الهاتف غير صالح/);
 }
 
@@ -25,7 +25,7 @@ async function testDevMockSms() {
   delete process.env.TWILIO_USE_VERIFY;
 
   const mod = await importFresh<typeof import('../src/lib/twilio.ts')>('../src/lib/twilio.ts');
-  const result = await mod.sendVerificationSms('01101670389', '123456');
+  const result = await mod.sendVerificationSms('01012345678', '123456');
 
   assert.equal(result.method, 'dev');
   assert.equal(result.code, '123456');
@@ -51,14 +51,14 @@ async function testVerifySmsRequestShape() {
 
   try {
     const mod = await importFresh<typeof import('../src/lib/twilio.ts')>('../src/lib/twilio.ts');
-    const result = await mod.sendVerificationSms('01101670389', '654321');
+    const result = await mod.sendVerificationSms('01012345678', '654321');
 
     assert.equal(result.method, 'verify');
     assert.equal(calls.length, 1);
     assert.match(calls[0].url, /verify\.twilio\.com\/v2\/Services\/VA11111111111111111111111111111111\/Verifications$/);
 
     const body = String(calls[0].options.body || '');
-    assert.match(body, /To=%2B201101670389/);
+    assert.match(body, /To=%2B201012345678/);
     assert.match(body, /Channel=sms/);
 
     const auth = String(calls[0].options.headers && (calls[0].options.headers as Record<string, string>).Authorization || '');

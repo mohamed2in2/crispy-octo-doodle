@@ -52,9 +52,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const safeCourse = {
     ...course,
+    homeworkUrl: course.homeworkUrl,
+    maxWatchCount: course.maxWatchCount,
     folders: course.folders.map((folder) => ({
       ...folder,
-      videos: folder.videos.map(({ bunnyId: _bunnyId, ...video }) => video),
+      videos: folder.videos.map((video) => ({ ...video, bunnyId: undefined })),
       quizzes: folder.quizzes.map((quiz) => {
         const q = quiz as unknown as {
           id: string;
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           id: q.id,
           title: q.title,
           timeLimitMinutes: q.timeLimitMinutes,
-          questions: (q.questions ?? []).map(({ correctAnswer: _ca, ...question }) => question),
+          questions: (q.questions ?? []).map((question) => ({ ...question, correctAnswer: undefined })),
         };
       }),
     })),

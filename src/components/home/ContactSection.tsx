@@ -68,20 +68,6 @@ export function ContactSection() {
             <ul className="space-y-4">
               <li>
                 <a
-                  href="tel:+201101670389"
-                  className="flex items-center gap-3 group"
-                  dir="ltr"
-                >
-                  <span className="w-9 h-9 rounded-lg bg-white dark:bg-gray-800 border border-purple-100 dark:border-gray-700 flex items-center justify-center shadow-sm shrink-0 group-hover:border-purple-400 transition-colors">
-                    📞
-                  </span>
-                  <span className="text-slate-700 dark:text-slate-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-sm font-medium">
-                    01101670389
-                  </span>
-                </a>
-              </li>
-              <li>
-                <a
                   href="mailto:ahmedehab2n5@gmail.com"
                   className="flex items-center gap-3 group"
                 >
