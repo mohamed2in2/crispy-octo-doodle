@@ -65,7 +65,7 @@ export default function TeacherDashboardPage() {
   const [creatingCourse, setCreatingCourse] = useState(false);
   // Forms
   const [newCourse, setNewCourse] = useState({
-    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "",
+    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "",
   });
   const [newFolder, setNewFolder] = useState("");
   const [newVideo, setNewVideo] = useState({ title: "", bunnyId: "", folderId: "" });
@@ -183,7 +183,7 @@ export default function TeacherDashboardPage() {
 
       if (res.ok) {
         notify("success", "✅ تم إنشاء الكورس بنجاح");
-        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "" });
+        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "" });
         await fetchCourses();
       setActiveSection("courses");
       } else {
