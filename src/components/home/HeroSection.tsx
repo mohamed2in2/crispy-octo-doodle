@@ -54,17 +54,6 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <motion.div className="text-center md:text-right" variants={heroMainVariants} initial="hidden" animate="visible">
-            <motion.div
-              className="inline-flex items-center gap-2 bg-white/10 text-white text-sm font-medium px-4 py-2 rounded-full mb-6 border border-white/20"
-              variants={HeroHeadingVariants}
-            >
-              <motion.span
-                className="w-2 h-2 bg-green-400 rounded-full"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              منصة تعليمية متكاملة
-            </motion.div>
             <motion.h1
               className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6"
               variants={HeroHeadingVariants}
@@ -77,7 +66,7 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
               className="text-blue-100 text-lg md:text-xl mb-8 leading-relaxed"
               variants={heroDescriptionVariants}
             >
-              منصة تعليمية متكاملة للطلاب المصريين من الصف السادس الابتدائي حتى الثالث الثانوي. محتوى حصري، مدرسون متميزون، وتجربة تعلم فريدة.
+              منصة تعليمية للطلاب من الصف السادس الابتدائي حتى الثالث الثانوي — محاضرات، اختبارات فورية، ومرشد ذكي يتابع تقدّمك
             </motion.p>
             <motion.div
               className="flex flex-col sm:flex-row gap-4 justify-center md:justify-end"
@@ -88,6 +77,7 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
                   <Link
                     href="/courses"
                     className="px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-xl text-lg inline-block"
+                    aria-label="تصفح الكورسات المتاحة"
                   >
                     تصفح الكورسات
                   </Link>
@@ -98,6 +88,7 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
                     <Link
                       href="/signup"
                       className="px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-xl text-lg inline-block"
+                      aria-label="إنشاء حساب جديد مجاناً"
                     >
                       ابدأ الآن مجاناً
                     </Link>
@@ -106,6 +97,7 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
                     <Link
                       href="/login"
                       className="px-8 py-4 border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all text-lg inline-block"
+                      aria-label="تسجيل الدخول إلى حسابك"
                     >
                       تسجيل الدخول
                     </Link>
@@ -114,23 +106,6 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
               )}
             </motion.div>
 
-            {/* Trust badges */}
-            <motion.div
-              className="flex flex-wrap gap-4 mt-8 justify-center md:justify-end"
-              variants={heroDescriptionVariants}
-            >
-              {["🎓 محتوى احترافي", "🔒 مؤمّن بالكامل", "📱 متوافق مع الجوال"].map((badge, index) => (
-                <motion.span
-                  key={badge}
-                  className="text-blue-200 text-sm flex items-center gap-1"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
-                >
-                  {badge}
-                </motion.span>
-              ))}
-            </motion.div>
           </motion.div>
 
           {/* Hero illustration */}
@@ -186,19 +161,6 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
                     </div>
                   </motion.div>
                 ))}
-                <motion.div
-                  className="text-center mt-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8, duration: 0.4 }}
-                >
-                  <div className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full">
-                    <motion.span animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity }}>
-                      ⭐
-                    </motion.span>{" "}
-                    4.9/5 تقييم الطلاب
-                  </div>
-                </motion.div>
               </motion.div>
               {/* Floating elements */}
               <motion.div

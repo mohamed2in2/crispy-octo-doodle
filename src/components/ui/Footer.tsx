@@ -8,13 +8,11 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 dark:from-amber-400 dark:via-yellow-400 dark:to-orange-500 flex items-center justify-center shadow-lg">
-                <span className="text-white dark:text-slate-950 font-black text-lg">A</span>
-              </div>
+              <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
               <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
             </div>
-            <p className="text-sm leading-relaxed">
-              <span className="block text-slate-600 dark:text-slate-400">منصة تعليمية تركّز على وضوح المحتوى، راحة العين، وتجربة تعلم احترافية.</span>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              منصة تعليمية مصريّة تهدف إلى تمكين الطلاب من الصف السادس حتى الثالث الثانوي من خلال محتوى عالي الجودة وأدوات متابعة ذكية.
             </p>
           </div>
 
@@ -31,27 +29,18 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">للاستفسارات العامة</h4>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">تواصل معنا</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
-                <span className="mt-0.5">📧</span>
+                <span className="mt-0.5" aria-hidden="true">📧</span>
                 <a href="mailto:contact@alasly.live" className="hover:text-blue-500 transition-colors break-all">
                   contact@alasly.live
                 </a>
               </li>
               <li className="flex items-center gap-2">
-                <span>📞</span>
+                <span aria-hidden="true">📞</span>
                 <a href="tel:+201285353604" className="hover:text-blue-500 transition-colors" dir="ltr">
                   01285353604
-                </a>
-              </li>
-              <li className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-xs text-slate-500 dark:text-slate-500 mb-1">هل تريد موقعاً مشابهاً؟</p>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5">📧</span>
-                <a href="mailto:ahmedehab2n5@gmail.com" className="hover:text-blue-500 transition-colors break-all">
-                  ahmedehab2n5@gmail.com
                 </a>
               </li>
             </ul>
@@ -63,15 +52,29 @@ export function Footer() {
             © {new Date().getFullYear()} ALASLY. جميع الحقوق محفوظة.
           </p>
 
-          {/* Admin portal link — subtle but reachable without a student account */}
-          <Link
-            href="/adminpanel"
-            title="لوحة إدارة المنصة"
-            className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
-            aria-label="Admin Panel Login"
-          >
-            ⚙
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Admin portal link — subtle but reachable without a student account */}
+            <Link
+              href="/adminpanel"
+              title="لوحة إدارة المنصة"
+              className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
+              aria-label="Admin Panel Login"
+            >
+              ⚙
+            </Link>
+
+            {/* Developer credit — hidden but discoverable */}
+            <a
+              href="https://kemetcraft.me/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Made by 2n2 DEV"
+              className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
+              aria-label="Developer: 2n2 DEV"
+            >
+              2n2 DEV
+            </a>
+          </div>
         </div>
       </div>
     </footer>

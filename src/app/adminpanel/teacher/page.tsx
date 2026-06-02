@@ -35,7 +35,6 @@ interface Course {
   price?: number | null;
   discountPercent?: number | null;
   discountExpiresAt?: string | null;
-  contactPhone?: string | null;
 }
 
 interface Folder {
@@ -66,7 +65,7 @@ export default function TeacherDashboardPage() {
   const [creatingCourse, setCreatingCourse] = useState(false);
   // Forms
   const [newCourse, setNewCourse] = useState({
-    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "",
+    title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "",
   });
   const [newFolder, setNewFolder] = useState("");
   const [newVideo, setNewVideo] = useState({ title: "", bunnyId: "", folderId: "" });
@@ -81,7 +80,6 @@ export default function TeacherDashboardPage() {
     description: "",
     thumbnailUrl: "",
     educationalStage: "",
-    contactPhone: "",
     maxWatchCount: 3,
     homeworkUrl: "",
   });
@@ -166,7 +164,6 @@ export default function TeacherDashboardPage() {
       description: newCourse.description.trim(),
       thumbnailUrl: newCourse.thumbnailUrl.trim(),
       educationalStage: newCourse.educationalStage.trim(),
-      contactPhone: newCourse.contactPhone.trim() || null,
     };
 
     if (!payload.title || !payload.subject || !payload.educationalStage) {
@@ -186,7 +183,7 @@ export default function TeacherDashboardPage() {
 
       if (res.ok) {
         notify("success", "✅ تم إنشاء الكورس بنجاح");
-        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "" });
+        setNewCourse({ title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "" });
         await fetchCourses();
       setActiveSection("courses");
       } else {
@@ -327,7 +324,6 @@ export default function TeacherDashboardPage() {
       description: course.description || "",
       thumbnailUrl: course.thumbnailUrl || "",
       educationalStage: course.educationalStage || "",
-      contactPhone: course.contactPhone || "",
       maxWatchCount: course.maxWatchCount ?? 3,
       homeworkUrl: course.homeworkUrl || "",
     });
@@ -379,7 +375,6 @@ export default function TeacherDashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...courseSettings,
-        contactPhone: courseSettings.contactPhone || null,
         homeworkUrl: courseSettings.homeworkUrl || null,
         maxWatchCount: courseSettings.maxWatchCount,
       }),
@@ -554,14 +549,6 @@ export default function TeacherDashboardPage() {
                           onChange={(e) => setCourseSettings({ ...courseSettings, description: e.target.value })}
                           placeholder="وصف الكورس"
                           className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none md:col-span-2"
-                        />
-                        <input
-                          type="tel"
-                          value={courseSettings.contactPhone}
-                          onChange={(e) => setCourseSettings({ ...courseSettings, contactPhone: e.target.value })}
-                          placeholder="رقم واتسآب (مفعول فقط في الكورسات المدفوعة)"
-                          dir="ltr"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 md:col-span-2"
                         />
                         <input
                           type="number"

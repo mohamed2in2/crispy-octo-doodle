@@ -33,9 +33,7 @@ export function Navbar({ user }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 dark:from-amber-400 dark:via-yellow-400 dark:to-orange-500 flex items-center justify-center shadow-lg">
-              <span className="text-white dark:text-slate-950 font-black text-lg">A</span>
-            </div>
+            <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
             <div className="hidden sm:block">
               <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
               <div className="text-xs text-slate-500 dark:text-slate-300">

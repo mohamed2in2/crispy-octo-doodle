@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
-import { StatsSection } from "@/components/home/StatsSection";
 import { ContactSection } from "@/components/home/ContactSection";
 import type { MeUser } from "@/lib/fetch-me";
 
@@ -40,11 +40,35 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950">
+      <Script
+        id="organization-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "منصة الأصلي التعليمية",
+            "alternateName": "ALASLY",
+            "url": "https://alasly.live",
+            "logo": "https://alasly.live/logo.jpeg",
+            "description": "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+20-128-535-3604",
+              "contactType": "customer service",
+              "areaServed": "EG",
+              "availableLanguage": "Arabic"
+            },
+            "sameAs": [
+              "https://alasly.live"
+            ]
+          })
+        }}
+      />
       <Navbar user={user ? { name: user.name, role: user.role } : null} />
       <main className="flex-1">
         <HeroSection isLoggedIn={isLoggedIn} />
         <FeaturesSection />
-        <StatsSection />
         <ContactSection />
         {!isLoggedIn && (
           <section className="py-20 bg-blue-600">

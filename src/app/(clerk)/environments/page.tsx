@@ -161,7 +161,7 @@ function SubjectCard({ subject }: { subject: typeof SUBJECTS[0] }) {
 
         {/* Text */}
         <div>
-          <h3 className="text-2xl font-black text-white mb-1">{subject.name}</h3>
+          <h2 className="text-2xl font-black text-white mb-1">{subject.name}</h2>
           <p className="text-white/80 text-sm mb-3">{subject.description}</p>
           {subject.available ? (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-medium">

@@ -91,7 +91,7 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
         {course.thumbnailUrl ? (
           <img
             src={course.thumbnailUrl}
-            alt={course.title}
+            alt={`صورة مصغرة لكورس ${course.title}`}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
@@ -115,9 +115,9 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="mb-1 line-clamp-2 text-base font-bold text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+        <h2 className="mb-1 line-clamp-2 text-base font-bold text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
           {course.title}
-        </h3>
+        </h2>
         <p className="mb-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
           <span>👨‍🏫</span> {course.teacher.name}
         </p>
@@ -144,6 +144,7 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
           <button
             onClick={() => router.push(`/courses/${course.id}`)}
             className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+            aria-label={`عرض تفاصيل كورس ${course.title}`}
           >
             عرض الكورس
           </button>
@@ -151,6 +152,7 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
             <button
               onClick={() => router.push(`/courses/${course.id}/learn`)}
               className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+              aria-label={`الدخول إلى كورس ${course.title}`}
             >
               ادخل الكورس
             </button>
@@ -171,6 +173,7 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
                 onClick={applyCode}
                 disabled={applying || !code.trim()}
                 className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                aria-label="تفعيل كود الوصول"
               >
                 {applying ? "..." : "تفعيل"}
               </button>

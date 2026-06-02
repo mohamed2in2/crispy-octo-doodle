@@ -7,8 +7,36 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "منصة التعليم - EdTech Platform",
-  description: "منصة تعليمية شاملة للطلاب المصريين من الصف السادس الابتدائي حتى الثالث الثانوي",
+  title: "منصة الأصلي التعليمية | تعلّم الرياضيات والعلوم للطلاب المصريين",
+  description: "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "منصة الأصلي التعليمية | تعلّم الرياضيات والعلوم للطلاب المصريين",
+    description: "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
+    url: "https://alasly.live",
+    siteName: "منصة الأصلي",
+    locale: "ar_EG",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "منصة الأصلي التعليمية",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "منصة الأصلي التعليمية | تعلّم الرياضيات والعلوم للطلاب المصريين",
+    description: "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
+    images: ["/og-image.png"],
+  },
+  alternates: {
+    canonical: "https://alasly.live",
+  },
 };
 
 export default function RootLayout({

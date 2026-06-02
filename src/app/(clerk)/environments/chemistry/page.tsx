@@ -121,7 +121,6 @@ const QUESTIONS = ELEMENTS.slice(0, 50).map((el) => ({
 }));
 
 // Element usage questions for card game
-// Developer: AhmedEhab | Contact: ahmedehab2n5@gmail.com
 const USAGE_QUESTIONS = [
   { element: "Titanium", question: "Which element is used in airplanes and spacecraft?", hint: "It's a strong, lightweight transition metal with atomic number 22" },
   { element: "Gold", question: "Which element is used in jewelry and electronics for its conductivity?", hint: "A precious yellow metal with atomic number 79" },
