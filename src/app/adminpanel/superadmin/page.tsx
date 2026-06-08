@@ -11,6 +11,7 @@ import { ActivityLogsSection } from "@/components/admin/superadmin/ActivityLogsS
 import { DeletedStudentsSection } from "@/components/admin/superadmin/DeletedStudentsSection";
 import { StaffAccountsSection } from "@/components/admin/superadmin/StaffAccountsSection";
 import { ErrorMonitorSection } from "@/components/admin/superadmin/ErrorMonitorSection";
+import { DailyExamsSection } from "@/components/admin/superadmin/DailyExamsSection";
 
 async function readJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
@@ -36,6 +37,7 @@ const SECTION_TITLES: Record<string, string> = {
   students: "إدارة الطلاب",
   teachers: "إدارة المدرسين",
   create: "إنشاء حساب مدرس",
+  "daily-exams": "امتحانات لوحة الشرف",
   "staff-accounts": "المشرفون والموظفون",
   errors: "مراقبة الأخطاء والتحذيرات",
 };
@@ -118,7 +120,7 @@ export default function SuperadminPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-950 text-white">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-gray-950 text-white">
       <AdminSidebar
         role={userRole}
         activeSection={activeSection}
@@ -128,8 +130,8 @@ export default function SuperadminPage() {
 
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-white">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
             {SECTION_TITLES[activeSection] ?? activeSection}
           </h1>
           <div className="flex items-center gap-3">
@@ -145,26 +147,26 @@ export default function SuperadminPage() {
             <>
               {/* Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
                   <div className="text-3xl font-black text-blue-400">{teachers.length}</div>
-                  <div className="text-gray-400 text-sm mt-1">مدرس مسجل</div>
+                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">مدرس مسجل</div>
                 </div>
-                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
                   <div className="text-3xl font-black text-green-400">
                     {teachers.reduce((a: number, t: Teacher) => a + (t._count?.courses || 0), 0)}
                   </div>
-                  <div className="text-gray-400 text-sm mt-1">إجمالي الكورسات</div>
+                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">إجمالي الكورسات</div>
                 </div>
-                <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
                   <div className="text-3xl font-black text-purple-400">✓</div>
-                  <div className="text-gray-400 text-sm mt-1">النظام يعمل بشكل جيد</div>
+                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">النظام يعمل بشكل جيد</div>
                 </div>
               </div>
 
               {/* Teachers list */}
-              <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-                  <h2 className="font-bold text-white">قائمة المدرسين</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between">
+                  <h2 className="font-bold text-slate-900 dark:text-white">قائمة المدرسين</h2>
                   <button
                     onClick={() => setActiveSection("create")}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -173,9 +175,9 @@ export default function SuperadminPage() {
                   </button>
                 </div>
                 {loading ? (
-                  <div className="p-8 text-center text-gray-500">جارٍ التحميل...</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-gray-500">جارٍ التحميل...</div>
                 ) : teachers.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-slate-500 dark:text-gray-500">
                     <div className="text-4xl mb-2">👨‍🏫</div>
                     <p>لا يوجد مدرسون بعد</p>
                   </div>
@@ -188,12 +190,12 @@ export default function SuperadminPage() {
                             {t.name[0]}
                           </div>
                           <div>
-                            <p className="font-medium text-white">{t.name}</p>
-                            <p className="text-xs text-gray-400">{t._count?.courses || 0} كورس</p>
+                            <p className="font-medium text-slate-900 dark:text-white">{t.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">{t._count?.courses || 0} كورس</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-500 dark:text-gray-500">
                             {t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : ""}
                           </span>
                           <button
@@ -215,6 +217,8 @@ export default function SuperadminPage() {
           {activeSection === "students" && <StudentsSection userRole={userRole} />}
 
           {activeSection === "deleted-students" && <DeletedStudentsSection userRole={userRole} />}
+
+          {activeSection === "daily-exams" && <DailyExamsSection />}
 
           {activeSection === "logs" && <ActivityLogsSection />}
 
@@ -239,9 +243,9 @@ export default function SuperadminPage() {
 
           {activeSection === "create" && (
             <div className="max-w-md">
-              <h2 className="text-xl font-bold text-white mb-6">إنشاء حساب مدرس جديد</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">إنشاء حساب مدرس جديد</h2>
 
-              <form onSubmit={createTeacher} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 space-y-4">
+              <form onSubmit={createTeacher} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">اسم المدرس</label>
                   <input
@@ -249,7 +253,7 @@ export default function SuperadminPage() {
                     required
                     value={newTeacher.name}
                     onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="أ. محمد إبراهيم"
                   />
                 </div>
@@ -261,7 +265,7 @@ export default function SuperadminPage() {
                     minLength={6}
                     value={newTeacher.password}
                     onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="••••••••"
                   />
                 </div>

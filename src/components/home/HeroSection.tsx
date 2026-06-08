@@ -72,6 +72,16 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
               className="flex flex-col sm:flex-row gap-4 justify-center md:justify-end"
               variants={heroButtonContainerVariants}
             >
+              <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
+                <Link
+                  href="/parent"
+                  className="px-8 py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-xl text-lg flex items-center justify-center gap-2 w-full"
+                  aria-label="بوابة ولي الأمر للمتابعة"
+                >
+                  <span>بوابة ولي الأمر</span>
+                  <span className="text-xl">👨‍👩‍👧‍👦</span>
+                </Link>
+              </motion.div>
               {isLoggedIn ? (
                 <motion.div variants={heroButtonVariants}>
                   <Link
@@ -104,7 +114,8 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
                   </motion.div>
                 </>
               )}
-            </motion.div>
+
+          </motion.div>
 
           </motion.div>
 

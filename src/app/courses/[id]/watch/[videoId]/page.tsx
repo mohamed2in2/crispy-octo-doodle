@@ -11,7 +11,7 @@ interface WatchSessionData {
   video: {
     id: string;
     title: string;
-    bunnyId: string;
+    vdoCipherId: string;
     courseId: string;
     courseTitle: string;
   };
@@ -38,13 +38,13 @@ function WatchCountBar({ used, total }: { used: number; total: number }) {
         {Array.from({ length: total }).map((_, i) => (
           <span
             key={i}
-            className={`w-3 h-3 rounded-full transition-all ${
-              i < used ? "bg-red-400" : "bg-white/20"
+            className={`w-3 h-3 rounded-full transition-all duration-500 shadow-inner ${
+              i < used ? "bg-red-500 shadow-red-500/50" : "bg-slate-700/50 border border-white/5"
             }`}
           />
         ))}
       </div>
-      <span className="text-xs text-white/60 font-mono">{used}/{total}</span>
+      <span className="text-xs text-slate-400 font-mono font-bold tracking-wider">{used}/{total}</span>
     </div>
   );
 }
@@ -173,7 +173,7 @@ export default function VideoWatchPage() {
         video: {
           id: videoId,
           title: videoTitle,
-          bunnyId: "",
+          vdoCipherId: "",
           courseId,
           courseTitle: courseData.course?.title ?? "",
         },
@@ -277,75 +277,88 @@ export default function VideoWatchPage() {
   const isSessionExpired = countdown === "00:00:00";
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-[#020617] flex flex-col font-sans selection:bg-sky-500/30">
+      {/* Dynamic Background Glows */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-sky-900/20 blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px]" />
+      </div>
+
       {/* Top bar */}
-      <header className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <header className="fixed top-0 inset-x-0 z-50 bg-slate-950/40 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between gap-6">
           {/* Left: breadcrumb */}
-          <div className="min-w-0">
-            <p className="text-xs text-slate-400 truncate">{session.video.courseTitle}</p>
-            <h1 className="text-sm font-bold text-white truncate leading-tight">{session.video.title}</h1>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] uppercase tracking-widest text-sky-400/80 font-semibold mb-1">{session.video.courseTitle}</p>
+            <h1 className="text-lg font-black text-white truncate leading-tight tracking-wide">{session.video.title}</h1>
           </div>
 
           {/* Center: countdown + session status */}
-          <div className="flex items-center gap-4 bg-slate-800/80 border border-white/5 rounded-2xl px-4 py-2.5">
+          <div className="flex items-center gap-6 bg-black/40 border border-white/10 rounded-2xl px-6 py-3 shadow-inner">
             <div className="text-center">
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">المتبقي</p>
-              <p className={`text-xl font-mono font-black tabular-nums ${isSessionExpired ? "text-red-400" : "text-white"}`}>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-semibold">المتبقي</p>
+              <p className={`text-2xl font-mono font-black tabular-nums tracking-wider ${isSessionExpired ? "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]"}`}>
                 {countdown}
               </p>
             </div>
             {!isSessionExpired && (
               <>
-                <div className="w-px h-8 bg-white/10" />
+                <div className="w-px h-10 bg-white/10" />
                 <div className="text-center">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">مدة الجلسة</p>
-                  <p className="text-xs font-mono text-slate-300">4 ساعات</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1 font-semibold">مدة الجلسة</p>
+                  <p className="text-sm font-mono text-slate-300 font-bold">4 ساعات</p>
                 </div>
               </>
             )}
           </div>
 
           {/* Right: watch bar + return */}
-          <div className="flex items-center gap-3 shrink-0">
-            <WatchCountBar used={session.usedWatches} total={session.totalWatches} />
+          <div className="flex items-center gap-6 shrink-0 flex-1 justify-end">
+            <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5 hidden sm:block">
+              <WatchCountBar used={session.usedWatches} total={session.totalWatches} />
+            </div>
             <button
               onClick={handleReturn}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-sm text-white transition-colors"
+              className="group flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" style={{ transform: "scaleX(-1)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-sky-400 group-hover:-translate-x-1 transition-transform" style={{ transform: "scaleX(-1)" }}>
                 <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              العودة للكورس
+              العودة
             </button>
           </div>
         </div>
       </header>
 
       {/* Player area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-6xl space-y-5">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 pt-32 relative z-10">
+        <div className="w-full max-w-[1100px] space-y-6">
 
           {/* Protection notice */}
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-red-400 text-base">🔒</span>
-              <span className="text-slate-400 text-xs">رابط الفيديو محمي — لا يمكن نسخه أو مشاركته</span>
+          <div className="flex items-center justify-between px-5 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-sm shadow-xl">
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                <span className="text-red-400 text-sm">🔒</span>
+              </div>
+              <span className="text-slate-300 font-medium tracking-wide">رابط الفيديو محمي — لا يمكن نسخه أو مشاركته</span>
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <div className="flex items-center gap-2 text-sm text-sky-400 font-medium bg-sky-500/10 px-3 py-1.5 rounded-lg border border-sky-500/20">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               <span>مشاهدة خاصة بك فقط</span>
             </div>
           </div>
 
-          {/* Player card */}
-          <div
-            className="relative overflow-hidden rounded-2xl border border-white/10 bg-black"
-            style={{ boxShadow: "0 0 100px rgba(59,130,246,0.12), 0 40px 80px rgba(0,0,0,0.8)" }}
-          >
-            {/* Top gradient + overlays */}
+          {/* Player card wrapper for glowing effect */}
+          <div className="relative group">
+            {/* Animated Glow Behind Player */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-500 rounded-[1.5rem] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse" />
+            
+            <div
+              className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a0f1e] shadow-2xl"
+            >
+              {/* Top gradient + overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent z-10 pointer-events-none" />
 
             {/* Live badge */}
@@ -401,14 +414,13 @@ export default function VideoWatchPage() {
             </div>
 
             {/* Bottom bar */}
-            <div className="bg-slate-900/95 border-t border-white/5 px-6 py-4 flex items-center justify-between gap-4">
+            <div className="bg-slate-950/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex items-center justify-between gap-4">
               <div>
-                <p className="text-white font-semibold text-sm">{session.video.title}</p>
-                <p className="text-slate-400 text-xs mt-0.5">
+                <p className="text-white font-bold tracking-wide">{session.video.title}</p>
+                <p className="text-sky-400/80 text-xs mt-1 font-medium">
                   {session.video.courseTitle} • جلستك صالحة لمدة 4 ساعات
                 </p>
               </div>
-              <WatchCountBar used={session.usedWatches} total={session.totalWatches} />
             </div>
           </div>
 

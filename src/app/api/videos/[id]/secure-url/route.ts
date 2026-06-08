@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
-import { buildBunnyEmbedUrl, isBunnyEmbedSigningEnabled } from "@/lib/bunny-stream";
+import { getVdoCipherOtp } from "@/lib/vdocipher";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -89,20 +89,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   try {
-    const signed = isBunnyEmbedSigningEnabled();
-    const embedUrl = buildBunnyEmbedUrl(video.bunnyId, signed);
-    const fallbackEmbedUrl = signed ? buildBunnyEmbedUrl(video.bunnyId, false) : null;
+    const vdoData = await getVdoCipherOtp(video.vdoCipherId);
 
     return NextResponse.json({
-      embedUrl,
-      fallbackEmbedUrl: signed ? fallbackEmbedUrl : null,
-      signed,
-      expiresInSeconds: signed ? 3600 : null,
+      embedUrl: vdoData.embedUrl,
+      fallbackEmbedUrl: null,
+      signed: true,
+      expiresInSeconds: 3600,
     });
   } catch (error) {
-    console.error("Bunny embed URL error:", error);
+    console.error("VdoCipher embed URL error:", error);
     return NextResponse.json(
-      { error: "تعذر إنشاء رابط فيديو آمن. تأكد من إعدادات Bunny Stream في البيئة." },
+      { error: "تعذر إنشاء رابط فيديو آمن. تأكد من إعدادات VdoCipher في البيئة." },
       { status: 500 }
     );
   }

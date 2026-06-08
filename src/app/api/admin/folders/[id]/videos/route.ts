@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // Validation constants
 const MAX_TITLE_LENGTH = 100;
 const MIN_TITLE_LENGTH = 1;
-const BUNNY_ID_REGEX = /^[a-z0-9-]+$/i;
+const VDOCIPHER_ID_REGEX = /^[a-z0-9-]+$/i;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { id: folderId } = await params;
-    const { title, bunnyId } = await req.json();
+    const { title, vdoCipherId } = await req.json();
 
     // Validate title
     if (!title || typeof title !== "string") {
@@ -33,18 +33,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    // Validate Bunny ID
-    if (!bunnyId || typeof bunnyId !== "string") {
-      return NextResponse.json({ error: "معرف Bunny مطلوب" }, { status: 400 });
+    // Validate VdoCipher ID
+    if (!vdoCipherId || typeof vdoCipherId !== "string") {
+      return NextResponse.json({ error: "معرف VdoCipher مطلوب" }, { status: 400 });
     }
 
-    if (bunnyId.trim().length === 0) {
-      return NextResponse.json({ error: "معرف Bunny لا يمكن أن يكون فارغاً" }, { status: 400 });
+    if (vdoCipherId.trim().length === 0) {
+      return NextResponse.json({ error: "معرف VdoCipher لا يمكن أن يكون فارغاً" }, { status: 400 });
     }
 
-    if (!BUNNY_ID_REGEX.test(bunnyId)) {
+    if (!VDOCIPHER_ID_REGEX.test(vdoCipherId)) {
       return NextResponse.json(
-        { error: "معرف Bunny يجب أن يحتوي على أحرف وأرقام وشرطات فقط" },
+        { error: "معرف VdoCipher يجب أن يحتوي على أحرف وأرقام وشرطات فقط" },
         { status: 400 }
       );
     }
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const video = await prisma.video.create({
       data: {
         title: title.trim(),
-        bunnyId: bunnyId.trim(),
+        vdoCipherId: vdoCipherId.trim(),
         folderId,
         order: count,
       },

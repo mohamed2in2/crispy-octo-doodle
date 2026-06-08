@@ -20,7 +20,14 @@ type CourseData = {
     videos: Array<{
       id: string;
       title: string;
+      title: string;
       progress?: Array<{ watched: boolean }>;
+    }>;
+    materials: Array<{
+      id: string;
+      title: string;
+      url: string;
+      type: string;
     }>;
     quizzes: Array<{
       id: string;
@@ -557,6 +564,23 @@ export default function CourseLearningPage() {
                               </button>
                             );
                           })}
+                          {activeTab === "lectures" && folder.materials && folder.materials.length > 0 && (
+                            <div className="pt-2 border-t border-slate-200 dark:border-slate-700/50 mt-2 space-y-1">
+                              <p className="text-xs font-bold text-slate-500 mb-2 px-2">ملحقات المحاضرة</p>
+                              {folder.materials.map(m => (
+                                <a
+                                  key={m.id}
+                                  href={m.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full text-right px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-sky-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-center gap-2"
+                                >
+                                  <span>{m.type === "pdf" ? "📄" : "🔗"}</span>
+                                  <span className="truncate flex-1">{m.title}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

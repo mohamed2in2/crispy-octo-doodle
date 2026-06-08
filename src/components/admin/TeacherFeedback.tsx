@@ -28,7 +28,7 @@ const TYPE_COLORS: Record<string, string> = {
   course_feedback: "bg-blue-600/20 text-blue-300 border-blue-600/30",
   took_elsewhere: "bg-orange-600/20 text-orange-300 border-orange-600/30",
   difficulty: "bg-purple-600/20 text-purple-300 border-purple-600/30",
-  other: "bg-gray-600/20 text-gray-300 border-gray-600/30",
+  other: "bg-gray-600/20 text-gray-300 border-slate-300 dark:border-gray-600/30",
 };
 
 export function TeacherFeedback() {
@@ -91,19 +91,19 @@ export function TeacherFeedback() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">جارٍ التحميل...</div>
+        <div className="text-center py-12 text-slate-500 dark:text-gray-400">جارٍ التحميل...</div>
       ) : feedback.length === 0 ? (
-        <div className="bg-gray-800 rounded-2xl p-12 text-center text-gray-400 border border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-gray-700">
           لا توجد ملاحظات
         </div>
       ) : (
         <div className="space-y-3">
           {feedback.map((f) => (
-            <div key={f.id} className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
+            <div key={f.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-5">
               <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
                 <div>
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-bold text-white">{f.student.name}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{f.student.name}</span>
                     <span className={`px-2 py-0.5 text-xs rounded-full border ${TYPE_COLORS[f.type] || TYPE_COLORS.other}`}>
                       {TYPE_LABELS[f.type] || f.type}
                     </span>
@@ -118,7 +118,7 @@ export function TeacherFeedback() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-500 dark:text-gray-400">
                     {f.course.title}
                     {f.student.educationalStage && ` · ${f.student.educationalStage}`}
                     {" · "}
@@ -127,7 +127,7 @@ export function TeacherFeedback() {
                 </div>
               </div>
 
-              <div className="bg-gray-900/60 rounded-xl p-3 mb-3">
+              <div className="bg-white dark:bg-gray-900/60 rounded-xl p-3 mb-3">
                 <p className="text-sm text-gray-200 whitespace-pre-wrap">{f.content}</p>
               </div>
 
@@ -153,15 +153,15 @@ export function TeacherFeedback() {
 
       {selected && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-6">
-            <h3 className="text-lg font-bold text-white mb-2">الرد على الملاحظة</h3>
-            <p className="text-sm text-gray-400 mb-4">{selected.student.name} · {selected.course.title}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 max-w-lg w-full p-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">الرد على الملاحظة</h3>
+            <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">{selected.student.name} · {selected.course.title}</p>
 
             <textarea
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white mb-5"
+              className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-white mb-5"
               placeholder="اكتب ردك على الطالب..."
             />
 
@@ -169,7 +169,7 @@ export function TeacherFeedback() {
               <button onClick={handleResolve} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold">
                 ✓ حفظ ووضع كمُعالَج
               </button>
-              <button onClick={() => setSelected(null)} className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
+              <button onClick={() => setSelected(null)} className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
                 إلغاء
               </button>
             </div>

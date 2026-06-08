@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildBunnyEmbedUrl, isBunnyEmbedSigningEnabled } from "@/lib/bunny-stream";
+import { getVdoCipherOtp } from "@/lib/vdocipher";
 
 // Verify an existing watch session (used when loading the watch page)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     video: {
       id: watchSession.video.id,
       title: watchSession.video.title,
-      bunnyId: watchSession.video.bunnyId,
+      vdoCipherId: watchSession.video.vdoCipherId,
       courseId: course.id,
       courseTitle: course.title,
     },
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { studentId: session.id, usedWatchSlot: true, video: { folder: { courseId: course.id } } },
     });
 
-    const activeEmbedUrl = buildBunnyEmbedUrl(video.bunnyId, isBunnyEmbedSigningEnabled());
+    const vdoData = await getVdoCipherOtp(video.vdoCipherId);
 
     return NextResponse.json({
       sessionToken: activeSession.sessionToken,
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       remainingWatches: Math.max(0, course.maxWatchCount - activeUsedWatchCount),
       totalWatches: course.maxWatchCount,
       usedWatches: activeUsedWatchCount,
-      embedUrl: activeEmbedUrl,
+      embedUrl: vdoData.embedUrl,
       reused: true,
     });
   }
@@ -195,9 +195,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  // Build the signed Bunny URL (1-hour expiry so the CDN token expires within the session)
-  const bunnySigned = isBunnyEmbedSigningEnabled();
-  const embedUrl = buildBunnyEmbedUrl(video.bunnyId, bunnySigned);
+  // Build the VdoCipher OTP url
+  const vdoData = await getVdoCipherOtp(video.vdoCipherId);
 
   return NextResponse.json({
     sessionToken,
@@ -207,6 +206,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     remainingWatches: course.maxWatchCount - usedWatchCount - 1,
     totalWatches: course.maxWatchCount,
     usedWatches: usedWatchCount + 1,
-    embedUrl,
+    embedUrl: vdoData.embedUrl,
   });
 }

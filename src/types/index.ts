@@ -50,7 +50,7 @@ export interface FolderWithContent {
 export interface VideoItem {
   id: string;
   title: string;
-  bunnyId: string;
+  vdoCipherId: string;
   order: number;
 }
 

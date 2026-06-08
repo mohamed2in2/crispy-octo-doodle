@@ -16,7 +16,7 @@ type SeedCourseInput = {
   discountExpiresAt?: Date;
   folders: Array<{
     name: string;
-    videos: Array<{ title: string; bunnyId: string }>;
+    videos: Array<{ title: string; vdoCipherId: string }>;
     quizzes: Array<{
       title: string;
       questions: Array<{
@@ -93,7 +93,7 @@ async function saveCourse(teacherId: string, courseInput: SeedCourseInput) {
         videos: {
           create: folder.videos.map((video, videoIndex) => ({
             title: video.title,
-            bunnyId: video.bunnyId,
+            vdoCipherId: video.vdoCipherId,
             order: videoIndex,
           })),
         },
@@ -178,13 +178,13 @@ async function main() {
     isPaid: true, price: 120, contactPhone: "01012345601",
     discountPercent: 100, discountExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     folders: [
-      { name: "الحدود الجبرية", videos: [{ title: "مقدمة الحدود الجبرية", bunnyId: "alge-v1" }, { title: "عمليات على الحدود", bunnyId: "alge-v2" }],
+      { name: "الحدود الجبرية", videos: [{ title: "مقدمة الحدود الجبرية", vdoCipherId: "alge-v1" }, { title: "عمليات على الحدود", vdoCipherId: "alge-v2" }],
         quizzes: [{ title: "اختبار الحدود", questions: [
           { question: "ناتج 3س + 5س يساوي؟", optionA: "8س", optionB: "15س", optionC: "2س", optionD: "س^8", correctAnswer: "A" },
           { question: "تحليل س² - 9 هو؟", optionA: "(س-9)(س+1)", optionB: "(س-3)(س+3)", optionC: "(س+9)(س-1)", optionD: "لا يُحلَّل", correctAnswer: "B" },
           { question: "مربع الثنائي (س+3)² يساوي؟", optionA: "س²+9", optionB: "س²+3س+9", optionC: "س²+6س+9", optionD: "س²+6س", correctAnswer: "C" },
         ]}] },
-      { name: "المعادلات والمتراجحات", videos: [{ title: "حل المعادلة الخطية", bunnyId: "alge-v3" }, { title: "المتراجحات", bunnyId: "alge-v4" }],
+      { name: "المعادلات والمتراجحات", videos: [{ title: "حل المعادلة الخطية", vdoCipherId: "alge-v3" }, { title: "المتراجحات", vdoCipherId: "alge-v4" }],
         quizzes: [{ title: "اختبار المعادلات", questions: [
           { question: "حل المعادلة 2س + 4 = 10 هو؟", optionA: "س=2", optionB: "س=3", optionC: "س=4", optionD: "س=7", correctAnswer: "B" },
           { question: "إذا كان 3س > 9 فإن؟", optionA: "س > 3", optionB: "س < 3", optionC: "س = 3", optionD: "س > 6", correctAnswer: "A" },
@@ -200,13 +200,13 @@ async function main() {
     isPaid: true, price: 150, contactPhone: "01098765432",
     discountPercent: 30, discountExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     folders: [
-      { name: "مفاهيم الحركة", videos: [{ title: "المسافة والإزاحة", bunnyId: "phys-v1" }, { title: "السرعة المتوسطة", bunnyId: "phys-v2" }],
+      { name: "مفاهيم الحركة", videos: [{ title: "المسافة والإزاحة", vdoCipherId: "phys-v1" }, { title: "السرعة المتوسطة", vdoCipherId: "phys-v2" }],
         quizzes: [{ title: "اختبار الحركة", questions: [
           { question: "وحدة قياس السرعة هي؟", optionA: "متر", optionB: "م/ث", optionC: "ثانية", optionD: "نيوتن", correctAnswer: "B" },
           { question: "جسم يتحرك 60م في 3 ثوانٍ، سرعته؟", optionA: "10 م/ث", optionB: "15 م/ث", optionC: "20 م/ث", optionD: "30 م/ث", correctAnswer: "C" },
           { question: "الإزاحة كمية...؟", optionA: "قياسية", optionB: "متجهة", optionC: "ثابتة", optionD: "نسبية", correctAnswer: "B" },
         ]}] },
-      { name: "قوانين نيوتن", videos: [{ title: "القانون الأول لنيوتن", bunnyId: "phys-v3" }, { title: "القانون الثاني والثالث", bunnyId: "phys-v4" }],
+      { name: "قوانين نيوتن", videos: [{ title: "القانون الأول لنيوتن", vdoCipherId: "phys-v3" }, { title: "القانون الثاني والثالث", vdoCipherId: "phys-v4" }],
         quizzes: [{ title: "اختبار نيوتن", questions: [
           { question: "القانون الأول لنيوتن يُعرف بقانون؟", optionA: "الجاذبية", optionB: "القصور الذاتي", optionC: "التسارع", optionD: "الفعل ورد الفعل", correctAnswer: "B" },
           { question: "ق = ك × ت، وحدة القوة هي؟", optionA: "جول", optionB: "واط", optionC: "نيوتن", optionD: "باسكال", correctAnswer: "C" },
@@ -220,13 +220,13 @@ async function main() {
     description: "قواعد اللغة العربية من نحو وصرف بأسلوب واضح ومبسط.",
     thumbnailUrl: "https://picsum.photos/seed/arabic/800/400",
     folders: [
-      { name: "المبتدأ والخبر", videos: [{ title: "تعريف المبتدأ والخبر", bunnyId: "arab-v1" }, { title: "أنواع الخبر", bunnyId: "arab-v2" }],
+      { name: "المبتدأ والخبر", videos: [{ title: "تعريف المبتدأ والخبر", vdoCipherId: "arab-v1" }, { title: "أنواع الخبر", vdoCipherId: "arab-v2" }],
         quizzes: [{ title: "اختبار المبتدأ والخبر", questions: [
           { question: "المبتدأ يكون مرفوعاً دائماً؟", optionA: "صح", optionB: "خطأ", optionC: "أحياناً", optionD: "نادراً", correctAnswer: "A" },
           { question: "في جملة 'العلم نور'، كلمة 'نور' هي؟", optionA: "مبتدأ", optionB: "خبر", optionC: "فاعل", optionD: "مفعول به", correctAnswer: "B" },
           { question: "الخبر الجملة الفعلية في: 'الطالبُ يذاكرُ'؟", optionA: "الطالب", optionB: "يذاكر", optionC: "ال", optionD: "لا خبر", correctAnswer: "B" },
         ]}] },
-      { name: "الفعل والفاعل", videos: [{ title: "أنواع الأفعال", bunnyId: "arab-v3" }, { title: "الفاعل ونائب الفاعل", bunnyId: "arab-v4" }],
+      { name: "الفعل والفاعل", videos: [{ title: "أنواع الأفعال", vdoCipherId: "arab-v3" }, { title: "الفاعل ونائب الفاعل", vdoCipherId: "arab-v4" }],
         quizzes: [{ title: "اختبار الفعل والفاعل", questions: [
           { question: "الفاعل يكون في محل رفع؟", optionA: "خطأ", optionB: "صح", optionC: "أحياناً", optionD: "غير محدد", correctAnswer: "B" },
           { question: "الفعل المضارع يبدأ بأحد حروف؟", optionA: "ب-ت-ث-ج", optionB: "أ-ن-ت-ي", optionC: "ك-ل-م-ن", optionD: "س-ش-ص-ض", correctAnswer: "B" },
@@ -242,13 +242,13 @@ async function main() {
     isPaid: true, price: 200, contactPhone: "01155556677",
     discountPercent: 50, discountExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     folders: [
-      { name: "الهيدروكربونات", videos: [{ title: "الألكانات والألكينات", bunnyId: "chem-v1" }, { title: "الألكاينات والبنزين", bunnyId: "chem-v2" }],
+      { name: "الهيدروكربونات", videos: [{ title: "الألكانات والألكينات", vdoCipherId: "chem-v1" }, { title: "الألكاينات والبنزين", vdoCipherId: "chem-v2" }],
         quizzes: [{ title: "اختبار الهيدروكربونات", questions: [
           { question: "الصيغة العامة للألكانات هي؟", optionA: "CₙH₂ₙ", optionB: "CₙH₂ₙ₊₂", optionC: "CₙH₂ₙ₋₂", optionD: "CₙHₙ", correctAnswer: "B" },
           { question: "الإيثين يحتوي على رابطة؟", optionA: "أحادية", optionB: "ثنائية", optionC: "ثلاثية", optionD: "تساهمية تناسقية", correctAnswer: "B" },
           { question: "عدد ذرات الكربون في الميثان؟", optionA: "1", optionB: "2", optionC: "3", optionD: "4", correctAnswer: "A" },
         ]}] },
-      { name: "التفاعلات العضوية", videos: [{ title: "تفاعلات الإضافة", bunnyId: "chem-v3" }, { title: "التفاعلات الاستبدالية", bunnyId: "chem-v4" }],
+      { name: "التفاعلات العضوية", videos: [{ title: "تفاعلات الإضافة", vdoCipherId: "chem-v3" }, { title: "التفاعلات الاستبدالية", vdoCipherId: "chem-v4" }],
         quizzes: [{ title: "اختبار التفاعلات", questions: [
           { question: "تفاعل الألكينات مع البروم يُسمى؟", optionA: "استبدال", optionB: "إضافة", optionC: "أكسدة", optionD: "تكثيف", correctAnswer: "B" },
           { question: "ناتج حرق الميثان كاملاً؟", optionA: "CO فقط", optionB: "CO₂ + H₂O", optionC: "C + H₂O", optionD: "CO₂ فقط", correctAnswer: "B" },
@@ -262,13 +262,13 @@ async function main() {
     description: "دراسة الخلية الحية وأسس علم الوراثة المندلية والجزيئية.",
     thumbnailUrl: "https://picsum.photos/seed/biology/800/400",
     folders: [
-      { name: "بناء الخلية", videos: [{ title: "أجزاء الخلية ووظائفها", bunnyId: "biol-v1" }, { title: "الغشاء الخلوي", bunnyId: "biol-v2" }],
+      { name: "بناء الخلية", videos: [{ title: "أجزاء الخلية ووظائفها", vdoCipherId: "biol-v1" }, { title: "الغشاء الخلوي", vdoCipherId: "biol-v2" }],
         quizzes: [{ title: "اختبار الخلية", questions: [
           { question: "العضية المسؤولة عن التنفس الخلوي؟", optionA: "النواة", optionB: "الميتوكوندريا", optionC: "الريبوسوم", optionD: "جهاز جولجي", correctAnswer: "B" },
           { question: "الغشاء الخلوي مكوّن أساساً من؟", optionA: "البروتين فقط", optionB: "الدهون فقط", optionC: "طبقة مزدوجة من الدهون والبروتين", optionD: "الكربوهيدرات", correctAnswer: "C" },
           { question: "الـ DNA موجود في؟", optionA: "الغشاء الخلوي", optionB: "النواة", optionC: "الميتوكوندريا فقط", optionD: "الريبوسوم", correctAnswer: "B" },
         ]}] },
-      { name: "الوراثة المندلية", videos: [{ title: "قوانين مندل", bunnyId: "biol-v3" }, { title: "الصفات الوراثية", bunnyId: "biol-v4" }],
+      { name: "الوراثة المندلية", videos: [{ title: "قوانين مندل", vdoCipherId: "biol-v3" }, { title: "الصفات الوراثية", vdoCipherId: "biol-v4" }],
         quizzes: [{ title: "اختبار الوراثة", questions: [
           { question: "الجين السائد يُرمز له بـ؟", optionA: "حرف صغير", optionB: "حرف كبير", optionC: "رقم", optionD: "رمز", correctAnswer: "B" },
           { question: "نتيجة تهجين AA × aa تعطي نسبة؟", optionA: "50% Aa", optionB: "100% AA", optionC: "100% Aa", optionD: "50% AA + 50% aa", correctAnswer: "C" },
@@ -283,13 +283,13 @@ async function main() {
     thumbnailUrl: "https://picsum.photos/seed/history/800/400",
     isPaid: true, price: 100, contactPhone: "01233334455",
     folders: [
-      { name: "مصر في القرن التاسع عشر", videos: [{ title: "الحملة الفرنسية وآثارها", bunnyId: "hist-v1" }, { title: "محمد علي وبناء الدولة", bunnyId: "hist-v2" }],
+      { name: "مصر في القرن التاسع عشر", videos: [{ title: "الحملة الفرنسية وآثارها", vdoCipherId: "hist-v1" }, { title: "محمد علي وبناء الدولة", vdoCipherId: "hist-v2" }],
         quizzes: [{ title: "اختبار القرن التاسع عشر", questions: [
           { question: "قائد الحملة الفرنسية على مصر؟", optionA: "نابليون بونابرت", optionB: "لويس الرابع عشر", optionC: "نيلسون", optionD: "كليبر", correctAnswer: "A" },
           { question: "معركة أبي قير البحرية انتصر فيها؟", optionA: "الفرنسيون", optionB: "المصريون", optionC: "الإنجليز", optionD: "العثمانيون", correctAnswer: "C" },
           { question: "أنشأ محمد علي مدرسة الطب في؟", optionA: "الإسكندرية", optionB: "قصر العيني", optionC: "الأزهر", optionD: "أسيوط", correctAnswer: "B" },
         ]}] },
-      { name: "الثورة والاستقلال", videos: [{ title: "ثورة 1919", bunnyId: "hist-v3" }, { title: "ثورة 1952", bunnyId: "hist-v4" }],
+      { name: "الثورة والاستقلال", videos: [{ title: "ثورة 1919", vdoCipherId: "hist-v3" }, { title: "ثورة 1952", vdoCipherId: "hist-v4" }],
         quizzes: [{ title: "اختبار الثورات", questions: [
           { question: "قائد ثورة 1919؟", optionA: "مصطفى كامل", optionB: "سعد زغلول", optionC: "محمد فريد", optionD: "أحمد عرابي", correctAnswer: "B" },
           { question: "قامت ثورة يوليو 1952 في؟", optionA: "23 يوليو", optionB: "26 يوليو", optionC: "19 يوليو", optionD: "30 يوليو", correctAnswer: "A" },
@@ -304,13 +304,13 @@ async function main() {
     thumbnailUrl: "https://picsum.photos/seed/english/800/400",
     isPaid: true, price: 175, contactPhone: "01066667788",
     folders: [
-      { name: "Tenses & Aspects", videos: [{ title: "Present Perfect vs Past Simple", bunnyId: "engl-v1" }, { title: "Future Forms", bunnyId: "engl-v2" }],
+      { name: "Tenses & Aspects", videos: [{ title: "Present Perfect vs Past Simple", vdoCipherId: "engl-v1" }, { title: "Future Forms", vdoCipherId: "engl-v2" }],
         quizzes: [{ title: "Tenses Quiz", questions: [
           { question: "Choose the correct tense: 'She ___ in Cairo since 2020.'", optionA: "lives", optionB: "has lived", optionC: "lived", optionD: "is living", correctAnswer: "B" },
           { question: "Which is correct for a future plan?", optionA: "I will go", optionB: "I am going to go", optionC: "I went", optionD: "I had gone", correctAnswer: "B" },
           { question: "Passive voice of 'They built the bridge'?", optionA: "The bridge is built", optionB: "The bridge was built", optionC: "The bridge has been built", optionD: "The bridge will be built", correctAnswer: "B" },
         ]}] },
-      { name: "Conditionals & Modals", videos: [{ title: "Zero and First Conditional", bunnyId: "engl-v3" }, { title: "Second and Third Conditional", bunnyId: "engl-v4" }],
+      { name: "Conditionals & Modals", videos: [{ title: "Zero and First Conditional", vdoCipherId: "engl-v3" }, { title: "Second and Third Conditional", vdoCipherId: "engl-v4" }],
         quizzes: [{ title: "Conditionals Quiz", questions: [
           { question: "Type 1 conditional: 'If it rains, I ___ stay home.'", optionA: "would", optionB: "will", optionC: "had", optionD: "should", correctAnswer: "B" },
           { question: "Type 2 conditional uses which tense in the if-clause?", optionA: "Past simple", optionB: "Present simple", optionC: "Past perfect", optionD: "Future", correctAnswer: "A" },
@@ -325,13 +325,13 @@ async function main() {
     thumbnailUrl: "https://picsum.photos/seed/geometry/800/400",
     isPaid: true, price: 130, contactPhone: "01012345601",
     folders: [
-      { name: "حساب المثلثات", videos: [{ title: "الزوايا والمثلثات", bunnyId: "math2-v1" }, { title: "النسب المثلثية", bunnyId: "math2-v2" }],
+      { name: "حساب المثلثات", videos: [{ title: "الزوايا والمثلثات", vdoCipherId: "math2-v1" }, { title: "النسب المثلثية", vdoCipherId: "math2-v2" }],
         quizzes: [{ title: "اختبار المثلثات", questions: [
           { question: "sin 90° يساوي؟", optionA: "0", optionB: "1", optionC: "-1", optionD: "½", correctAnswer: "B" },
           { question: "cos 0° يساوي؟", optionA: "0", optionB: "-1", optionC: "1", optionD: "√2/2", correctAnswer: "C" },
           { question: "tan 45° يساوي؟", optionA: "0", optionB: "√3", optionC: "½", optionD: "1", correctAnswer: "D" },
         ]}] },
-      { name: "التفاضل والتكامل", videos: [{ title: "مفهوم المشتقة", bunnyId: "math2-v3" }, { title: "قواعد التفاضل", bunnyId: "math2-v4" }],
+      { name: "التفاضل والتكامل", videos: [{ title: "مفهوم المشتقة", vdoCipherId: "math2-v3" }, { title: "قواعد التفاضل", vdoCipherId: "math2-v4" }],
         quizzes: [{ title: "اختبار التفاضل", questions: [
           { question: "مشتقة الثابت تساوي؟", optionA: "الثابت نفسه", optionB: "1", optionC: "0", optionD: "غير محددة", correctAnswer: "C" },
           { question: "مشتقة س³ تساوي؟", optionA: "3س", optionB: "3س²", optionC: "س²", optionD: "2س³", correctAnswer: "B" },
@@ -346,13 +346,13 @@ async function main() {
     thumbnailUrl: "https://picsum.photos/seed/energy/800/400",
     isPaid: true, price: 180, contactPhone: "01098765432",
     folders: [
-      { name: "أشكال الطاقة", videos: [{ title: "الطاقة الحركية والكامنة", bunnyId: "phys2-v1" }, { title: "الطاقة الكهربائية", bunnyId: "phys2-v2" }],
+      { name: "أشكال الطاقة", videos: [{ title: "الطاقة الحركية والكامنة", vdoCipherId: "phys2-v1" }, { title: "الطاقة الكهربائية", vdoCipherId: "phys2-v2" }],
         quizzes: [{ title: "اختبار الطاقة", questions: [
           { question: "الطاقة الحركية تساوي؟", optionA: "mgh", optionB: "½mv²", optionC: "mv", optionD: "ma", correctAnswer: "B" },
           { question: "وحدة قياس الطاقة؟", optionA: "نيوتن", optionB: "واط", optionC: "جول", optionD: "باسكال", correctAnswer: "C" },
           { question: "قانون حفظ الطاقة ينص على أن الطاقة؟", optionA: "تُخلق من العدم", optionB: "تتحول ولا تفنى", optionC: "تفنى دائماً", optionD: "ثابتة في جميع الحالات", correctAnswer: "B" },
         ]}] },
-      { name: "الفيزياء الحديثة", videos: [{ title: "الإشعاع والنظائر", bunnyId: "phys2-v3" }, { title: "فيزياء الكم", bunnyId: "phys2-v4" }],
+      { name: "الفيزياء الحديثة", videos: [{ title: "الإشعاع والنظائر", vdoCipherId: "phys2-v3" }, { title: "فيزياء الكم", vdoCipherId: "phys2-v4" }],
         quizzes: [{ title: "اختبار الفيزياء الحديثة", questions: [
           { question: "اكتشف النيوترون العالم؟", optionA: "رذرفورد", optionB: "تشادويك", optionC: "بور", optionD: "أينشتاين", correctAnswer: "B" },
           { question: "نصف عمر النظير المشع هو الزمن اللازم لـ؟", optionA: "تحلل كامل العينة", optionB: "تحلل نصف العينة", optionC: "مضاعفة العينة", optionD: "استقرار العينة", correctAnswer: "B" },
@@ -366,13 +366,13 @@ async function main() {
     description: "دراسة الشعر والنثر في العصر الحديث مع أبرز الأدباء والتيارات.",
     thumbnailUrl: "https://picsum.photos/seed/literature/800/400",
     folders: [
-      { name: "الشعر الحديث", videos: [{ title: "مدارس الشعر الحديث", bunnyId: "lit-v1" }, { title: "أبرز شعراء النهضة", bunnyId: "lit-v2" }],
+      { name: "الشعر الحديث", videos: [{ title: "مدارس الشعر الحديث", vdoCipherId: "lit-v1" }, { title: "أبرز شعراء النهضة", vdoCipherId: "lit-v2" }],
         quizzes: [{ title: "اختبار الشعر الحديث", questions: [
           { question: "رائد الشعر المرسل في مصر؟", optionA: "أحمد شوقي", optionB: "أمير الشعراء", optionC: "نازك الملائكة", optionD: "حافظ إبراهيم", correctAnswer: "A" },
           { question: "لقب أحمد شوقي؟", optionA: "شاعر النيل", optionB: "أمير الشعراء", optionC: "شاعر القطرين", optionD: "شاعر العروبة", correctAnswer: "B" },
           { question: "ديوان 'وحي الرسالة' لـ؟", optionA: "العقاد", optionB: "المازني", optionC: "طه حسين", optionD: "المنفلوطي", correctAnswer: "A" },
         ]}] },
-      { name: "النثر الحديث", videos: [{ title: "فن المقالة", bunnyId: "lit-v3" }, { title: "الرواية العربية الحديثة", bunnyId: "lit-v4" }],
+      { name: "النثر الحديث", videos: [{ title: "فن المقالة", vdoCipherId: "lit-v3" }, { title: "الرواية العربية الحديثة", vdoCipherId: "lit-v4" }],
         quizzes: [{ title: "اختبار النثر", questions: [
           { question: "رائد الرواية العربية الحديثة؟", optionA: "طه حسين", optionB: "نجيب محفوظ", optionC: "يوسف إدريس", optionD: "توفيق الحكيم", correctAnswer: "B" },
           { question: "نجيب محفوظ حصل على جائزة نوبل عام؟", optionA: "1978", optionB: "1984", optionC: "1988", optionD: "1992", correctAnswer: "C" },

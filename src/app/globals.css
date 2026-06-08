@@ -4,11 +4,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
+  --background: #e0f2fe; /* light blue (sky-100) */
   --foreground: #0f172a;
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
-  --card: rgba(255, 255, 255, 0.78);
+  --card: rgba(240, 249, 255, 0.85); /* sky-50 with opacity */
   --border: rgba(148, 163, 184, 0.22);
   --muted: #64748b;
 }

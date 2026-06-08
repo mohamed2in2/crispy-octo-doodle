@@ -13,6 +13,7 @@ const superadminSections = [
   { id: "deleted-students", icon: "�", label: "الطلاب المرشحون" },
   { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
   { id: "create", icon: "➕", label: "إضافة مدرس" },
+  { id: "daily-exams", icon: "🏆", label: "امتحانات لوحة الشرف" },
   { id: "logs", icon: "📋", label: "سجلات النشاط" },
   { id: "staff-accounts", icon: "👥", label: "المشرفون والموظفون" },
   { id: "errors", icon: "🚨", label: "مراقبة الأخطاء" },
@@ -62,16 +63,16 @@ export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }
     : teacherSections;
 
   return (
-    <aside className="w-64 bg-gray-900 border-l border-gray-800 flex flex-col min-h-screen">
+    <aside className="w-64 bg-white dark:bg-gray-900 border-l border-slate-200 dark:border-gray-800 flex flex-col min-h-screen">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-800">
+      <div className="p-6 border-b border-slate-200 dark:border-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold">م</span>
+            <span className="text-slate-900 dark:text-white font-bold">م</span>
           </div>
           <div>
-            <p className="font-bold text-white text-sm">منصة التعليم</p>
-            <p className="text-xs text-gray-400">{ROLE_BADGE[role] ?? role}</p>
+            <p className="font-bold text-slate-900 dark:text-white text-sm">منصة التعليم</p>
+            <p className="text-xs text-slate-500 dark:text-gray-400">{ROLE_BADGE[role] ?? role}</p>
           </div>
         </div>
       </div>
@@ -85,7 +86,7 @@ export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-right ${
               activeSection === s.id
                 ? "bg-blue-600/20 text-blue-400 border border-blue-600/30"
-                : "text-gray-400 hover:text-white hover:bg-gray-800"
+                : "text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white hover:bg-white dark:bg-gray-800"
             }`}
           >
             <span>{s.icon}</span>
@@ -95,7 +96,7 @@ export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-slate-200 dark:border-gray-800">
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"

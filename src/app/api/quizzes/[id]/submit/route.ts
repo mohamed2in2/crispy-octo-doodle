@@ -84,6 +84,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     create: { studentId: session.id, quizId, score, totalQ },
   });
 
+  // Points Logic
+  if (session.role === "student") {
+    const { addPoints, POINTS } = await import("@/lib/points");
+    let pointsEarned = 0;
+    
+    if (!existingResult && passed) {
+      pointsEarned += POINTS.FIRST_TRY_BONUS;
+    }
+    if (score === 100) {
+      pointsEarned += POINTS.EXAM_FULL_SCORE;
+    }
+    
+    if (pointsEarned > 0) {
+      await addPoints(session.id, pointsEarned);
+    }
+  }
+
   return NextResponse.json({
     result,
     correct,

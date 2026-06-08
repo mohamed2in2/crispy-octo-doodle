@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
+import { Trophy } from "lucide-react";
 
 interface NavbarProps {
   user?: { name: string; role: string } | null;
@@ -32,15 +33,25 @@ export function Navbar({ user }: NavbarProps) {
     <nav className="sticky top-0 z-50 border-b border-white/40 dark:border-white/5 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
-            <div className="hidden sm:block">
-              <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
-              <div className="text-xs text-slate-500 dark:text-slate-300">
-                <span className="block">منصة تعليمية متميزة</span>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2">
+              <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
+              <div className="hidden sm:block">
+                <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
+                <div className="text-xs text-slate-500 dark:text-slate-300">
+                  <span className="block">منصة تعليمية متميزة</span>
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+
+            <Link 
+              href="/leaderboard" 
+              className="p-2 flex items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors border border-yellow-200 dark:border-yellow-500/30 shadow-sm"
+              title="لوحة الشرف"
+            >
+              <Trophy className="w-5 h-5" />
+            </Link>
+          </div>
 
           <div className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link) => (

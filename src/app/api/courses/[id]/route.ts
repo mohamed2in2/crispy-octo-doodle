@@ -35,6 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               },
             },
           },
+          materials: { orderBy: { order: "asc" } },
           quizzes: {
             select: ({
               id: true,
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     maxWatchCount: course.maxWatchCount,
     folders: course.folders.map((folder) => ({
       ...folder,
-      videos: folder.videos.map((video) => ({ ...video, bunnyId: undefined })),
+      videos: folder.videos.map((video) => ({ ...video, vdoCipherId: undefined })),
       quizzes: folder.quizzes.map((quiz) => {
         const q = quiz as unknown as {
           id: string;

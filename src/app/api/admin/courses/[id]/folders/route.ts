@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const folders = await prisma.folder.findMany({
     where: { courseId: id },
-    include: { videos: { orderBy: { order: "asc" } }, quizzes: { include: { questions: { orderBy: { order: "asc" } } } } },
+    include: { videos: { orderBy: { order: "asc" } }, quizzes: { include: { questions: { orderBy: { order: "asc" } } } }, materials: { orderBy: { order: "asc" } } },
     orderBy: { order: "asc" },
   });
   return NextResponse.json({ folders });

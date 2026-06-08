@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
     const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
     await setAuthCookie(token);
 
+    // Points Logic: Award daily login points
+    const { awardDailyLoginPoints } = await import("@/lib/points");
+    await awardDailyLoginPoints(user.id);
+
     return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });
   } catch (err) {
     console.error("Login error:", err);

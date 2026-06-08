@@ -24,6 +24,7 @@ interface StudentDetail {
   id: string;
   name: string;
   email: string;
+  points: number;
   age: number | null;
   phone: string | null;
   parentPhone: string | null;
@@ -222,6 +223,7 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <InfoRow label="السن" value={data.student.age ? `${data.student.age} سنة` : "—"} />
+                  <InfoRow label="النقاط الأكاديمية" value={data.student.points?.toString() || "0"} mono />
                   <InfoRow label="رقم الطالب" value={data.student.phone ?? "—"} mono />
                   <InfoRow label="رقم ولي الأمر" value={data.student.parentPhone ?? "—"} mono />
                   <InfoRow label="تاريخ التسجيل" value={fmtDate(data.student.createdAt)} />
@@ -232,10 +234,27 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                   />
                 </div>
 
-                {/* Action buttons — only shown when the role has write permissions */}
-                {(hasPermission(userRole, "suspend_student") || hasPermission(userRole, "soft_delete_student")) && (
+                {/* Action buttons */}
                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-700">
-                  {data.student.isActive ? (
+                  {/* Communication Options */}
+                  {data.student.phone && (
+                    <>
+                      <a href={`tel:${data.student.phone}`} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors" title="اتصال بالطالب">📞 الطالب</a>
+                      <a href={`https://wa.me/2${data.student.phone.startsWith('0') ? data.student.phone.slice(1) : data.student.phone}`} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 transition-colors" title="واتساب الطالب">💬 الطالب</a>
+                    </>
+                  )}
+                  {data.student.parentPhone && (
+                    <>
+                      <a href={`tel:${data.student.parentPhone}`} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 transition-colors" title="اتصال بولي الأمر">📞 ولي الأمر</a>
+                      <a href={`https://wa.me/2${data.student.parentPhone.startsWith('0') ? data.student.parentPhone.slice(1) : data.student.parentPhone}`} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 transition-colors" title="واتساب ولي الأمر">💬 ولي الأمر</a>
+                    </>
+                  )}
+                  
+                  {/* Admin Controls */}
+                  {(hasPermission(userRole, "suspend_student") || hasPermission(userRole, "soft_delete_student")) && (
+                    <>
+                      <div className="w-px h-6 bg-gray-700 mx-1 self-center" />
+                      {data.student.isActive ? (
                     <button
                       onClick={() => setPendingAction("suspend")}
                       className="px-4 py-2 text-xs font-semibold rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 transition-colors"
@@ -258,8 +277,9 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                     🗑️ أرشفة الحساب
                   </button>
                   )}
+                    </>
+                  )}
                 </div>
-                )}
               </div>
 
               {/* Enrolled courses */}

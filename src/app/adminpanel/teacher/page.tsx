@@ -40,9 +40,10 @@ interface Course {
 interface Folder {
   id: string;
   name: string;
-  videos?: Array<{ id: string; title: string; bunnyId?: string }>;
+  videos?: Array<{ id: string; title: string; vdoCipherId?: string }>;
   quizzes?: Array<{ id: string }>;
-  _count?: { videos?: number; quizzes?: number };
+  materials?: Array<{ id: string; title: string; type: string; url: string }>;
+  _count?: { videos?: number; quizzes?: number; materials?: number };
 }
 
 interface AccessCode {
@@ -68,12 +69,13 @@ export default function TeacherDashboardPage() {
     title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", contactPhone: "",
   });
   const [newFolder, setNewFolder] = useState("");
-  const [newVideo, setNewVideo] = useState({ title: "", bunnyId: "", folderId: "" });
+  const [newVideo, setNewVideo] = useState({ title: "", vdoCipherId: "", folderId: "" });
   const [newQuiz, setNewQuiz] = useState({
     title: "", folderId: "",
     timeLimitMinutes: 30,
     questions: [{ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" }],
   });
+  const [newMaterial, setNewMaterial] = useState({ title: "", url: "", type: "pdf", folderId: "" });
   const [courseSettings, setCourseSettings] = useState({
     title: "",
     subject: "",
@@ -235,11 +237,11 @@ export default function TeacherDashboardPage() {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newVideo.title, bunnyId: newVideo.bunnyId }),
+      body: JSON.stringify({ title: newVideo.title, vdoCipherId: newVideo.vdoCipherId }),
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
-      setNewVideo({ title: "", bunnyId: "", folderId: "" });
+      setNewVideo({ title: "", vdoCipherId: "", folderId: "" });
       if (selectedCourse) fetchFolders(selectedCourse.id);
       notify("success", "✅ تم إضافة الفيديو بنجاح");
     } else {
@@ -281,6 +283,43 @@ export default function TeacherDashboardPage() {
       notify("success", "✅ تم إضافة الاختبار بنجاح");
     } else {
       notify("error", data?.error || "تعذر إضافة الاختبار");
+    }
+  };
+
+  const addMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMaterial.folderId) return;
+    const res = await fetch(`/api/admin/folders/${newMaterial.folderId}/materials`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newMaterial.title, url: newMaterial.url, type: newMaterial.type }),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    if (res.ok) {
+      setNewMaterial({ title: "", url: "", type: "pdf", folderId: "" });
+      if (selectedCourse) fetchFolders(selectedCourse.id);
+      notify("success", "✅ تم إضافة الملحق بنجاح");
+    } else {
+      notify("error", data?.error || "تعذر إضافة الملحق");
+    }
+  };
+
+  const deleteMaterial = async (materialId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الملحق؟")) return;
+    if (!selectedCourse) return;
+    const res = await fetch(`/api/admin/courses/${selectedCourse.id}/materials`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ materialId }),
+    });
+    const data = await readJson<{ error?: string }>(res);
+    if (res.ok) {
+      if (selectedCourse) fetchFolders(selectedCourse.id);
+      notify("success", "✅ تم حذف الملحق بنجاح");
+    } else {
+      notify("error", data?.error || "تعذر حذف الملحق");
     }
   };
 
@@ -393,13 +432,13 @@ export default function TeacherDashboardPage() {
   const totalStudents = courses.reduce((a: number, c: Course) => a + (c._count?.accessCodes || 0), 0);
 
   return (
-    <div className="flex min-h-screen bg-gray-950 text-white">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-gray-950 text-white">
       <AdminSidebar role="teacher" activeSection={activeSection} setActiveSection={setActiveSection} onLogout={handleLogout} />
 
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-white">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
             {activeSection === "dashboard" && "لوحة التحكم"}
             {activeSection === "courses" && (selectedCourse ? `📚 ${selectedCourse.title}` : "الكورسات")}
             {activeSection === "quiz-results" && "نتائج الاختبارات"}
@@ -427,32 +466,32 @@ export default function TeacherDashboardPage() {
                   { label: "الطلاب", value: totalStudents, icon: "👨‍🎓", color: "text-green-400" },
                   { label: "إجمالي الفيديوهات", value: courses.reduce((a: number, c: Course) => a + (c.folders?.reduce((b: number, f: Folder) => b + (f._count?.videos || 0), 0) || 0), 0), icon: "🎬", color: "text-purple-400" },
                 ].map((s) => (
-                  <div key={s.label} className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+                  <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
                     <div className={`text-3xl font-black ${s.color}`}>{s.value}</div>
-                    <div className="text-gray-400 text-sm mt-1">{s.icon} {s.label}</div>
+                    <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">{s.icon} {s.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 dark:border-gray-700">
                   <h2 className="font-bold">كورساتي</h2>
                 </div>
                 {loading ? (
-                  <div className="p-8 text-center text-gray-500">جارٍ التحميل...</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-gray-500">جارٍ التحميل...</div>
                 ) : (
                   <div className="divide-y divide-gray-700">
                     {courses.map((c) => (
-                      <div key={c.id} className="p-4 flex items-center justify-between hover:bg-gray-750 cursor-pointer" onClick={() => selectCourse(c)}>
+                      <div key={c.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:bg-gray-750 cursor-pointer" onClick={() => selectCourse(c)}>
                         <div>
                           <p className="font-medium">{c.title}</p>
-                          <p className="text-xs text-gray-400">{c.subject} • {c._count?.accessCodes || 0} طالب</p>
+                          <p className="text-xs text-slate-500 dark:text-gray-400">{c.subject} • {c._count?.accessCodes || 0} طالب</p>
                         </div>
                         <span className="text-blue-400 text-sm">←</span>
                       </div>
                     ))}
                     {courses.length === 0 && (
-                      <div className="p-8 text-center text-gray-500">لا توجد كورسات بعد</div>
+                      <div className="p-8 text-center text-slate-500 dark:text-gray-500">لا توجد كورسات بعد</div>
                     )}
                   </div>
                 )}
@@ -464,8 +503,8 @@ export default function TeacherDashboardPage() {
           {activeSection === "courses" && (
             <>
               {!selectedCourse ? (
-                <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-                  <div className="p-4 border-b border-gray-700 flex justify-between">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
+                  <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex justify-between">
                     <h2 className="font-bold">كورساتي ({courses.length})</h2>
                     <button onClick={() => setActiveSection("create-course")} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm rounded-lg">
                       + كورس جديد
@@ -489,7 +528,7 @@ export default function TeacherDashboardPage() {
                           )}
                           <div>
                             <p className="font-medium">{c.title}</p>
-                            <p className="text-xs text-gray-400">{c.subject} • {c._count?.accessCodes || 0} طالب • {c.folders?.length || 0} محاضرة</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">{c.subject} • {c._count?.accessCodes || 0} طالب • {c.folders?.length || 0} محاضرة</p>
                           </div>
                         </div>
                         <button onClick={() => deleteCourse(c.id)} className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors">
@@ -497,19 +536,19 @@ export default function TeacherDashboardPage() {
                         </button>
                       </div>
                     ))}
-                    {courses.length === 0 && <div className="p-8 text-center text-gray-500">لا توجد كورسات</div>}
+                    {courses.length === 0 && <div className="p-8 text-center text-slate-500 dark:text-gray-500">لا توجد كورسات</div>}
                   </div>
                 </div>
               ) : (
                 /* Selected course detail */
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <button onClick={() => setSelectedCourse(null)} className="text-gray-400 hover:text-white">← رجوع</button>
+                    <button onClick={() => setSelectedCourse(null)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white">← رجوع</button>
                   </div>
 
                   {/* Folders & Content */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 lg:col-span-2">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 lg:col-span-2">
                       <h3 className="font-bold mb-4">⚙️ إعدادات الكورس</h3>
                       <form onSubmit={saveCourseSettings} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
@@ -517,21 +556,21 @@ export default function TeacherDashboardPage() {
                           value={courseSettings.title}
                           onChange={(e) => setCourseSettings({ ...courseSettings, title: e.target.value })}
                           placeholder="عنوان الكورس"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
                           value={courseSettings.subject}
                           onChange={(e) => setCourseSettings({ ...courseSettings, subject: e.target.value })}
                           placeholder="المادة"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
                           value={courseSettings.educationalStage}
                           onChange={(e) => setCourseSettings({ ...courseSettings, educationalStage: e.target.value })}
                           placeholder="المرحلة الدراسية"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <div className="md:col-span-2">
                           <input
@@ -539,16 +578,16 @@ export default function TeacherDashboardPage() {
                             value={courseSettings.thumbnailUrl}
                             onChange={(e) => setCourseSettings({ ...courseSettings, thumbnailUrl: e.target.value })}
                             placeholder="رابط الصورة المصغرة"
-                            className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
-                          <p className="mt-1 text-xs text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
                         </div>
                         <textarea
                           rows={3}
                           value={courseSettings.description}
                           onChange={(e) => setCourseSettings({ ...courseSettings, description: e.target.value })}
                           placeholder="وصف الكورس"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none md:col-span-2"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none md:col-span-2"
                         />
                         <input
                           type="number"
@@ -557,7 +596,7 @@ export default function TeacherDashboardPage() {
                           value={courseSettings.maxWatchCount}
                           onChange={(e) => setCourseSettings({ ...courseSettings, maxWatchCount: Number(e.target.value) || 3 })}
                           placeholder="عدد المشاهدات المسموح بها لكل طالب"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 md:col-span-2"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 md:col-span-2"
                           dir="ltr"
                         />
                         <input
@@ -565,7 +604,7 @@ export default function TeacherDashboardPage() {
                           value={courseSettings.homeworkUrl}
                           onChange={(e) => setCourseSettings({ ...courseSettings, homeworkUrl: e.target.value })}
                           placeholder="رابط صفحة الواجب المنزلي"
-                          className="px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 md:col-span-2"
+                          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 md:col-span-2"
                           dir="ltr"
                         />
                         <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm rounded-lg md:col-span-2">
@@ -575,7 +614,7 @@ export default function TeacherDashboardPage() {
                     </div>
 
                     {/* Pricing Settings */}
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 lg:col-span-2">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 lg:col-span-2">
                       <h3 className="font-bold mb-4">💰 تسعير الكورس</h3>
                       <form onSubmit={savePricingSettings} className="space-y-4">
                         {/* Free / Paid toggle */}
@@ -586,7 +625,7 @@ export default function TeacherDashboardPage() {
                             className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                               !pricingSettings.isPaid
                                 ? "bg-emerald-600 border-emerald-500 text-white"
-                                : "bg-gray-900 border-gray-600 text-gray-400 hover:border-gray-500"
+                                : "bg-white dark:bg-gray-900 border-slate-300 dark:border-gray-600 text-slate-500 dark:text-gray-400 hover:border-gray-500"
                             }`}
                           >
                             مجاني
@@ -597,7 +636,7 @@ export default function TeacherDashboardPage() {
                             className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                               pricingSettings.isPaid
                                 ? "bg-blue-600 border-blue-500 text-white"
-                                : "bg-gray-900 border-gray-600 text-gray-400 hover:border-gray-500"
+                                : "bg-white dark:bg-gray-900 border-slate-300 dark:border-gray-600 text-slate-500 dark:text-gray-400 hover:border-gray-500"
                             }`}
                           >
                             مدفوع
@@ -607,7 +646,7 @@ export default function TeacherDashboardPage() {
                         {pricingSettings.isPaid && (
                           <div className="space-y-3 border border-blue-900/40 bg-blue-950/20 rounded-xl p-4">
                             <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">السعر الأصلي (جنيه) *</label>
+                              <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">السعر الأصلي (جنيه) *</label>
                               <input
                                 type="number"
                                 min={0}
@@ -615,7 +654,7 @@ export default function TeacherDashboardPage() {
                                 value={pricingSettings.price}
                                 onChange={(e) => setPricingSettings({ ...pricingSettings, price: e.target.value })}
                                 placeholder="مثال: 150"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 dir="ltr"
                               />
                             </div>
@@ -627,7 +666,7 @@ export default function TeacherDashboardPage() {
                           <p className="text-xs font-bold text-orange-400 uppercase tracking-wide">خصم محدود المدة (اختياري)</p>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">نسبة الخصم %</label>
+                              <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">نسبة الخصم %</label>
                               <input
                                 type="number"
                                 min={0}
@@ -636,17 +675,17 @@ export default function TeacherDashboardPage() {
                                 value={pricingSettings.discountPercent}
                                 onChange={(e) => setPricingSettings({ ...pricingSettings, discountPercent: e.target.value })}
                                 placeholder="مثال: 20"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 dir="ltr"
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">تاريخ انتهاء العرض</label>
+                              <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">تاريخ انتهاء العرض</label>
                               <input
                                 type="datetime-local"
                                 value={pricingSettings.discountExpiresAt}
                                 onChange={(e) => setPricingSettings({ ...pricingSettings, discountExpiresAt: e.target.value })}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 dir="ltr"
                               />
                             </div>
@@ -672,7 +711,7 @@ export default function TeacherDashboardPage() {
                     </div>
 
                   {/* Add Folder */}
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6">
                       <h3 className="font-bold mb-4">📁 إضافة محاضرة</h3>
                       <form onSubmit={createFolder} className="flex gap-2">
                         <input
@@ -680,7 +719,7 @@ export default function TeacherDashboardPage() {
                           value={newFolder}
                           onChange={(e) => setNewFolder(e.target.value)}
                           placeholder="مثال: المحاضرة الأولى"
-                          className="flex-1 px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm rounded-lg">إضافة</button>
                       </form>
@@ -688,22 +727,39 @@ export default function TeacherDashboardPage() {
                       {/* Folders list */}
                       <div className="mt-4 space-y-3">
                         {folders.map((f) => (
-                          <div key={f.id} className="bg-gray-900 rounded-xl p-3 border border-gray-700">
+                          <div key={f.id} className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-slate-200 dark:border-gray-700">
                             <p className="font-medium text-sm mb-2">📁 {f.name}</p>
-                            <div className="text-xs text-gray-400 flex gap-4">
+                            <div className="text-xs text-slate-500 dark:text-gray-400 flex gap-4">
                               <span>🎬 {f.videos?.length || 0} فيديو</span>
                               <span>📝 {f.quizzes?.length || 0} اختبار</span>
+                              <span>📎 {f.materials?.length || 0} ملحق</span>
                             </div>
                             <div className="mt-3 space-y-2">
                               {f.videos?.map((video) => (
-                                <div key={video.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-950/60 px-3 py-2">
+                                <div key={video.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950/60 px-3 py-2">
                                   <div className="min-w-0">
-                                    <p className="text-sm text-white truncate">🎬 {video.title}</p>
+                                    <p className="text-sm text-slate-900 dark:text-white truncate">🎬 {video.title}</p>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => deleteVideo(video.id)}
-                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-red-300 hover:text-white hover:bg-red-500/20 transition-colors"
+                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-red-300 hover:text-slate-900 dark:text-white hover:bg-red-500/20 transition-colors"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              ))}
+                              {f.materials?.map((m) => (
+                                <div key={m.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-950/60 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-slate-900 dark:text-white truncate">
+                                      {m.type === "pdf" ? "📄" : "🔗"} {m.title}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteMaterial(m.id)}
+                                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-red-300 hover:text-slate-900 dark:text-white hover:bg-red-500/20 transition-colors"
                                   >
                                     حذف
                                   </button>
@@ -716,13 +772,13 @@ export default function TeacherDashboardPage() {
                     </div>
 
                     {/* Add Video */}
-                    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">
-                      <h3 className="font-bold mb-4">🎬 إضافة فيديو (Bunny CDN)</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6">
+                      <h3 className="font-bold mb-4">🎬 إضافة فيديو (VdoCipher CDN)</h3>
                       <form onSubmit={addVideo} className="space-y-3">
                         <select
                           value={newVideo.folderId}
                           onChange={(e) => setNewVideo({ ...newVideo, folderId: e.target.value })}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">اختر المحاضرة</option>
                           {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -732,32 +788,73 @@ export default function TeacherDashboardPage() {
                           value={newVideo.title}
                           onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })}
                           placeholder="عنوان الفيديو"
-                          className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
-                          value={newVideo.bunnyId}
-                          onChange={(e) => setNewVideo({ ...newVideo, bunnyId: e.target.value })}
-                          placeholder="Bunny Video ID"
+                          value={newVideo.vdoCipherId}
+                          onChange={(e) => setNewVideo({ ...newVideo, vdoCipherId: e.target.value })}
+                          placeholder="VdoCipher Video ID"
                           dir="ltr"
-                          className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                         />
-                        <button type="submit" disabled={!newVideo.folderId || !newVideo.title || !newVideo.bunnyId} className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm rounded-lg">
+                        <button type="submit" disabled={!newVideo.folderId || !newVideo.title || !newVideo.vdoCipherId} className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm rounded-lg">
                           إضافة الفيديو
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Add Material */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6">
+                      <h3 className="font-bold mb-4">📎 إضافة ملحقات (PDF / روابط)</h3>
+                      <form onSubmit={addMaterial} className="space-y-3">
+                        <select
+                          value={newMaterial.folderId}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, folderId: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">اختر المحاضرة</option>
+                          {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                        </select>
+                        <select
+                          value={newMaterial.type}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="pdf">ملف PDF (رابط)</option>
+                          <option value="link">رابط خارجي</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={newMaterial.title}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, title: e.target.value })}
+                          placeholder="عنوان الملحق"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="url"
+                          value={newMaterial.url}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, url: e.target.value })}
+                          placeholder="الرابط (URL)"
+                          dir="ltr"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                        />
+                        <button type="submit" disabled={!newMaterial.folderId || !newMaterial.title || !newMaterial.url} className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-sm rounded-lg">
+                          إضافة الملحق
                         </button>
                       </form>
                     </div>
                   </div>
 
                   {/* Add Quiz */}
-                  <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6">
                     <h3 className="font-bold mb-4">📝 إضافة اختبار</h3>
                     <form onSubmit={addQuiz} className="space-y-4">
                       <div className="flex gap-3">
                         <select
                           value={newQuiz.folderId}
                           onChange={(e) => setNewQuiz({ ...newQuiz, folderId: e.target.value })}
-                          className="flex-1 px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">اختر المحاضرة</option>
                           {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -767,7 +864,7 @@ export default function TeacherDashboardPage() {
                           value={newQuiz.title}
                           onChange={(e) => setNewQuiz({ ...newQuiz, title: e.target.value })}
                           placeholder="عنوان الاختبار"
-                          className="flex-1 px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="number"
@@ -776,13 +873,13 @@ export default function TeacherDashboardPage() {
                           value={newQuiz.timeLimitMinutes}
                           onChange={(e) => setNewQuiz({ ...newQuiz, timeLimitMinutes: Number(e.target.value) || 30 })}
                           placeholder="الوقت بالدقائق"
-                          className="w-44 px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-44 px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
 
                       {/* Questions */}
                       {newQuiz.questions.map((q, qi) => (
-                        <div key={qi} className="bg-gray-900 rounded-xl p-4 border border-gray-700 space-y-3">
+                        <div key={qi} className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-slate-200 dark:border-gray-700 space-y-3">
                           <p className="text-sm font-medium text-gray-300">السؤال {qi + 1}</p>
                           <input
                             type="text"
@@ -793,12 +890,12 @@ export default function TeacherDashboardPage() {
                               setNewQuiz({ ...newQuiz, questions: qs });
                             }}
                             placeholder="نص السؤال"
-                            className="w-full px-3 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <div className="grid grid-cols-2 gap-2">
                             {(["A", "B", "C", "D"] as const).map((opt) => (
                               <div key={opt} className="flex gap-2 items-center">
-                                <span className={`text-xs font-bold px-2 py-1 rounded ${q.correctAnswer === opt ? "bg-green-600 text-white" : "bg-gray-700 text-gray-400"}`}>{opt}</span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded ${q.correctAnswer === opt ? "bg-green-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400"}`}>{opt}</span>
                                 <input
                                   type="text"
                                   value={q[`option${opt}` as keyof typeof q] as string}
@@ -808,13 +905,13 @@ export default function TeacherDashboardPage() {
                                     setNewQuiz({ ...newQuiz, questions: qs });
                                   }}
                                   placeholder={`الخيار ${opt}`}
-                                  className="flex-1 px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </div>
                             ))}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">الإجابة الصحيحة:</span>
+                            <span className="text-xs text-slate-500 dark:text-gray-400">الإجابة الصحيحة:</span>
                             {(["A", "B", "C", "D"] as const).map((opt) => (
                               <button
                                 key={opt}
@@ -825,7 +922,7 @@ export default function TeacherDashboardPage() {
                                   setNewQuiz({ ...newQuiz, questions: qs });
                                 }}
                                 className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                                  q.correctAnswer === opt ? "bg-green-600 text-white" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                                  q.correctAnswer === opt ? "bg-green-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-slate-500 dark:text-gray-400 hover:bg-gray-600"
                                 }`}
                               >
                                 {opt}
@@ -842,7 +939,7 @@ export default function TeacherDashboardPage() {
                             ...newQuiz,
                             questions: [...newQuiz.questions, { question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" }],
                           })}
-                          className="px-4 py-2 border border-gray-600 hover:border-gray-500 text-gray-400 hover:text-white text-sm rounded-lg transition-colors"
+                          className="px-4 py-2 border border-slate-300 dark:border-gray-600 hover:border-gray-500 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white text-sm rounded-lg transition-colors"
                         >
                           + سؤال جديد
                         </button>
@@ -867,7 +964,7 @@ export default function TeacherDashboardPage() {
               <div className="mb-6">
                 <p className="text-sm uppercase tracking-[0.3em] text-blue-400/80 mb-2">Course Builder</p>
                 <h2 className="text-2xl font-black mb-2">إنشاء كورس جديد</h2>
-                <p className="text-sm text-gray-400 max-w-xl leading-7">
+                <p className="text-sm text-slate-500 dark:text-gray-400 max-w-xl leading-7">
                   املأ بيانات الكورس مرة واحدة وسيظهر مباشرة في لوحة المدرس والواجهة العامة.
                 </p>
               </div>
@@ -875,12 +972,12 @@ export default function TeacherDashboardPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">عنوان الكورس *</label>
                   <input type="text" required value={newCourse.title} onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
-                    placeholder="رياضيات ثالث ثانوي" className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    placeholder="رياضيات ثالث ثانوي" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">المادة *</label>
                   <select required value={newCourse.subject} onChange={(e) => setNewCourse({ ...newCourse, subject: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">اختر المادة</option>
                     {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -888,7 +985,7 @@ export default function TeacherDashboardPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">المرحلة الدراسية *</label>
                   <select required value={newCourse.educationalStage} onChange={(e) => setNewCourse({ ...newCourse, educationalStage: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">اختر المرحلة</option>
                     {EDUCATIONAL_STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
@@ -897,22 +994,22 @@ export default function TeacherDashboardPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-1">رابط الصورة المصغرة</label>
                   <input type="url" value={newCourse.thumbnailUrl} onChange={(e) => setNewCourse({ ...newCourse, thumbnailUrl: e.target.value })}
                     placeholder="https://example.com/image.jpg" dir="ltr"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p className="mt-1 text-xs text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1 أفقية)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">وصف الكورس</label>
                   <textarea rows={3} value={newCourse.description} onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                     placeholder="وصف مختصر للكورس..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">رقم واتسآب لبيع الأكواد <span className="text-gray-500 font-normal">(مدفوع فقط)</span></label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">رقم واتسآب لبيع الأكواد <span className="text-slate-500 dark:text-gray-500 font-normal">(مدفوع فقط)</span></label>
                   <input type="tel" value={newCourse.contactPhone} onChange={(e) => setNewCourse({ ...newCourse, contactPhone: e.target.value })}
                     placeholder="مثال: 01012345678" dir="ltr"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                <button type="submit" disabled={creatingCourse} className="w-full py-3.5 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-700 hover:opacity-95 disabled:opacity-60 text-white font-semibold rounded-xl transition-opacity shadow-lg shadow-blue-900/30">
+                <button type="submit" disabled={creatingCourse} className="w-full py-3.5 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-700 hover:opacity-95 disabled:opacity-60 text-slate-900 dark:text-white font-semibold rounded-xl transition-opacity shadow-lg shadow-blue-900/30">
                   {creatingCourse ? "جارٍ إنشاء الكورس..." : "إنشاء الكورس"}
                 </button>
               </form>
@@ -924,12 +1021,12 @@ export default function TeacherDashboardPage() {
             <>
               {!selectedCourse ? (
                 <div>
-                  <p className="text-gray-400 mb-4">اختر كورساً لإدارة أكواده:</p>
+                  <p className="text-slate-500 dark:text-gray-400 mb-4">اختر كورساً لإدارة أكواده:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {courses.map((c) => (
-                      <div key={c.id} className="bg-gray-800 rounded-2xl p-4 border border-gray-700 cursor-pointer hover:border-blue-600 transition-colors" onClick={() => selectCourse(c)}>
+                      <div key={c.id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-slate-200 dark:border-gray-700 cursor-pointer hover:border-blue-600 transition-colors" onClick={() => selectCourse(c)}>
                         <p className="font-bold">{c.title}</p>
-                        <p className="text-sm text-gray-400">{c._count?.accessCodes || 0} كود</p>
+                        <p className="text-sm text-slate-500 dark:text-gray-400">{c._count?.accessCodes || 0} كود</p>
                       </div>
                     ))}
                   </div>
@@ -937,7 +1034,7 @@ export default function TeacherDashboardPage() {
               ) : (
                 <div>
                   <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => setSelectedCourse(null)} className="text-gray-400 hover:text-white">← رجوع</button>
+                    <button onClick={() => setSelectedCourse(null)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white">← رجوع</button>
                     <h2 className="font-bold">{selectedCourse.title} - الأكواد</h2>
                     <div className="mr-auto flex gap-2">
                       {[1, 5, 10].map((n) => (
@@ -948,22 +1045,22 @@ export default function TeacherDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-                    <div className="grid grid-cols-4 gap-4 p-3 bg-gray-900 text-xs text-gray-400 border-b border-gray-700 font-medium">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
+                    <div className="grid grid-cols-4 gap-4 p-3 bg-white dark:bg-gray-900 text-xs text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-700 font-medium">
                       <span>الكود</span>
                       <span>الطالب</span>
                       <span>الحالة</span>
                       <span>إجراء</span>
                     </div>
                     {codes.length === 0 ? (
-                      <div className="p-8 text-center text-gray-500">لا توجد أكواد بعد</div>
+                      <div className="p-8 text-center text-slate-500 dark:text-gray-500">لا توجد أكواد بعد</div>
                     ) : (
                       <div className="divide-y divide-gray-700">
                         {codes.map((c) => (
                           <div key={c.id} className="grid grid-cols-4 gap-4 p-3 items-center text-sm">
                             <span className="font-mono text-blue-400 text-xs">{c.code}</span>
                             <span className="text-gray-300 truncate">{c.student?.name || "—"}</span>
-                            <span className={`inline-flex items-center gap-1 text-xs ${!c.student ? (c.isActive ? "text-green-400" : "text-gray-400") : c.isActive ? "text-green-400" : "text-red-400"}`}>
+                            <span className={`inline-flex items-center gap-1 text-xs ${!c.student ? (c.isActive ? "text-green-400" : "text-slate-500 dark:text-gray-400") : c.isActive ? "text-green-400" : "text-red-400"}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${!c.student ? (c.isActive ? "bg-green-400" : "bg-gray-400") : c.isActive ? "bg-green-400" : "bg-red-400"}`} />
                               {!c.student ? (c.isActive ? "متاح" : "معطل") : c.isActive ? "مسجل" : "محظور"}
                             </span>
@@ -988,23 +1085,23 @@ export default function TeacherDashboardPage() {
           {/* STUDENTS */}
           {activeSection === "students" && (
             <div>
-              <p className="text-gray-400 mb-4">اختر كورساً لعرض طلابه:</p>
+              <p className="text-slate-500 dark:text-gray-400 mb-4">اختر كورساً لعرض طلابه:</p>
               {!selectedCourse ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {courses.map((c) => (
-                    <div key={c.id} className="bg-gray-800 rounded-2xl p-4 border border-gray-700 cursor-pointer hover:border-blue-600 transition-colors" onClick={() => selectCourse(c)}>
+                    <div key={c.id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-slate-200 dark:border-gray-700 cursor-pointer hover:border-blue-600 transition-colors" onClick={() => selectCourse(c)}>
                       <p className="font-bold">{c.title}</p>
-                      <p className="text-sm text-gray-400">{c._count?.accessCodes || 0} طالب مسجل</p>
+                      <p className="text-sm text-slate-500 dark:text-gray-400">{c._count?.accessCodes || 0} طالب مسجل</p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div>
                   <div className="flex items-center gap-3 mb-4">
-                    <button onClick={() => setSelectedCourse(null)} className="text-gray-400 hover:text-white">← رجوع</button>
+                    <button onClick={() => setSelectedCourse(null)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white">← رجوع</button>
                     <h2 className="font-bold">{selectedCourse.title} - الطلاب</h2>
                   </div>
-                  <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
                     <div className="divide-y divide-gray-700">
                       {codes.filter((c) => c.student).map((c) => (
                         <div key={c.id} className="p-4 flex items-center justify-between gap-3">
@@ -1014,7 +1111,7 @@ export default function TeacherDashboardPage() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-sm truncate">{c.student!.name}</p>
-                              <p className="text-xs text-gray-400 truncate">{c.student!.email}</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400 truncate">{c.student!.email}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -1042,7 +1139,7 @@ export default function TeacherDashboardPage() {
                         </div>
                       ))}
                       {codes.filter((c) => c.student).length === 0 && (
-                        <div className="p-8 text-center text-gray-500">لا يوجد طلاب مسجلون بعد</div>
+                        <div className="p-8 text-center text-slate-500 dark:text-gray-500">لا يوجد طلاب مسجلون بعد</div>
                       )}
                     </div>
                   </div>
