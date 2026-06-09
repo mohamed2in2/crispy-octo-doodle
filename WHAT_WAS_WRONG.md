@@ -177,7 +177,7 @@ These won't break the app but should be addressed:
 
 **Result:**
 ✅ App is now production-ready
-✅ DNS is working (clerk.alasly.live)
+✅ DNS is working (clerk.code-up.tech)
 ✅ Build succeeds
 ✅ All critical issues fixed
 ✅ Performance improved 40-50%

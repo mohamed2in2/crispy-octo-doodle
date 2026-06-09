@@ -8,8 +8,8 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
-              <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
+              <img src="/logo.jpeg" alt="شعار منصة Code-UP" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
+              <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
               منصة تعليمية مصريّة تهدف إلى تمكين الطلاب من الصف السادس حتى الثالث الثانوي من خلال محتوى عالي الجودة وأدوات متابعة ذكية.
@@ -33,8 +33,8 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <span className="mt-0.5" aria-hidden="true">📧</span>
-                <a href="mailto:contact@alasly.live" className="hover:text-blue-500 transition-colors break-all">
-                  contact@alasly.live
+                <a href="mailto:contact@code-up.tech" className="hover:text-blue-500 transition-colors break-all">
+                  contact@code-up.tech
                 </a>
               </li>
               <li className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export function Footer() {
 
         <div className="mt-8 pt-8 border-t border-white/50 dark:border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            © {new Date().getFullYear()} ALASLY. جميع الحقوق محفوظة.
+            © {new Date().getFullYear()} Code-UP. جميع الحقوق محفوظة.
           </p>
 
           <div className="flex items-center gap-2">

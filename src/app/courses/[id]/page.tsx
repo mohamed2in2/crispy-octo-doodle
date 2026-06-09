@@ -250,8 +250,8 @@ export default function CourseProductPage() {
               "description": course.description || `كورس ${course.subject} للمرحلة ${STAGE_LABELS[course.educationalStage] || course.educationalStage}`,
               "provider": {
                 "@type": "Organization",
-                "name": "منصة الأصلي التعليمية",
-                "url": "https://alasly.live"
+                "name": "منصة Code-UP التعليمية",
+                "url": "https://code-up.tech"
               },
               "educationalLevel": STAGE_LABELS[course.educationalStage] || course.educationalStage,
               "inLanguage": "ar",

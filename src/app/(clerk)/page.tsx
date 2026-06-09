@@ -47,10 +47,10 @@ export default function HomePage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Organization",
-            "name": "منصة الأصلي التعليمية",
-            "alternateName": "ALASLY",
-            "url": "https://alasly.live",
-            "logo": "https://alasly.live/logo.jpeg",
+            "name": "منصة Code-UP التعليمية",
+            "alternateName": "Code-UP",
+            "url": "https://code-up.tech",
+            "logo": "https://code-up.tech/logo.jpeg",
             "description": "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
             "contactPoint": {
               "@type": "ContactPoint",
@@ -60,7 +60,7 @@ export default function HomePage() {
               "availableLanguage": "Arabic"
             },
             "sameAs": [
-              "https://alasly.live"
+              "https://code-up.tech"
             ]
           })
         }}

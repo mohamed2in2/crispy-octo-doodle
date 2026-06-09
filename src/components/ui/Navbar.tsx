@@ -35,9 +35,9 @@ export function Navbar({ user }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <img src="/logo.jpeg" alt="شعار منصة الأصلي" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
+              <img src="/logo.jpeg" alt="شعار منصة Code-UP" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
               <div className="hidden sm:block">
-                <span className="font-black text-xl text-slate-900 dark:text-white">ALASLY</span>
+                <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
                 <div className="text-xs text-slate-500 dark:text-slate-300">
                   <span className="block">منصة تعليمية متميزة</span>
                 </div>

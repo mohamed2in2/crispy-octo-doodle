@@ -1,12 +1,12 @@
-# 🚀 DEPLOYMENT READY - alasly.live
+# 🚀 DEPLOYMENT READY - code-up.tech
 
 **Status:** ✅ ALL SYSTEMS GO
 
 ## Verification Complete ✓
 
-✅ **DNS:** clerk.alasly.live is resolving and serving Clerk JS
+✅ **DNS:** clerk.code-up.tech is resolving and serving Clerk JS
 ✅ **Code:** Application built successfully, no errors
-✅ **Config:** Environment variables correctly set for alasly.live
+✅ **Config:** Environment variables correctly set for code-up.tech
 ✅ **Security:** All headers and CORS properly configured
 ✅ **Error Handling:** Clerk error boundary in place
 
@@ -14,7 +14,7 @@
 
 ```
 HTTP/2 200 OK
-https://clerk.alasly.live/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
+https://clerk.code-up.tech/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
 Content-Type: application/javascript
 CORS: Enabled
 Cache: Optimized
@@ -33,7 +33,7 @@ npm run start
 # Visit http://localhost:3000
 ```
 
-### Deploy to alasly.live
+### Deploy to code-up.tech
 Use your hosting provider's deployment process:
 - GitHub Pages
 - Vercel
@@ -44,26 +44,26 @@ Use your hosting provider's deployment process:
 ### After Deployment
 
 1. **Test Sign-In:**
-   - Visit https://www.alasly.live/login
+   - Visit https://www.code-up.tech/login
    - Verify Clerk form loads
 
 2. **Test Sign-Up:**
-   - Visit https://www.alasly.live/signup
+   - Visit https://www.code-up.tech/signup
    - Create a test account
 
 3. **Test Protected Routes:**
-   - Visit https://www.alasly.live/library
+   - Visit https://www.code-up.tech/library
    - Verify authentication works
 
 4. **Monitor Console:**
    - Open DevTools (F12)
    - Check for any Clerk errors
-   - Verify no 404s on clerk.alasly.live resources
+   - Verify no 404s on clerk.code-up.tech resources
 
 ## Troubleshooting
 
 If issues occur, check:
-1. Domain is alasly.live in browser
+1. Domain is code-up.tech in browser
 2. Environment variables are set correctly
 3. Check browser console for errors
 4. See CLERK_FIX.md for detailed troubleshooting

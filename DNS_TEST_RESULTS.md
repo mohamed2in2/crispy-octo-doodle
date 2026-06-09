@@ -4,7 +4,7 @@
 
 ### 1. Clerk Subdomain Resolution ✓
 ```
-✓ clerk.alasly.live is now ACCESSIBLE
+✓ clerk.code-up.tech is now ACCESSIBLE
 ✓ HTTP Status: 405 (Method Not Allowed - expected for root)
 ✓ Server: Cloudflare CDN
 ✓ Headers show: x-clerk-trace-id (Clerk is responding)
@@ -12,8 +12,8 @@
 
 ### 2. Clerk JS Script Loading ✓
 ```
-✓ https://clerk.alasly.live/npm/@clerk/clerk-js@6/dist/clerk.browser.js
-✓ Redirects (307) to: clerk.alasly.live/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
+✓ https://clerk.code-up.tech/npm/@clerk/clerk-js@6/dist/clerk.browser.js
+✓ Redirects (307) to: clerk.code-up.tech/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
 ✓ Final URL returns: HTTP/2 200 OK ✓
 ✓ Content-Type: application/javascript ✓
 ✓ CORS headers: Enabled ✓
@@ -40,7 +40,7 @@ JSD Version: 6.12.0
 
 🎉 **DNS Configuration is WORKING!**
 
-✅ clerk.alasly.live is resolving correctly
+✅ clerk.code-up.tech is resolving correctly
 ✅ Clerk CDN is serving the JS library
 ✅ All security headers are in place
 ✅ CORS is properly configured
@@ -48,19 +48,19 @@ JSD Version: 6.12.0
 ## What This Means
 
 Your app can now:
-- ✅ Load Clerk authentication JS from clerk.alasly.live
+- ✅ Load Clerk authentication JS from clerk.code-up.tech
 - ✅ Initialize Clerk provider without errors
 - ✅ Support sign-in/sign-up flows
 - ✅ Handle user sessions properly
 
-## Next Step: Deploy to alasly.live
+## Next Step: Deploy to code-up.tech
 
 The app is ready for production deployment. Build and deploy with:
 
 ```bash
 npm run build
 npm run start
-# Deploy to alasly.live hosting
+# Deploy to code-up.tech hosting
 ```
 
 No code changes needed! Everything is configured correctly.

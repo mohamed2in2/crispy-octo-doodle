@@ -38,9 +38,9 @@ export function AuthShell({
       <header className="relative z-10 flex items-center justify-between px-4 sm:px-8 py-5">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-            <span className="text-white font-black text-lg">A</span>
+            <span className="text-white font-black text-lg">C</span>
           </div>
-          <span className="font-black text-lg text-slate-900 dark:text-white">ALASLY</span>
+          <span className="font-black text-lg text-slate-900 dark:text-white">Code-UP</span>
         </Link>
         <DarkModeToggle />
       </header>

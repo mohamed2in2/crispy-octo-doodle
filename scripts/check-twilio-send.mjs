@@ -38,7 +38,7 @@ async function run() {
     }
 
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
-    const body = new URLSearchParams({ To: to, From: from, Body: 'ALASLY test message' });
+    const body = new URLSearchParams({ To: to, From: from, Body: 'Code-UP test message' });
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: 'POST',
       headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },

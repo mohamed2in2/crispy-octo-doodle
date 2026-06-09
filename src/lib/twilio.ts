@@ -121,7 +121,7 @@ export async function sendVerificationSms(phone: string, code: string): Promise<
   // TWILIO_FROM_NUMBER can be any E.164 number (not necessarily Egyptian).
   const fromNumber = String(process.env.TWILIO_FROM_NUMBER || "");
   if (!fromNumber) throw new Error("TWILIO_FROM_NUMBER is required for Messaging API");
-  const body = new URLSearchParams({ To: toNumber, From: fromNumber, Body: `ALASLY verification code: ${code}. This code expires in 10 minutes.` });
+  const body = new URLSearchParams({ To: toNumber, From: fromNumber, Body: `Code-UP verification code: ${code}. This code expires in 10 minutes.` });
 
   const res = await fetchWithRetries(`${TWILIO_API_BASE}/Accounts/${accountSid}/Messages.json`, {
     method: "POST",

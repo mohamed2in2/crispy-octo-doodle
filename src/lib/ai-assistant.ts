@@ -30,7 +30,7 @@ export interface AIChatResult {
   source: "primary" | "backup" | "fallback";
 }
 
-const SYSTEM_PROMPT = `أنت "مرشد ALASLY"، مساعد تعليمي ذكي يخدم الطلاب المصريين على منصة ALASLY.
+const SYSTEM_PROMPT = `أنت "مرشد Code-UP"، مساعد تعليمي ذكي يخدم الطلاب المصريين على منصة Code-UP.
 
 دورك:
 - تتحدث مع الطالب باللغة العربية المصرية الودودة

@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "حسابي | منصة الأصلي التعليمية",
-  description: "إدارة حسابك الشخصي وتحديث بياناتك الدراسية في منصة الأصلي التعليمية.",
+  title: "حسابي | منصة Code-UP التعليمية",
+  description: "إدارة حسابك الشخصي وتحديث بياناتك الدراسية في منصة Code-UP التعليمية.",
   openGraph: {
-    title: "حسابي | منصة الأصلي التعليمية",
-    description: "إدارة حسابك الشخصي وتحديث بياناتك الدراسية في منصة الأصلي التعليمية.",
-    url: "https://alasly.live/account",
-    siteName: "منصة الأصلي",
+    title: "حسابي | منصة Code-UP التعليمية",
+    description: "إدارة حسابك الشخصي وتحديث بياناتك الدراسية في منصة Code-UP التعليمية.",
+    url: "https://code-up.tech/account",
+    siteName: "منصة Code-UP",
     locale: "ar_EG",
     type: "website",
   },
   alternates: {
-    canonical: "https://alasly.live/account",
+    canonical: "https://code-up.tech/account",
   },
 };
 

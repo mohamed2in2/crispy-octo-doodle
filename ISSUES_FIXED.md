@@ -107,7 +107,7 @@ headers: {
 
 🚀 **READY FOR DEPLOYMENT**
 
-- DNS: ✅ Working (clerk.alasly.live accessible)
+- DNS: ✅ Working (clerk.code-up.tech accessible)
 - Code: ✅ Fixed (all critical issues resolved)
 - Build: ✅ Success
 - Environment: ✅ Configured correctly
@@ -125,13 +125,13 @@ npm run build
 # 3. Test locally (optional)
 npm run start
 
-# 4. Deploy to alasly.live
+# 4. Deploy to code-up.tech
 # Use your hosting provider's deployment process
 
 # 5. Post-deployment verification
-# Test sign-in: https://www.alasly.live/login
-# Test sign-up: https://www.alasly.live/signup
-# Test protected: https://www.alasly.live/library
+# Test sign-in: https://www.code-up.tech/login
+# Test sign-up: https://www.code-up.tech/signup
+# Test protected: https://www.code-up.tech/library
 # Check console: F12 → Console (should be clean)
 ```
 

@@ -26,14 +26,14 @@ export function ContactSection() {
             <ul className="space-y-4">
               <li>
                 <a
-                  href="mailto:contact@alasly.live"
+                  href="mailto:contact@code-up.tech"
                   className="flex items-center gap-3 group"
                 >
                   <span className="w-9 h-9 rounded-lg bg-white dark:bg-gray-800 border border-blue-100 dark:border-gray-700 flex items-center justify-center shadow-sm shrink-0 group-hover:border-blue-400 transition-colors">
                     📧
                   </span>
                   <span className="text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors break-all text-sm font-medium">
-                    contact@alasly.live
+                    contact@code-up.tech
                   </span>
                 </a>
               </li>

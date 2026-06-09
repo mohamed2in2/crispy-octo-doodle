@@ -55,7 +55,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="تسجيل الدخول"
-      subtitle="أهلاً بعودتك إلى منصة ALASLY"
+      subtitle="أهلاً بعودتك إلى منصة Code-UP"
       footer={
         <>
           ليس لديك حساب؟{" "}
