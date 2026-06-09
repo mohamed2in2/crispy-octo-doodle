@@ -5,10 +5,10 @@ import {
   clearPhoneVerificationCookie,
   setAuthCookie,
   signToken,
-  verifyPhoneVerificationCookie,
 } from "@/lib/auth";
 import { normalizeEgyptPhone } from "@/lib/phone";
 import { isPhoneVerificationBypassed } from "@/lib/twilio";
+import { verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
 
 function normalizeStage(value: string) {
   return value.trim();
@@ -16,9 +16,9 @@ function normalizeStage(value: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, password, phone, parentPhone, age, educationalStage, verificationCode } = await req.json();
+    const { name, password, phone, parentPhone, age, educationalStage, firebaseToken } = await req.json();
 
-    if (!name || !password || !phone || !parentPhone || !age || !educationalStage || (!verificationCode && !isPhoneVerificationBypassed())) {
+    if (!name || !password || !phone || !parentPhone || !age || !educationalStage || (!firebaseToken && !isPhoneVerificationBypassed())) {
       return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
     }
 
@@ -29,12 +29,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "رقم الطالب لا يمكن أن يساوي رقم ولي الأمر" }, { status: 400 });
     }
 
-    const verified = await verifyPhoneVerificationCookie(normalizedPhone, String(verificationCode));
-    if (!verified) {
-      return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
+    if (!isPhoneVerificationBypassed() || firebaseToken !== "bypass") {
+      const firebaseUser = await verifyFirebaseIdToken(String(firebaseToken));
+      if (!firebaseUser || !firebaseUser.phoneNumber) {
+        return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
+      }
+
+      const normalizedFirebasePhone = normalizeEgyptPhone(firebaseUser.phoneNumber);
+      if (normalizedFirebasePhone !== normalizedPhone) {
+        return NextResponse.json({ error: "رقم الهاتف لا يتطابق مع الرقم الذي تم التحقق منه" }, { status: 400 });
+      }
     }
 
-    const generatedEmail = `${normalizedPhone.replace("+", "")}@students.alasly.live`;
+    const generatedEmail = `${normalizedPhone.replace("+", "")}@students.code-up.tech`;
 
     const existing = await prisma.user.findFirst({
       where: {

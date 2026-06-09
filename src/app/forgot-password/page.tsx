@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 
 type Step = "phone" | "reset" | "done";
 
@@ -17,6 +19,32 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isBypassed, setIsBypassed] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((c) => c - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {
+          console.error("Error clearing recaptcha verifier:", e);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+    };
+  }, []);
 
   const formatPhone = (p: string) => {
     const digits = p.replace(/\D/g, "");
@@ -42,10 +70,43 @@ export default function ForgotPasswordPage() {
         setError(data.error || "حدث خطأ");
         return;
       }
-      if (data.devCode) setDevCode(data.devCode);
+
+      if (data?.bypass) {
+        setIsBypassed(true);
+        setDevCode("123456");
+        setCode("123456");
+        setStep("reset");
+        return;
+      }
+
+      if (!auth) {
+        setError("فشل تهيئة Firebase Authentication");
+        return;
+      }
+
+      // Initialize Recaptcha Verifier on demand if it doesn't exist
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+        });
+      }
+
+      const formattedPhone = formatPhone(phone);
+      const confirmationResult = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        recaptchaVerifierRef.current
+      );
+
+      confirmationResultRef.current = confirmationResult;
+      setIsBypassed(false);
+      setDevCode(null);
       setStep("reset");
-    } catch {
-      setError("تعذر الاتصال بالخادم");
+      setCooldown(60);
+    } catch (err: any) {
+      console.error("Firebase Auth forgot-password error:", err);
+      const errCode = err?.code ? ` [${err.code}]` : "";
+      setError((err?.message || "تعذر إرسال كود التحقق. حاول مرة أخرى.") + errCode);
     } finally {
       setLoading(false);
     }
@@ -64,10 +125,31 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
+      let firebaseToken = "bypass";
+
+      if (!isBypassed) {
+        if (!confirmationResultRef.current) {
+          setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const userCredential = await confirmationResultRef.current.confirm(code);
+          const firebaseUser = userCredential.user;
+          firebaseToken = await firebaseUser.getIdToken();
+        } catch (err: any) {
+          console.error("Firebase verify code confirm error:", err);
+          setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatPhone(phone), code: code.trim(), newPassword }),
+        body: JSON.stringify({ phone: formatPhone(phone), firebaseToken, newPassword }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -215,6 +297,8 @@ export default function ForgotPasswordPage() {
           </div>
         )}
 
+        <div id="recaptcha-container"></div>
+
         <form onSubmit={handleSendCode} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -233,10 +317,10 @@ export default function ForgotPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || cooldown > 0}
             className="w-full py-3.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white font-bold rounded-xl transition-all shadow-md"
           >
-            {loading ? "جارٍ الإرسال..." : "إرسال كود التحقق"}
+            {loading ? "جارٍ الإرسال..." : cooldown > 0 ? `إعادة الإرسال خلال ${cooldown}ث` : "إرسال كود التحقق"}
           </button>
         </form>
       </div>

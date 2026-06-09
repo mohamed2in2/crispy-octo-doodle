@@ -20,7 +20,6 @@ type CourseData = {
     videos: Array<{
       id: string;
       title: string;
-      title: string;
       progress?: Array<{ watched: boolean }>;
     }>;
     materials: Array<{

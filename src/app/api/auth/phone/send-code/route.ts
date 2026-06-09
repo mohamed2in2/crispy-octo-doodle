@@ -1,26 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createPhoneVerificationChallenge,
-  setPhoneVerificationCookie,
-} from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { normalizeEgyptPhone } from "@/lib/phone";
-import {
-  generateVerificationCode,
-  isTwilioVerifyEnabled,
-  sendVerificationSms,
-  type TwilioSendResult,
-} from "@/lib/twilio";
-
-// Simple in-memory rate limiter (single-instance). For production use Redis or a shared store.
-const rateMap = new Map<string, { count: number; firstTs: number; lastTs: number }>();
-const RATE_WINDOW_MS = 60 * 1000; // 1 minute between sends to same number
-const MAX_PER_HOUR = 5;
-
-type SendCodeResponse = {
-  success: boolean;
-  method: TwilioSendResult["method"];
-  debugCode?: string;
-};
+import { isPhoneVerificationBypassed } from "@/lib/twilio";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,67 +10,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "رقم الطالب مطلوب" }, { status: 400 });
     }
 
-    console.log("Send-code request body phone:", typeof phone, JSON.stringify(phone));
     let normalizedPhone: string;
     try {
       normalizedPhone = normalizeEgyptPhone(phone);
-    } catch (e) {
-      console.error("normalizeEgyptPhone failed for:", JSON.stringify(phone), e);
-      throw e;
+    } catch {
+      return NextResponse.json({ error: "رقم الهاتف غير صالح" }, { status: 400 });
     }
 
-    // rate limiting per phone
-    const now = Date.now();
-    const entry = rateMap.get(normalizedPhone) || { count: 0, firstTs: now, lastTs: 0 };
-    // reset hourly window
-    if (now - entry.firstTs > 60 * 60 * 1000) {
-      entry.count = 0;
-      entry.firstTs = now;
-    }
-    if (entry.lastTs && now - entry.lastTs < RATE_WINDOW_MS) {
-      return NextResponse.json({ error: "يرجى الانتظار قبل طلب رمز جديد" }, { status: 429 });
-    }
-    if (entry.count >= MAX_PER_HOUR) {
-      return NextResponse.json({ error: "تجاوزت الحد الأقصى لطلبات الرمز اليوم" }, { status: 429 });
+    const generatedEmail = `${normalizedPhone.replace("+", "")}@students.code-up.tech`;
+
+    // Check if user already exists
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: generatedEmail }, { phone: normalizedPhone }],
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ error: "هذا الرقم مسجل بالفعل" }, { status: 409 });
     }
 
-    const code = generateVerificationCode();
-    const sendResult = await sendVerificationSms(normalizedPhone, code);
-    const method = sendResult.method || (isTwilioVerifyEnabled() ? "verify" : "sms");
+    const bypass = isPhoneVerificationBypassed();
 
-    // update limiter only on success
-    entry.count = entry.count + 1;
-    entry.lastTs = now;
-    rateMap.set(normalizedPhone, entry);
-
-    // If DEV_SKIP_SMS returned the code, include it in response for dev convenience
-    const responseBody: SendCodeResponse = { success: true, method };
-    if (sendResult.dev && sendResult.code) {
-      responseBody.debugCode = sendResult.code;
-    }
-
-    // create and set verification cookie (used for messaging flow). For Verify flow the cookie will still exist
-    // but verification will be performed using Twilio Verify check in signup.
-    const challenge = await createPhoneVerificationChallenge(normalizedPhone, code, method);
-    await setPhoneVerificationCookie(challenge);
-
-    return NextResponse.json(responseBody);
+    return NextResponse.json({ success: true, bypass });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("Send phone verification code error:", error instanceof Error ? error.stack || msg : msg);
-
-    if (msg.includes("Twilio credentials missing") || msg.includes("Authentication Error")) {
-      return NextResponse.json({ error: "خطأ في إعدادات Twilio (مصادقة). تحقق من مفاتيح API الخاصة بك" }, { status: 502 });
-    }
-
-    if (msg.includes("TWILIO_VERIFY_SERVICE_SID")) {
-      return NextResponse.json({ error: "خدمة التحقق (Verify) غير مفعلة أو SID مفقود" }, { status: 500 });
-    }
-
-    if (msg.includes("Twilio") && /30\d|40\d|50\d/.test(msg)) {
-      return NextResponse.json({ error: "مزود الرسائل رفض الطلب. تحقق من رقم المرسل أو بيانات الاعتماد" }, { status: 502 });
-    }
-
-    return NextResponse.json({ error: "تعذر إرسال رمز التحقق. تحقق من الرقم وأعد المحاولة." }, { status: 500 });
+    console.error("Phone verification code route error:", error);
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
 }

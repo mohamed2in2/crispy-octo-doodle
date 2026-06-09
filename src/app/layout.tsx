@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "منصة الأصلي التعليمية | تعلّم الرياضيات والعلوم للطلاب المصريين",
     description: "منصة تعليمية متكاملة للطلاب المصريين من الصف السادس حتى الثالث الثانوي. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم الدراسي.",
-    url: "https://alasly.live",
+    url: "https://code-up.tech",
     siteName: "منصة الأصلي",
     locale: "ar_EG",
     type: "website",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   alternates: {
-    canonical: "https://alasly.live",
+    canonical: "https://code-up.tech",
   },
 };
 

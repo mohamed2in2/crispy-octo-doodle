@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { EDUCATIONAL_STAGES } from "@/types";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -24,6 +26,32 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [codeMethod, setCodeMethod] = useState<"sms" | "verify" | "dev">("sms");
+  const [isBypassed, setIsBypassed] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((c) => c - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {
+          console.error("Error clearing recaptcha verifier:", e);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+    };
+  }, []);
 
   const canSendCode = useMemo(() => form.phone.trim().length >= 9, [form.phone]);
 
@@ -65,21 +93,44 @@ export default function SignupPage() {
         return;
       }
 
-      setCodeSent(true);
-      // If we got a debugCode (dev mode), autofill verification input to ease local testing
-      if (data?.debugCode) {
-        setForm((s) => ({ ...s, verificationCode: String(data.debugCode) }));
+      if (data?.bypass) {
+        setIsBypassed(true);
+        setCodeSent(true);
         setCodeMethod("dev");
-        setSuccess(`تم إرسال رمز التحقق إلى رقم الطالب (DEV). الكود: ${data.debugCode}`);
-      } else if (data?.method === "verify") {
-        setCodeMethod("verify");
-        setSuccess("تم إرسال رمز التحقق عبر Twilio Verify إلى رقم الطالب");
-      } else {
-        setCodeMethod("sms");
-        setSuccess("تم إرسال رمز التحقق إلى رقم الطالب");
+        setForm((s) => ({ ...s, verificationCode: "123456" }));
+        setSuccess("وضع التطوير مفعّل: تم تخطي التحقق من رقم الهاتف (DEV).");
+        return;
       }
-    } catch {
-      setError("تعذر إرسال الكود. حاول مرة أخرى.");
+
+      if (!auth) {
+        setError("فشل تهيئة Firebase Authentication");
+        return;
+      }
+
+      // Initialize Recaptcha Verifier on demand if it doesn't exist
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+        });
+      }
+
+      const formattedPhone = formatForSend(form.phone);
+      const confirmationResult = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        recaptchaVerifierRef.current
+      );
+
+      confirmationResultRef.current = confirmationResult;
+      setIsBypassed(false);
+      setCodeSent(true);
+      setCodeMethod("sms");
+      setSuccess("تم الارسال");
+      setCooldown(60);
+    } catch (err: any) {
+      console.error("Firebase Auth sendCode error:", err);
+      const errCode = err?.code ? ` [${err.code}]` : "";
+      setError((err?.message || "تعذر إرسال كود التحقق. حاول مرة أخرى.") + errCode);
     } finally {
       setSendingCode(false);
     }
@@ -104,6 +155,27 @@ export default function SignupPage() {
     }
 
     try {
+      let firebaseToken = "bypass";
+
+      if (!isBypassed) {
+        if (!confirmationResultRef.current) {
+          setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
+          setSigningUp(false);
+          return;
+        }
+
+        try {
+          const userCredential = await confirmationResultRef.current.confirm(form.verificationCode);
+          const firebaseUser = userCredential.user;
+          firebaseToken = await firebaseUser.getIdToken();
+        } catch (err: any) {
+          console.error("Firebase verify code confirm error:", err);
+          setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+          setSigningUp(false);
+          return;
+        }
+      }
+
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         credentials: "include",
@@ -115,7 +187,7 @@ export default function SignupPage() {
           age: form.age,
           educationalStage: form.educationalStage,
           password: form.password,
-          verificationCode: form.verificationCode,
+          firebaseToken,
         }),
       });
 
@@ -127,7 +199,8 @@ export default function SignupPage() {
 
       router.push("/");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("Signup submit error:", err);
       setError("حدث خطأ في الاتصال بالخادم.");
     } finally {
       setSigningUp(false);
@@ -267,6 +340,8 @@ export default function SignupPage() {
                 {!codeSent && "اضغط إرسال كود التحقق بعد كتابة رقم الطالب الصحيح."}
               </div>
 
+              <div id="recaptcha-container"></div>
+
               <div className="md:col-span-2 grid sm:grid-cols-[1fr_auto] gap-3 items-end">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رمز التحقق</label>
@@ -282,10 +357,10 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={sendCode}
-                  disabled={sendingCode || !canSendCode}
+                  disabled={sendingCode || !canSendCode || cooldown > 0}
                   className="h-12 px-5 rounded-xl bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
                 >
-                  {sendingCode ? "جارٍ الإرسال..." : codeSent ? "إعادة إرسال الكود" : "إرسال كود التحقق"}
+                  {sendingCode ? "جارٍ الإرسال..." : cooldown > 0 ? `إعادة الإرسال خلال ${cooldown}ث` : codeSent ? "إعادة إرسال الكود" : "إرسال كود التحقق"}
                 </button>
               </div>
             </div>

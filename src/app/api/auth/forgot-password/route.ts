@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeEgyptPhone } from "@/lib/phone";
-import {
-  createPhoneVerificationChallenge,
-  setPhoneVerificationCookie,
-} from "@/lib/auth";
-import {
-  sendVerificationSms,
-  generateVerificationCode,
-  isPhoneVerificationBypassed,
-} from "@/lib/twilio";
+import { isPhoneVerificationBypassed } from "@/lib/twilio";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findFirst({
       where: { phone: normalized, role: "student" },
-      select: { id: true, name: true },
+      select: { id: true },
     });
 
     if (!user) {
@@ -32,32 +24,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const code = generateVerificationCode();
+    const bypass = isPhoneVerificationBypassed();
 
-    let devCode: string | undefined;
-    try {
-      const result = await sendVerificationSms(normalized, code);
-      if (result.method === "dev") devCode = result.code;
-    } catch (err) {
-      console.error("forgot-password SMS error:", err);
-      return NextResponse.json(
-        { error: "تعذر إرسال رسالة التحقق، حاول مرة أخرى" },
-        { status: 500 }
-      );
-    }
-
-    const challengeToken = await createPhoneVerificationChallenge(
-      normalized,
-      code,
-      "sms"
-    );
-    const response = NextResponse.json({
-      message: "تم إرسال كود التحقق إلى هاتفك",
-      ...(isPhoneVerificationBypassed() && devCode ? { devCode } : {}),
+    return NextResponse.json({
+      success: true,
+      bypass,
     });
-
-    await setPhoneVerificationCookie(challengeToken);
-    return response;
   } catch (err) {
     console.error("forgot-password error:", err);
     return NextResponse.json(

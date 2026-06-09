@@ -423,6 +423,7 @@ export default function VideoWatchPage() {
               </div>
             </div>
           </div>
+        </div>
 
           {/* Footer hints */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 px-2">
