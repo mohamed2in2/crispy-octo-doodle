@@ -5,6 +5,8 @@ export const POINTS = {
   COURSE_ENROLLMENT: 20,
   DAILY_LOGIN_STREAK: 5, // per day
   FIRST_TRY_BONUS: 15,
+  DAILY_EXAM_QUESTION: 5, // 5 points per correct daily exam question
+  DAILY_EXAM_FULL_SCORE: 10, // 10 points bonus for perfect daily exam score
 };
 
 /**
@@ -62,10 +64,10 @@ export async function awardDailyLoginPoints(userId: string) {
  * @param totalQ Total number of questions
  */
 export async function awardDailyExamPoints(userId: string, score: number, totalQ: number) {
-  // Simple calculation: 10 points per correct answer, plus bonus for perfect score
-  let pointsToAward = score * 10;
+  // Balanced points: 5 points per correct answer + 10 points bonus for perfect score
+  let pointsToAward = score * POINTS.DAILY_EXAM_QUESTION;
   if (score === totalQ && totalQ > 0) {
-    pointsToAward += POINTS.EXAM_FULL_SCORE;
+    pointsToAward += POINTS.DAILY_EXAM_FULL_SCORE;
   }
 
   await prisma.user.update({

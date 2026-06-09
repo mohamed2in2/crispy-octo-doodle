@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Plus, ArrowRight, Save } from "lucide-react";
 import Link from "next/link";
+import { EDUCATIONAL_STAGES } from "@/types";
 
 export default function CreateDailyExamPage() {
   async function createExam(formData: FormData) {
@@ -72,10 +73,11 @@ export default function CreateDailyExamPage() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">المرحلة الدراسية</label>
               <select required name="educationalStage" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
-                <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-                <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                {EDUCATIONAL_STAGES.map((stage) => (
+                  <option key={stage.value} value={stage.value}>
+                    {stage.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

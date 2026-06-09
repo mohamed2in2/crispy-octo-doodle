@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { EDUCATIONAL_STAGES } from "@/types";
 
 interface Question {
   id: string;
@@ -28,7 +29,7 @@ export function DailyExamsSection() {
   const [loading, setLoading] = useState(true);
   const { success, error } = useToast();
 
-  const [newExam, setNewExam] = useState({ title: "", educationalStage: "secondary_3", date: "", timeLimitMinutes: 30 });
+  const [newExam, setNewExam] = useState({ title: "", educationalStage: "sec_3", date: "", timeLimitMinutes: 30 });
   const [selectedExam, setSelectedExam] = useState<DailyExam | null>(null);
   
   const [newQuestion, setNewQuestion] = useState({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" });
@@ -64,7 +65,7 @@ export function DailyExamsSection() {
     if (res.ok) {
       success("تم إنشاء الامتحان بنجاح");
       fetchExams();
-      setNewExam({ title: "", educationalStage: "secondary_3", date: "", timeLimitMinutes: 30 });
+      setNewExam({ title: "", educationalStage: "sec_3", date: "", timeLimitMinutes: 30 });
     } else {
       error(data.error || "خطأ في إنشاء الامتحان");
     }
@@ -223,9 +224,11 @@ export function DailyExamsSection() {
                   value={newExam.educationalStage} onChange={e => setNewExam({...newExam, educationalStage: e.target.value})} required
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-900 dark:text-white"
                 >
-                  <option value="secondary_1">الصف الأول الثانوي</option>
-                  <option value="secondary_2">الصف الثاني الثانوي</option>
-                  <option value="secondary_3">الصف الثالث الثانوي</option>
+                  {EDUCATIONAL_STAGES.map((stage) => (
+                    <option key={stage.value} value={stage.value}>
+                      {stage.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="w-full sm:w-48">

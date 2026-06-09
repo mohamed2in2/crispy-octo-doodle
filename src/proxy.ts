@@ -2,8 +2,6 @@ import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const JWT_SECRET = process.env.JWT_SECRET ? new TextEncoder().encode(process.env.JWT_SECRET) : null;
-
 /** Admin-panel sub-pages — require a valid session; redirect to /adminpanel on failure */
 const ADMIN_PANEL_PREFIXES = [
   "/adminpanel/superadmin",
@@ -44,14 +42,24 @@ function isAdminLoginPage(pathname: string) {
   return pathname === "/adminpanel" || pathname === "/adminpanel/";
 }
 
+// Read JWT_SECRET dynamically inside hasValidSession to handle hot-reloads and Edge runtime environment injection correctly.
 async function hasValidSession(req: NextRequest) {
-  if (!JWT_SECRET) return false;
+  const secretStr = process.env.JWT_SECRET;
+  if (!secretStr) {
+    console.warn("JWT_SECRET environment variable is missing in middleware context!");
+    return false;
+  }
   const token = req.cookies.get("auth_token")?.value;
-  if (!token) return false;
+  if (!token) {
+    console.log(`[Middleware] No auth_token cookie present for path: ${req.nextUrl.pathname}`);
+    return false;
+  }
   try {
-    await jwtVerify(token, JWT_SECRET);
+    const secret = new TextEncoder().encode(secretStr);
+    await jwtVerify(token, secret);
     return true;
-  } catch {
+  } catch (err: any) {
+    console.error(`[Middleware] JWT verification failed for path ${req.nextUrl.pathname}:`, err?.message || err);
     return false;
   }
 }

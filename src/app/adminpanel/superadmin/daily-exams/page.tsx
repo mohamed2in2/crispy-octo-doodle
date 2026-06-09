@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, Settings, Eye, Clock, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { EDUCATIONAL_STAGES } from "@/types";
 
 export default async function AdminDailyExamsPage() {
   const exams = await prisma.dailyExam.findMany({
@@ -11,6 +12,10 @@ export default async function AdminDailyExamsPage() {
       }
     }
   });
+
+  const getStageLabel = (stageCode: string) => {
+    return EDUCATIONAL_STAGES.find((s) => s.value === stageCode)?.label ?? stageCode;
+  };
 
   return (
     <div className="p-6">
@@ -45,7 +50,7 @@ export default async function AdminDailyExamsPage() {
             {exams.length > 0 ? exams.map((exam) => (
               <tr key={exam.id} className="hover:bg-slate-50 transition-colors">
                 <td className="py-4 px-6 font-medium text-slate-800">{exam.title}</td>
-                <td className="py-4 px-6 text-slate-600">{exam.educationalStage}</td>
+                <td className="py-4 px-6 text-slate-600">{getStageLabel(exam.educationalStage)}</td>
                 <td className="py-4 px-6 text-slate-600">
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-slate-400" />
