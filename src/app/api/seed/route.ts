@@ -20,7 +20,7 @@ export async function GET() {
 
     // 2. Create 10 Courses
     const coursesData = [
-      { title: "الفيزياء الشاملة - الصف الثالث الثانوي", subject: "فيزياء", educationalStage: "secondary_3", description: "شرح كامل وشامل لمنهج الفيزياء مدعم بالتجارب العملية وأسئلة النظام الجديد." },
+      { title: "الفيزياء الشاملة - المستوى المتقدم", subject: "فيزياء", educationalStage: "secondary_3", description: "شرح كامل وشامل لمنهج الفيزياء مدعم بالتجارب العملية وأسئلة النظام الجديد." },
       { title: "اللغة العربية - النحو والبلاغة", subject: "لغة عربية", educationalStage: "secondary_3", description: "تأسيس متكامل في النحو والبلاغة لضمان الدرجة النهائية." },
       { title: "الرياضيات التطبيقية - الميكانيكا", subject: "رياضيات", educationalStage: "secondary_2", description: "كورس مخصص لفهم الديناميكا والاستاتيكا بأسلوب مبسط." },
       { title: "الكيمياء العضوية", subject: "كيمياء", educationalStage: "secondary_3", description: "رحلة ممتعة في الكيمياء العضوية مع حل آلاف الأسئلة." },

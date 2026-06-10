@@ -86,77 +86,103 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
     "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all hover:border-blue-200 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-800">
-      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
+    <div className="group flex flex-col overflow-hidden rounded-3xl border border-transparent bg-white shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 dark:bg-[#151B2B] dark:shadow-black/20 relative">
+      {/* Thumbnail Area */}
+      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 m-2 rounded-2xl">
         {course.thumbnailUrl ? (
           <img
             src={course.thumbnailUrl}
             alt={`صورة مصغرة لكورس ${course.title}`}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-6xl">📚</div>
+          <div className="flex h-full w-full items-center justify-center text-white/50">
+            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+          </div>
         )}
-        <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${subjectClass}`}>
-            {course.subject}
+        
+        {/* Badges on Thumbnail */}
+        <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md bg-white/90 dark:bg-black/40 dark:text-white text-gray-900 shadow-sm border border-white/20`}>
+            {STAGE_LABELS[course.educationalStage ?? ""]?.split(" (")[0] || course.educationalStage || "عام"}
           </span>
+        </div>
+        
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {effectivelyFree && (
-            <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow">
+            <span className="rounded-full bg-emerald-500/90 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-sm">
               مجاني
             </span>
           )}
           {discountActive && !effectivelyFree && (
-            <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white shadow">
+            <span className="rounded-full bg-pink-500/90 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-sm">
               -{course.discountPercent}%
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <h2 className="mb-1 line-clamp-2 text-base font-bold text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+      {/* Content Area */}
+      <div className="flex flex-1 flex-col px-5 pb-5 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className={`text-xs font-medium ${subjectColors[course.subject ?? ""]?.split(" ")[1] || "text-purple-600 dark:text-purple-400"}`}>
+            {course.subject}
+          </span>
+          {course.isPaid && course.price != null && (
+            <div className="flex items-baseline gap-1.5">
+              {discountActive ? (
+                <>
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">
+                    {Math.round(course.price * (1 - (course.discountPercent ?? 0) / 100))} ج.م
+                  </span>
+                  <span className="text-xs text-gray-400 line-through">{course.price}</span>
+                </>
+              ) : (
+                <span className="text-sm font-bold text-gray-900 dark:text-white">{course.price} ج.م</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <h2 className="mb-2 line-clamp-2 text-lg font-bold text-gray-900 transition-colors group-hover:text-purple-600 dark:text-white dark:group-hover:text-purple-400">
           {course.title}
         </h2>
-        <p className="mb-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-          <span>👨‍🏫</span> {course.teacher.name}
-        </p>
-        <p className="mb-2 text-xs text-gray-400 dark:text-gray-500">
-          {STAGE_LABELS[course.educationalStage ?? ""] || course.educationalStage || ""}
+        
+        <p className="mb-4 flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+          <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px]">👨‍🏫</span> 
+          {course.teacher.name}
         </p>
 
-        {course.isPaid && course.price != null && (
-          <div className="mb-3 flex items-baseline gap-2">
-            {discountActive ? (
-              <>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                  {Math.round(course.price * (1 - (course.discountPercent ?? 0) / 100))} جنيه
-                </span>
-                <span className="text-xs text-gray-400 line-through">{course.price} جنيه</span>
-              </>
-            ) : (
-              <span className="text-sm font-bold text-gray-900 dark:text-white">{course.price} جنيه</span>
-            )}
+        <div className="mt-auto space-y-3">
+          <div className="flex items-center justify-end text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800/60 pb-3 mb-3">
+            <div className="flex items-center gap-1 text-amber-500">
+              <span className="font-medium">4.9</span>
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </div>
           </div>
-        )}
 
-        <div className="mt-auto space-y-2">
           <button
             onClick={() => router.push(`/courses/${course.id}`)}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 dark:border-gray-700 dark:bg-[#1A2235] dark:text-gray-300 dark:hover:border-purple-700 dark:hover:bg-purple-900/30"
             aria-label={`عرض تفاصيل كورس ${course.title}`}
           >
-            عرض الكورس
+            عرض التفاصيل
           </button>
+          
           {course.hasAccess && (
             <button
               onClick={() => router.push(`/courses/${course.id}/learn`)}
-              className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:opacity-90 shadow-md shadow-purple-500/20"
               aria-label={`الدخول إلى كورس ${course.title}`}
             >
-              ادخل الكورس
+              متابعة التعلم
             </button>
           )}
+          
           {!effectivelyFree && (
             <div className="flex gap-2">
               <input
@@ -166,13 +192,13 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
                 onKeyDown={(e) => e.key === "Enter" && applyCode()}
                 placeholder="أدخل كود الوصول"
                 maxLength={8}
-                className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-center font-mono text-sm tracking-widest text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center font-mono text-sm tracking-widest text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-700 dark:bg-[#1A2235] dark:text-white transition-all"
                 dir="ltr"
               />
               <button
                 onClick={applyCode}
                 disabled={applying || !code.trim()}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-purple-700 disabled:opacity-50 shadow-sm"
                 aria-label="تفعيل كود الوصول"
               >
                 {applying ? "..." : "تفعيل"}

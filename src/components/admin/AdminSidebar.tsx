@@ -9,9 +9,9 @@ interface AdminSidebarProps {
 
 const superadminSections = [
   { id: "overview", icon: "📊", label: "نظرة عامة" },
-  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
-  { id: "deleted-students", icon: "�", label: "الطلاب المرشحون" },
-  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
+  { id: "students", icon: "👨‍🎓", label: "المتعلمين" },
+  { id: "deleted-students", icon: "�", label: "المتعلمين المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المعلمون" },
   { id: "create", icon: "➕", label: "إضافة مدرس" },
   { id: "daily-exams", icon: "🏆", label: "امتحانات لوحة الشرف" },
   { id: "logs", icon: "📋", label: "سجلات النشاط" },
@@ -21,9 +21,9 @@ const superadminSections = [
 
 const adminSections = [
   { id: "overview", icon: "📊", label: "نظرة عامة" },
-  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
-  { id: "deleted-students", icon: "📏", label: "الطلاب المرشحون" },
-  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
+  { id: "students", icon: "👨‍🎓", label: "المتعلمين" },
+  { id: "deleted-students", icon: "📏", label: "المتعلمين المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المعلمون" },
   { id: "create", icon: "➕", label: "إضافة مدرس" },
   { id: "logs", icon: "📋", label: "سجلات النشاط" },
   { id: "staff-accounts", icon: "👥", label: "المشرفون والموظفون" },
@@ -31,9 +31,9 @@ const adminSections = [
 
 const staffSections = [
   { id: "overview", icon: "📊", label: "نظرة عامة" },
-  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
-  { id: "deleted-students", icon: "📏", label: "الطلاب المرشحون" },
-  { id: "teachers", icon: "👨‍🏫", label: "المدرسون" },
+  { id: "students", icon: "👨‍🎓", label: "المتعلمين" },
+  { id: "deleted-students", icon: "📏", label: "المتعلمين المرشحون" },
+  { id: "teachers", icon: "👨‍🏫", label: "المعلمون" },
   { id: "logs", icon: "📋", label: "سجلات النشاط" },
 ];
 
@@ -43,9 +43,9 @@ const teacherSections = [
   { id: "quiz-results", icon: "📝", label: "نتائج الاختبارات" },
   { id: "create-course", icon: "➕", label: "كورس جديد" },
   { id: "codes", icon: "🔑", label: "أكواد الوصول" },
-  { id: "students", icon: "👨‍🎓", label: "الطلاب" },
-  { id: "requests", icon: "🎫", label: "طلبات الطلاب" },
-  { id: "feedback", icon: "💬", label: "ملاحظات الطلاب" },
+  { id: "students", icon: "👨‍🎓", label: "المتعلمين" },
+  { id: "requests", icon: "🎫", label: "طلبات المتعلمين" },
+  { id: "feedback", icon: "💬", label: "ملاحظات المتعلمين" },
 ];
 
 const ROLE_BADGE: Record<string, string> = {
@@ -71,7 +71,7 @@ export function AdminSidebar({ role, activeSection, setActiveSection, onLogout }
             <span className="text-slate-900 dark:text-white font-bold">م</span>
           </div>
           <div>
-            <p className="font-bold text-slate-900 dark:text-white text-sm">منصة التعليم</p>
+            <p className="font-bold text-slate-900 dark:text-white text-sm">منصة الكورسات</p>
             <p className="text-xs text-slate-500 dark:text-gray-400">{ROLE_BADGE[role] ?? role}</p>
           </div>
         </div>

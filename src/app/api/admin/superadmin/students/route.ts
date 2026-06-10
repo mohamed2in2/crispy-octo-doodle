@@ -63,6 +63,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ students, total });
   } catch (error) {
     console.error("Superadmin students fetch error:", error);
-    return NextResponse.json({ error: "تعذر جلب الطلاب" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر جلب المتعلمين" }, { status: 500 });
   }
 }

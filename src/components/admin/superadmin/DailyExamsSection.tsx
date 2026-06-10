@@ -219,7 +219,7 @@ export function DailyExamsSection() {
                 />
               </div>
               <div className="w-full sm:w-48">
-                <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">المرحلة الدراسية</label>
+                <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">المرحلة التدريبية</label>
                 <select
                   value={newExam.educationalStage} onChange={e => setNewExam({...newExam, educationalStage: e.target.value})} required
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-900 dark:text-white"

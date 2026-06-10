@@ -71,7 +71,7 @@ export default function CreateDailyExamPage() {
               <input required name="title" type="text" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="مثال: تحدي الفيزياء - قوانين نيوتن" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">المرحلة الدراسية</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">المرحلة التدريبية</label>
               <select required name="educationalStage" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 {EDUCATIONAL_STAGES.map((stage) => (
                   <option key={stage.value} value={stage.value}>
@@ -90,7 +90,7 @@ export default function CreateDailyExamPage() {
             </div>
             <div className="flex items-center gap-2 mt-4 md:col-span-2">
               <input type="checkbox" name="isActive" id="isActive" defaultChecked className="w-4 h-4 text-blue-600 rounded" />
-              <label htmlFor="isActive" className="text-sm font-medium text-slate-700">نشط (يظهر للطلاب في تاريخه)</label>
+              <label htmlFor="isActive" className="text-sm font-medium text-slate-700">نشط (يظهر للمتعلمين في تاريخه)</label>
             </div>
           </div>
         </section>

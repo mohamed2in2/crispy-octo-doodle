@@ -435,7 +435,7 @@ export default function CourseLearningPage() {
                         {hasNoWatches ? (
                           <>
                             <span>🚫</span>
-                            استنفذت جميع المحاولات — تواصل مع المدرس
+                            استنفذت جميع المحاولات — تواصل مع المعلم
                           </>
                         ) : (
                           <>

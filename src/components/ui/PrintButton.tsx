@@ -6,9 +6,9 @@ export function PrintButton() {
   return (
     <button 
       onClick={() => window.print()}
-      className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition shadow-sm font-medium print:hidden"
+      className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 font-bold print:hidden"
     >
-      <Download className="w-4 h-4" />
+      <Download className="w-5 h-5" />
       تحميل التقرير الشامل (PDF)
     </button>
   );

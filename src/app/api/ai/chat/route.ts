@@ -214,12 +214,12 @@ async function executeAction(
         }
 
         // Build AI analysis with chat context for staff
-        let aiAnalysis = "تم إنشاء الطلب بواسطة المساعد الذكي بناءً على شكوى الطالب";
+        let aiAnalysis = "تم إنشاء الطلب بواسطة المساعد الذكي بناءً على شكوى المتعلم";
         if (p.evidence) {
           try {
             const ctx = JSON.parse(p.evidence) as { chatHistory?: string; studentInfo?: string };
             const parts = [aiAnalysis];
-            if (ctx.studentInfo) parts.push(`\n\n📋 بيانات الطالب:\n${ctx.studentInfo}`);
+            if (ctx.studentInfo) parts.push(`\n\n📋 بيانات المتعلم:\n${ctx.studentInfo}`);
             if (ctx.chatHistory) parts.push(`\n\n💬 سجل المحادثة:\n${ctx.chatHistory}`);
             aiAnalysis = parts.join("");
           } catch { /* keep default */ }
@@ -261,7 +261,7 @@ async function executeAction(
         let aiResponse: string | null = null;
         if (p.chatHistory || p.studentInfo) {
           const parts: string[] = [];
-          if (p.studentInfo) parts.push(`📋 بيانات الطالب:\n${p.studentInfo}`);
+          if (p.studentInfo) parts.push(`📋 بيانات المتعلم:\n${p.studentInfo}`);
           if (p.chatHistory) parts.push(`💬 سجل المحادثة:\n${p.chatHistory}`);
           aiResponse = parts.join("\n\n");
         }

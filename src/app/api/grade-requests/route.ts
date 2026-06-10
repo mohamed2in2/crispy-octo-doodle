@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       request: request_,
-      message: "تم تقديم طلبك للمدرس، سيتم مراجعته قريباً",
+      message: "تم تقديم طلبك للمعلم، سيتم مراجعته قريباً",
     });
   } catch (err) {
     console.error("Grade request POST error:", err);

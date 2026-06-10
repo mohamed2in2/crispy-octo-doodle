@@ -12,7 +12,7 @@ interface Props {
 }
 
 const FEEDBACK_TYPES = [
-  { value: "teacher_rating", label: "تقييم المدرس", icon: "⭐" },
+  { value: "teacher_rating", label: "تقييم المعلم", icon: "⭐" },
   { value: "course_feedback", label: "ملاحظة على المحتوى", icon: "📚" },
   { value: "took_elsewhere", label: "أخذت الكورس مع مدرس آخر", icon: "🔄" },
   { value: "difficulty", label: "صعوبة المحتوى", icon: "🤔" },
@@ -139,7 +139,7 @@ export function CourseFeedbackForm({ courseId, courseTitle, teacherName, onClose
               type === "took_elsewhere"
                 ? "اشرح مع مين بتاخد ومتى عشان نعدل خطة دراستك..."
                 : type === "teacher_rating"
-                ? "إيه رأيك في طريقة شرح المدرس؟"
+                ? "إيه رأيك في طريقة شرح المعلم؟"
                 : "اكتب ملاحظتك بالتفصيل..."
             }
             className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
@@ -147,7 +147,7 @@ export function CourseFeedbackForm({ courseId, courseTitle, teacherName, onClose
         </div>
 
         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-xs text-purple-800 dark:text-purple-200">
-          🤖 المرشد الذكي هيقرأ ملاحظتك ويعدل خطتك الدراسية ويوصلها للمدرس.
+          🤖 المرشد الذكي هيقرأ ملاحظتك ويعدل خطتك التدريبية ويوصلها للمعلم.
         </div>
 
         <button

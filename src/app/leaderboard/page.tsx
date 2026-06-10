@@ -245,7 +245,7 @@ export default async function LeaderboardPage() {
                 ) : (
                   <div className="text-center py-6 text-slate-500 dark:text-slate-400">
                     <Target className="w-12 h-12 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
-                    <p>لا يوجد تحدي متاح لصفك الدراسي اليوم.</p>
+                    <p>لا يوجد تحدي متاح لصفك التدريبي اليوم.</p>
                   </div>
                 )}
               </div>

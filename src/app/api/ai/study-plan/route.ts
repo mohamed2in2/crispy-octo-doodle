@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       plan: null,
-      message: "لا توجد خطة دراسية لهذا اليوم. يمكنك إنشاء واحدة جديدة.",
+      message: "لا توجد خطة تدريبية لهذا اليوم. يمكنك إنشاء واحدة جديدة.",
     });
   } catch (error) {
     console.error("Error fetching study plan:", error);

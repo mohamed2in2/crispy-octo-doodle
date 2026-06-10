@@ -39,7 +39,7 @@ export function Navbar({ user }: NavbarProps) {
               <div className="hidden sm:block">
                 <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
                 <div className="text-xs text-slate-500 dark:text-slate-300">
-                  <span className="block">منصة تعليمية متميزة</span>
+                  <span className="block">منصة كورسات متميزة</span>
                 </div>
               </div>
             </Link>

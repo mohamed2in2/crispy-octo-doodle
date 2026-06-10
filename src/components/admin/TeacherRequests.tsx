@@ -53,7 +53,7 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "مرفوض",
   open: "مفتوح",
   ai_handling: "AI يعالجها",
-  escalated: "محول للمدرس",
+  escalated: "محول للمعلم",
   resolved: "محلول",
   closed: "مغلق",
 };
@@ -331,13 +331,13 @@ export function TeacherRequests() {
             </div>
 
             <div className="mb-5">
-              <label className="block text-sm text-slate-500 dark:text-gray-400 mb-2">ملاحظات للطالب:</label>
+              <label className="block text-sm text-slate-500 dark:text-gray-400 mb-2">ملاحظات للمتعلم:</label>
               <textarea
                 value={actionNotes}
                 onChange={(e) => setActionNotes(e.target.value)}
                 rows={3}
                 className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-white"
-                placeholder="اكتب ملاحظتك للطالب..."
+                placeholder="اكتب ملاحظتك للمتعلم..."
               />
             </div>
 
@@ -377,7 +377,7 @@ export function TeacherRequests() {
               onChange={(e) => setResolution(e.target.value)}
               rows={4}
               className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-white mb-5"
-              placeholder="اكتب الحل أو الرد على الطالب..."
+              placeholder="اكتب الحل أو الرد على المتعلم..."
             />
 
             <div className="flex gap-2">

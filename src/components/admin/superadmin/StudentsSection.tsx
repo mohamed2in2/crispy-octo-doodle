@@ -112,12 +112,12 @@ export function StudentsSection({ userRole = "superadmin" }: { userRole?: string
               type="text"
               value={filters.name}
               onChange={(e) => setFilters({ ...filters, name: e.target.value })}
-              placeholder="اسم الطالب"
+              placeholder="اسم المتعلم"
               className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">الصف الدراسي</label>
+            <label className="block text-xs text-gray-400 mb-1">الصف التدريبي</label>
             <select
               value={filters.stage}
               onChange={(e) => setFilters({ ...filters, stage: e.target.value })}
@@ -144,7 +144,7 @@ export function StudentsSection({ userRole = "superadmin" }: { userRole?: string
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">رقم الطالب</label>
+            <label className="block text-xs text-gray-400 mb-1">رقم المتعلم</label>
             <input
               type="text"
               value={filters.phone}

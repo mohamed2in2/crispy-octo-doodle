@@ -51,16 +51,16 @@ async function callBackup(messages: { role: string; content: string }[]) {
 
 function generateFallbackPlan(courses: string[]): string {
   const today = new Date().toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  return `## خطة الدراسة اليومية - ${today}
+  return `## خطة التعلم اليومية - ${today}
 
-مرحباً! إليك خطة دراسية مقترحة بناءً على كورساتك:
+مرحباً! إليك خطة تدريبية مقترحة بناءً على كورساتك:
 
 ${courses.length > 0 ? courses.map((c, i) => `**${i + 1}. ${c}**
 - مراجعة المحاضرات السابقة: 30 دقيقة
-- دراسة محتوى جديد: 45 دقيقة  
+- تعلم محتوى جديد: 45 دقيقة  
 - حل التمارين والاختبارات: 15 دقيقة`).join("\n\n") : "لم تنضم إلى أي كورس بعد. ابدأ بتسجيل كود الوصول في صفحة الكورسات."}
 
-**نصائح للدراسة الفعالة:**
+**نصائح للتعلم الفعالة:**
 - خذ استراحة 10 دقائق كل ساعة
 - راجع الملاحظات قبل النوم
 - حل الاختبارات لتعزيز الفهم`;
@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
 
   const { messages, courses } = await req.json();
 
-  const systemPrompt = `أنت مساعد دراسي ذكي لمنصة تعليمية مصرية. مهمتك مساعدة الطلاب في وضع خطط دراسية يومية.
-الكورسات المسجل فيها الطالب: ${courses?.join(", ") || "لا يوجد كورسات"}
+  const systemPrompt = `أنت مساعد تدريبي ذكي لمنصة كورسات مصرية. مهمتك مساعدة المتعلمين في وضع خطط تدريبية يومية.
+الكورسات المسجل فيها المتعلم: ${courses?.join(", ") || "لا يوجد كورسات"}
 أجب باللغة العربية دائماً. كن مفيداً وداعماً.`;
 
   const formattedMessages = [

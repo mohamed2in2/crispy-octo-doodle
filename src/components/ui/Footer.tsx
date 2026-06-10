@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="mt-auto border-t border-white/40 dark:border-white/5 bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
@@ -12,7 +12,7 @@ export function Footer() {
               <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
             </div>
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              منصة تعليمية مصريّة تهدف إلى تمكين الطلاب من الصف السادس حتى الثالث الثانوي من خلال محتوى عالي الجودة وأدوات متابعة ذكية.
+              منصة كورسات مصريّة تهدف إلى تمكين المتعلمين لمختلف الأعمار والمستويات من خلال محتوى عالي الجودة وأدوات متابعة ذكية.
             </p>
           </div>
 
@@ -24,6 +24,15 @@ export function Footer() {
               <li><Link href="/courses" className="hover:text-blue-500 transition-colors">الكورسات</Link></li>
               <li><Link href="/library" className="hover:text-blue-500 transition-colors">مكتبتي</Link></li>
               <li><Link href="/account" className="hover:text-blue-500 transition-colors">حسابي</Link></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">قانوني</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link href="/terms" className="hover:text-blue-500 transition-colors">شروط الاستخدام</Link></li>
+              <li><Link href="/privacy" className="hover:text-blue-500 transition-colors">سياسة الخصوصية</Link></li>
             </ul>
           </div>
 

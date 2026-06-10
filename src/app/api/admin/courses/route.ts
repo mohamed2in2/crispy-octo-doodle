@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!educationalStage) {
-      return NextResponse.json({ error: "المرحلة الدراسية مطلوبة" }, { status: 400 });
+      return NextResponse.json({ error: "المرحلة التدريبية مطلوبة" }, { status: 400 });
     }
 
     if (description && description.length > MAX_DESCRIPTION_LENGTH) {

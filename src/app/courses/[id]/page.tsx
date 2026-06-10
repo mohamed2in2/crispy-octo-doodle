@@ -250,7 +250,7 @@ export default function CourseProductPage() {
               "description": course.description || `كورس ${course.subject} للمرحلة ${STAGE_LABELS[course.educationalStage] || course.educationalStage}`,
               "provider": {
                 "@type": "Organization",
-                "name": "منصة Code-UP التعليمية",
+                "name": "منصة Code-UP الكورسات",
                 "url": "https://code-up.tech"
               },
               "educationalLevel": STAGE_LABELS[course.educationalStage] || course.educationalStage,
@@ -415,7 +415,7 @@ export default function CourseProductPage() {
                     <a
                       href={buildWhatsAppUrl(
                         process.env.NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD || "+201285353604",
-                        `مرحباً، أريد الاشتراك في كورس "${course.title}"\n\n📚 تفاصيل الكورس:\n- المادة: ${course.subject}\n- المرحلة: ${STAGE_LABELS[course.educationalStage] || course.educationalStage}\n- المدرس: ${course.teacher.name}\n- السعر: ${course.effectivePrice} جنيه\n\n👤 تفاصيل الطالب:\n- الاسم: ${user?.name || "غير مسجل"}\n- المعرف: ${user?.name || "..."}`,
+                        `مرحباً، أريد الاشتراك في كورس "${course.title}"\n\n📚 تفاصيل الكورس:\n- المادة: ${course.subject}\n- المرحلة: ${STAGE_LABELS[course.educationalStage] || course.educationalStage}\n- المعلم: ${course.teacher.name}\n- السعر: ${course.effectivePrice} جنيه\n\n👤 تفاصيل المتعلم:\n- الاسم: ${user?.name || "غير مسجل"}\n- المعرف: ${user?.name || "..."}`,
                       )}
                       target="_blank"
                       rel="noopener noreferrer"

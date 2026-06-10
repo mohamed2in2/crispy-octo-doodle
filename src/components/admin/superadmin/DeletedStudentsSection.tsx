@@ -125,12 +125,12 @@ export function DeletedStudentsSection({ userRole = "superadmin" }: { userRole?:
         className="bg-gray-800 rounded-2xl border border-gray-700 p-4 flex gap-3 items-end"
       >
         <div className="flex-1">
-          <label className="block text-xs text-gray-400 mb-1">بحث باسم الطالب</label>
+          <label className="block text-xs text-gray-400 mb-1">بحث باسم المتعلم</label>
           <input
             type="text"
             value={nameFilter}
             onChange={(e) => setNameFilter(e.target.value)}
-            placeholder="اكتب اسم الطالب..."
+            placeholder="اكتب اسم المتعلم..."
             className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -149,7 +149,7 @@ export function DeletedStudentsSection({ userRole = "superadmin" }: { userRole?:
           <div className="px-4 py-3 border-b border-gray-700 flex items-center gap-2">
             <span className="text-orange-400">🗑️</span>
             <p className="text-sm text-gray-300 font-medium">
-              الطلاب المؤرشفون ({total})
+              المتعلمين المؤرشفون ({total})
             </p>
           </div>
 
@@ -234,15 +234,15 @@ export function DeletedStudentsSection({ userRole = "superadmin" }: { userRole?:
       {!searched && !loading && (
         <div className="bg-gray-800 rounded-2xl border border-gray-700 p-10 text-center text-gray-500">
           <div className="text-4xl mb-2">🗑️</div>
-          <p>اضغط &quot;عرض المحذوفين&quot; لتحميل الطلاب المؤرشفين</p>
+          <p>اضغط &quot;عرض المحذوفين&quot; لتحميل المتعلمين المؤرشفين</p>
         </div>
       )}
 
       {/* Restore modal */}
       {modalAction?.type === "restore" && (
         <ConfirmActionModal
-          title="استعادة حساب الطالب"
-          description={`سيُعاد تفعيل حساب الطالب "‏${modalAction.student.name}‏" ويستطيع تسجيل الدخول مجدداً.`}
+          title="استعادة حساب المتعلم"
+          description={`سيُعاد تفعيل حساب المتعلم "‏${modalAction.student.name}‏" ويستطيع تسجيل الدخول مجدداً.`}
           actionLabel="استعادة الحساب"
           variant="warning"
           onConfirm={handleRestore}
@@ -254,7 +254,7 @@ export function DeletedStudentsSection({ userRole = "superadmin" }: { userRole?:
       {modalAction?.type === "hard_delete" && (
         <ConfirmActionModal
           title="حذف نهائي — لا يمكن التراجع"
-          description={`تحذير: سيتم حذف بيانات الطالب "‏${modalAction.student.name}‏" وجميع سجلاته بصورة نهائية تماماً غير قابلة للاسترداد.`}
+          description={`تحذير: سيتم حذف بيانات المتعلم "‏${modalAction.student.name}‏" وجميع سجلاته بصورة نهائية تماماً غير قابلة للاسترداد.`}
           actionLabel="حذف نهائياً"
           variant="danger"
           onConfirm={handleHardDelete}

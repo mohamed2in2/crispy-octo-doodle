@@ -74,7 +74,7 @@ export function ResetPasswordModal({ teacherId, teacherName, onClose, onSuccess 
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <p className="text-gray-400 text-sm">
-            تغيير كلمة مرور المدرس:{" "}
+            تغيير كلمة مرور المعلم:{" "}
             <span className="text-white font-semibold">{teacherName}</span>
           </p>
 

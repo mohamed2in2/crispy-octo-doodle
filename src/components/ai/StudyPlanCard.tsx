@@ -31,7 +31,7 @@ export function StudyPlanCard() {
         setPlanId(data.plan.id);
       } else {
         setStudyPlan(null);
-        setError("لا توجد خطة دراسية لهذا اليوم");
+        setError("لا توجد خطة تدريبية لهذا اليوم");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "حدث خطأ");
@@ -128,7 +128,7 @@ export function StudyPlanCard() {
     >
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">خطتك الدراسية لهذا اليوم</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">خطتك التدريبية لهذا اليوم</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {new Date().toLocaleDateString("ar-EG", { weekday: "long", month: "long", day: "numeric" })}
           </p>
@@ -150,9 +150,9 @@ export function StudyPlanCard() {
 
       {!studyPlan ? (
         <motion.div className="text-center py-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">لا توجد خطة دراسية محفوظة</p>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">لا توجد خطة تدريبية محفوظة</p>
           <Button onClick={generateNewPlan} isLoading={loading}>
-            إنشاء خطة دراسية الآن
+            إنشاء خطة تدريبية الآن
           </Button>
         </motion.div>
       ) : (

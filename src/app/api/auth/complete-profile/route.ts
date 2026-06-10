@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     if (normalizedPhone === normalizedParentPhone) {
       return NextResponse.json(
-        { error: 'رقم الطالب لا يمكن أن يكون نفس رقم الوالد/الوالدة' },
+        { error: 'رقم المتعلم لا يمكن أن يكون نفس رقم الوالد/الوالدة' },
         { status: 400 }
       )
     }

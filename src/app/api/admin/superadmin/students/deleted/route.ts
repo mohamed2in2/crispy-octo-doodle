@@ -43,6 +43,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ students, total });
   } catch (error) {
     console.error("Deleted students fetch error:", error);
-    return NextResponse.json({ error: "تعذر جلب الطلاب المحذوفين" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر جلب المتعلمين المحذوفين" }, { status: 500 });
   }
 }

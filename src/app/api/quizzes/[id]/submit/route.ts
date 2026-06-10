@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (existingResult && !existingResult.allowRetake) {
     return NextResponse.json(
-      { error: "لقد أجبت على هذا الاختبار بالفعل. تواصل مع المدرس للسماح بإعادة المحاولة." },
+      { error: "لقد أجبت على هذا الاختبار بالفعل. تواصل مع المعلم للسماح بإعادة المحاولة." },
       { status: 409 }
     );
   }

@@ -27,7 +27,7 @@ export async function POST(
     });
 
     if (!student) {
-      return NextResponse.json({ error: "الطالب غير موجود في سلة المحذوفات" }, { status: 404 });
+      return NextResponse.json({ error: "المتعلم غير موجود في سلة المحذوفات" }, { status: 404 });
     }
 
     await prisma.user.update({
@@ -47,6 +47,6 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Restore student error:", error);
-    return NextResponse.json({ error: "تعذر استعادة حساب الطالب" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر استعادة حساب المتعلم" }, { status: 500 });
   }
 }

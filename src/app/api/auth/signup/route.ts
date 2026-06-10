@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const normalizedParentPhone = normalizeEgyptPhone(String(parentPhone));
 
     if (normalizedPhone === normalizedParentPhone) {
-      return NextResponse.json({ error: "رقم الطالب لا يمكن أن يساوي رقم ولي الأمر" }, { status: 400 });
+      return NextResponse.json({ error: "رقم المتعلم لا يمكن أن يساوي رقم ولي الأمر" }, { status: 400 });
     }
 
     if (!isPhoneVerificationBypassed() || firebaseToken !== "bypass") {

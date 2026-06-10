@@ -59,7 +59,7 @@ export default function CompleteProfilePage() {
     setError("");
 
     if (form.phone.trim() === form.parentPhone.trim()) {
-      setError("رقم الطالب لا يمكن أن يكون نفس رقم الوالد/الوالدة");
+      setError("رقم المتعلم لا يمكن أن يكون نفس رقم الوالد/الوالدة");
       setLoading(false);
       return;
     }
@@ -124,7 +124,7 @@ export default function CompleteProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم الهاتف (الطالب)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم الهاتف (المتعلم)</label>
                 <input
                   type="tel"
                   required
@@ -163,14 +163,14 @@ export default function CompleteProfilePage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">المرحلة الدراسية</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">المرحلة التدريبية</label>
                 <select
                   required
                   value={form.educationalStage}
                   onChange={(e) => setForm({ ...form, educationalStage: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="">— اختر المرحلة الدراسية —</option>
+                  <option value="">— اختر المرحلة التدريبية —</option>
                   {EDUCATIONAL_STAGES.map((stage) => (
                     <option key={stage.value} value={stage.value}>
                       {stage.label}

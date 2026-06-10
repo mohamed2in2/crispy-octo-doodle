@@ -26,7 +26,7 @@ export async function GET() {
     return NextResponse.json({ teachers });
   } catch (error) {
     console.error("Teachers GET error:", error);
-    return NextResponse.json({ error: "تعذر جلب المدرسين" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر جلب المعلمين" }, { status: 500 });
   }
 }
 

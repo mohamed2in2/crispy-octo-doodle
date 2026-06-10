@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
     if (!phone || typeof phone !== "string") {
-      return NextResponse.json({ error: "رقم الطالب مطلوب" }, { status: 400 });
+      return NextResponse.json({ error: "رقم المتعلم مطلوب" }, { status: 400 });
     }
 
     let normalizedPhone: string;

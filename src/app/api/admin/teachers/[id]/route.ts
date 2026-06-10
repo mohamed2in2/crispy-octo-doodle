@@ -32,7 +32,7 @@ export async function PATCH(
     });
 
     if (!teacher) {
-      return NextResponse.json({ error: "المدرس غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المعلم غير موجود" }, { status: 404 });
     }
 
     const updated = await prisma.user.update({
@@ -54,7 +54,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, teacher: updated });
   } catch (error) {
     console.error("Teacher PATCH error:", error);
-    return NextResponse.json({ error: "تعذر تعديل اسم المدرس" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر تعديل اسم المعلم" }, { status: 500 });
   }
 }
 
@@ -81,7 +81,7 @@ export async function DELETE(
     });
 
     if (!teacher) {
-      return NextResponse.json({ error: "المدرس غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المعلم غير موجود" }, { status: 404 });
     }
 
     await prisma.user.delete({ where: { id } });
@@ -98,6 +98,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Teacher DELETE error:", error);
-    return NextResponse.json({ error: "تعذر حذف حساب المدرس" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر حذف حساب المعلم" }, { status: 500 });
   }
 }

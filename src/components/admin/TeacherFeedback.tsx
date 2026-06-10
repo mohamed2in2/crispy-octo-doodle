@@ -16,7 +16,7 @@ interface Feedback {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  teacher_rating: "تقييم المدرس",
+  teacher_rating: "تقييم المعلم",
   course_feedback: "ملاحظة على الكورس",
   took_elsewhere: "يأخذ مع مدرس آخر",
   difficulty: "صعوبة المحتوى",
@@ -162,7 +162,7 @@ export function TeacherFeedback() {
               onChange={(e) => setResolution(e.target.value)}
               rows={4}
               className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-lg text-white mb-5"
-              placeholder="اكتب ردك على الطالب..."
+              placeholder="اكتب ردك على المتعلم..."
             />
 
             <div className="flex gap-2">

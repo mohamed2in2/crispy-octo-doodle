@@ -72,7 +72,7 @@ export default function SignupPage() {
 
   const sendCode = async () => {
     if (!canSendCode) {
-      setError("أدخل رقم الطالب أولاً");
+      setError("أدخل رقم المتعلم أولاً");
       return;
     }
 
@@ -210,7 +210,7 @@ export default function SignupPage() {
   return (
     <AuthShell
       title="إنشاء حساب جديد"
-      subtitle="سجل بيانات الطالب كاملة لبدء الدراسة فورًا"
+      subtitle="سجل بيانات المتعلم كاملة لبدء التعلم فورًا"
       maxWidth="2xl"
       footer={
         <>
@@ -237,7 +237,7 @@ export default function SignupPage() {
           <div className="rounded-2xl border border-white/10 bg-slate-950/10 p-4 sm:p-5 dark:bg-white/5">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">اسم الطالب</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">اسم المتعلم</label>
                 <input
                   type="text"
                   required
@@ -263,7 +263,7 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم الطالب</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم المتعلم</label>
                 <input
                   type="tel"
                   dir="ltr"
@@ -287,18 +287,18 @@ export default function SignupPage() {
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-left"
                   placeholder="01XXXXXXXXX"
                 />
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">لا تستخدم نفس الرقم للطالب وولي الأمر</p>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">لا تستخدم نفس الرقم للمتعلم وولي الأمر</p>
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">الصف الدراسي</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">الصف التدريبي</label>
                 <select
                   required
                   value={form.educationalStage}
                   onChange={(e) => setForm({ ...form, educationalStage: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="">— اختر الصف الدراسي —</option>
+                  <option value="">— اختر الصف التدريبي —</option>
                   {EDUCATIONAL_STAGES.map((stage) => (
                     <option key={stage.value} value={stage.value}>
                       {stage.label}
@@ -335,9 +335,9 @@ export default function SignupPage() {
 
               <div className="md:col-span-2 rounded-xl border border-sky-200/60 bg-sky-50/70 p-4 text-sm text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200">
                 {codeMethod === "verify" && "سيتم إرسال الرمز عبر Twilio Verify. أفضل خيار للإنتاج."}
-                {codeMethod === "sms" && "سيتم إرسال الرمز عبر SMS مباشرة إلى رقم الطالب."}
+                {codeMethod === "sms" && "سيتم إرسال الرمز عبر SMS مباشرة إلى رقم المتعلم."}
                 {codeMethod === "dev" && "وضع التطوير مفعّل: الكود محفوظ محليًا لتجربة التسجيل بدون SMS."}
-                {!codeSent && "اضغط إرسال كود التحقق بعد كتابة رقم الطالب الصحيح."}
+                {!codeSent && "اضغط إرسال كود التحقق بعد كتابة رقم المتعلم الصحيح."}
               </div>
 
               <div id="recaptcha-container"></div>
@@ -373,6 +373,16 @@ export default function SignupPage() {
           >
             {signingUp ? "جاري إنشاء الحساب..." : "إنشاء الحساب"}
           </button>
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-4">
+            بإنشائك للحساب فإنك توافق على{" "}
+            <Link href="/terms" className="text-sky-600 dark:text-sky-400 hover:underline">
+              شروط الاستخدام
+            </Link>{" "}
+            و{" "}
+            <Link href="/privacy" className="text-sky-600 dark:text-sky-400 hover:underline">
+              سياسة الخصوصية
+            </Link>
+          </p>
         </form>
       </div>
     </AuthShell>

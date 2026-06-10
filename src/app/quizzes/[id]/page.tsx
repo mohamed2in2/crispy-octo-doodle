@@ -221,7 +221,7 @@ export default function QuizPage() {
 
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-900/40 dark:bg-amber-950/30">
               <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
-                🔒 لا يمكن إعادة الاختبار إلا بإذن من المدرس
+                🔒 لا يمكن إعادة الاختبار إلا بإذن من المعلم
               </p>
             </div>
 

@@ -74,7 +74,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم الطالب</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">رقم المتعلم</label>
             <input
               type="tel"
               required
@@ -110,6 +110,16 @@ export default function LoginPage() {
           >
             {loading ? "جاري تسجيل الدخول..." : "دخول"}
           </button>
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-4">
+            بتسجيلك الدخول فإنك توافق على{" "}
+            <Link href="/terms" className="text-sky-600 dark:text-sky-400 hover:underline">
+              شروط الاستخدام
+            </Link>{" "}
+            و{" "}
+            <Link href="/privacy" className="text-sky-600 dark:text-sky-400 hover:underline">
+              سياسة الخصوصية
+            </Link>
+          </p>
         </form>
       </div>
     </AuthShell>

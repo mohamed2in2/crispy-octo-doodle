@@ -61,7 +61,7 @@ export default async function DailyExamResultsPage({ params }: { params: Promise
         <table className="w-full text-right">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="py-4 px-6 text-slate-600 font-semibold">الطالب</th>
+              <th className="py-4 px-6 text-slate-600 font-semibold">المتعلم</th>
               <th className="py-4 px-6 text-slate-600 font-semibold">الدرجة</th>
               <th className="py-4 px-6 text-slate-600 font-semibold">تاريخ الانتهاء</th>
             </tr>

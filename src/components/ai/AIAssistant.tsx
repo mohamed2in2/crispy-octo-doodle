@@ -20,7 +20,7 @@ interface ChatMessage {
 
 const QUICK_PROMPTS = [
   "حلل أدائي وقولي نقاط ضعفي",
-  "اعمللي خطة دراسية للأسبوع",
+  "اعمللي خطة تدريبية للأسبوع",
   "في إجابة في كويز اتسجلت غلط",
   "مش مرتاح من شرح مدرس معين",
   "أنا بآخد كورس مع حد تاني، اعمللي خطة بديلة",
@@ -29,7 +29,7 @@ const QUICK_PROMPTS = [
 const WELCOME_MESSAGE: ChatMessage = {
   role: "assistant",
   content:
-    "أهلاً بيك! أنا مرشدك الذكي على Code-UP 🌟\n\nأنا بشوف كل بياناتك (درجاتك، تقدمك، كورساتك) وممكن أساعدك في:\n• تحليل أداءك ونقاط ضعفك\n• خطة دراسية مخصصة ليك\n• لو في إجابة اتسجلت غلط — هعمل طلب تعديل للمدرس\n• شكاوى عن مدرس أو محتوى\n• توجيهك لأي حاجة في الموقع\n\nاتكلم معايا براحة!",
+    "أهلاً بيك! أنا مرشدك الذكي على Code-UP 🌟\n\nأنا بشوف كل بياناتك (درجاتك، تقدمك، كورساتك) وممكن أساعدك في:\n• تحليل أداءك ونقاط ضعفك\n• خطة تدريبية مخصصة ليك\n• لو في إجابة اتسجلت غلط — هعمل طلب تعديل للمعلم\n• شكاوى عن مدرس أو محتوى\n• توجيهك لأي حاجة في الموقع\n\nاتكلم معايا براحة!",
 };
 
 export function AIAssistant() {
@@ -286,7 +286,7 @@ function ActionBadge({ action, router }: { action: ChatAction; router: ReturnTyp
   if (action.status === "ok" || action.status === "ignored") return null;
 
   const labels: Record<string, string> = {
-    create_grade_request: "🎯 تم إرسال طلب تعديل الدرجة للمدرس",
+    create_grade_request: "🎯 تم إرسال طلب تعديل الدرجة للمعلم",
     create_ticket: "🎫 تم إنشاء تذكرة دعم",
     submit_feedback: "💬 تم تسجيل ملاحظتك",
     navigate: "🔗 توجيه",

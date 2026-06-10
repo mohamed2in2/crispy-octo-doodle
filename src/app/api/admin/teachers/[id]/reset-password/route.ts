@@ -32,7 +32,7 @@ export async function POST(
     });
 
     if (!teacher) {
-      return NextResponse.json({ error: "المدرس غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المعلم غير موجود" }, { status: 404 });
     }
 
     const hashed = await bcrypt.hash(newPassword, 12);

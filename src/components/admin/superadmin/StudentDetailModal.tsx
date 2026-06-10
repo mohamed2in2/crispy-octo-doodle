@@ -158,8 +158,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
       body: JSON.stringify({ actionPassword: password }),
     });
     const json = (await res.json()) as { error?: string };
-    if (!res.ok) throw new Error(json.error ?? "تعذر حذف الطالب");
-    toastSuccess("تم حذف حساب الطالب نهائياً");
+    if (!res.ok) throw new Error(json.error ?? "تعذر حذف المتعلم");
+    toastSuccess("تم حذف حساب المتعلم نهائياً");
     setPendingAction(null);
     onStudentModified?.();
     onClose();
@@ -180,7 +180,7 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-700 shrink-0">
-          <h2 className="text-white font-bold text-lg">ملف الطالب</h2>
+          <h2 className="text-white font-bold text-lg">ملف المتعلم</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl leading-none transition-colors"
@@ -224,7 +224,7 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                 <div className="grid grid-cols-2 gap-4">
                   <InfoRow label="السن" value={data.student.age ? `${data.student.age} سنة` : "—"} />
                   <InfoRow label="النقاط الأكاديمية" value={data.student.points?.toString() || "0"} mono />
-                  <InfoRow label="رقم الطالب" value={data.student.phone ?? "—"} mono />
+                  <InfoRow label="رقم المتعلم" value={data.student.phone ?? "—"} mono />
                   <InfoRow label="رقم ولي الأمر" value={data.student.parentPhone ?? "—"} mono />
                   <InfoRow label="تاريخ التسجيل" value={fmtDate(data.student.createdAt)} />
                   <InfoRow label="آخر دخول" value={fmtDate(data.student.lastLoginAt)} />
@@ -239,8 +239,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                   {/* Communication Options */}
                   {data.student.phone && (
                     <>
-                      <a href={`tel:${data.student.phone}`} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors" title="اتصال بالطالب">📞 الطالب</a>
-                      <a href={`https://wa.me/2${data.student.phone.startsWith('0') ? data.student.phone.slice(1) : data.student.phone}`} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 transition-colors" title="واتساب الطالب">💬 الطالب</a>
+                      <a href={`tel:${data.student.phone}`} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors" title="اتصال بالمتعلم">📞 المتعلم</a>
+                      <a href={`https://wa.me/2${data.student.phone.startsWith('0') ? data.student.phone.slice(1) : data.student.phone}`} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 transition-colors" title="واتساب المتعلم">💬 المتعلم</a>
                     </>
                   )}
                   {data.student.parentPhone && (
@@ -385,8 +385,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
           }
           description={
             pendingAction === "suspend"
-              ? `سيتم منع الطالب "‏${data?.student.name}‏" من تسجيل الدخول والوصول للنظام. يمكن التراجع لاحقاً.`
-              : `سيُعاد تفعيل حساب الطالب "‏${data?.student.name}‏" ويستطيع تسجيل الدخول مجدداً.`
+              ? `سيتم منع المتعلم "‏${data?.student.name}‏" من تسجيل الدخول والوصول للنظام. يمكن التراجع لاحقاً.`
+              : `سيُعاد تفعيل حساب المتعلم "‏${data?.student.name}‏" ويستطيع تسجيل الدخول مجدداً.`
           }
           actionLabel={
             pendingAction === "suspend" ? "تعليق الحساب" : "رفع التعليق"
@@ -400,8 +400,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
       {/* Soft-delete (archive) modal */}
       {pendingAction === "delete" && (
         <ConfirmActionModal
-          title="أرشفة حساب الطالب"
-          description={`سيتم نقل حساب الطالب "‏${data?.student.name}‏" إلى سلة المحذوفات. يمكن للمشرف العام استعادته لاحقاً.`}
+          title="أرشفة حساب المتعلم"
+          description={`سيتم نقل حساب المتعلم "‏${data?.student.name}‏" إلى سلة المحذوفات. يمكن للمشرف العام استعادته لاحقاً.`}
           actionLabel="أرشفة الحساب"
           variant="danger"
           onConfirm={handleDelete}

@@ -77,7 +77,7 @@ export default function AdminPanelLoginPage() {
             <span className="text-white font-bold text-2xl">🔐</span>
           </div>
           <h1 className="text-2xl font-bold text-white">لوحة الإدارة</h1>
-          <p className="text-gray-400 text-sm mt-1">منصة التعليم الإلكتروني</p>
+          <p className="text-gray-400 text-sm mt-1">منصة الكورسات</p>
         </div>
 
         {/* Tabs */}
@@ -114,7 +114,7 @@ export default function AdminPanelLoginPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="اسم المدرس"
+                placeholder="اسم المعلم"
               />
             </div>
           )}

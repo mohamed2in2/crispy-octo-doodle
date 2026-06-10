@@ -109,9 +109,9 @@ export default function TeacherDashboardPage() {
     const data = await readJson<{ error?: string; message?: string }>(res);
     if (res.ok) {
       fetchCodes(selectedCourse.id);
-      notify("success", data?.message || (action === "ban" ? "تم حظر الطالب بنجاح" : "تم إلغاء حظر الطالب"));
+      notify("success", data?.message || (action === "ban" ? "تم حظر المتعلم بنجاح" : "تم إلغاء حظر المتعلم"));
     } else {
-      notify("error", data?.error || "تعذر تحديث حالة الطالب");
+      notify("error", data?.error || "تعذر تحديث حالة المتعلم");
     }
   };
 
@@ -444,9 +444,9 @@ export default function TeacherDashboardPage() {
             {activeSection === "quiz-results" && "نتائج الاختبارات"}
             {activeSection === "create-course" && "كورس جديد"}
             {activeSection === "codes" && "أكواد الوصول"}
-            {activeSection === "students" && "الطلاب"}
-            {activeSection === "requests" && "طلبات الطلاب"}
-            {activeSection === "feedback" && "ملاحظات الطلاب"}
+            {activeSection === "students" && "المتعلمين"}
+            {activeSection === "requests" && "طلبات المتعلمين"}
+            {activeSection === "feedback" && "ملاحظات المتعلمين"}
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30">
@@ -463,7 +463,7 @@ export default function TeacherDashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 {[
                   { label: "الكورسات", value: courses.length, icon: "📚", color: "text-blue-400" },
-                  { label: "الطلاب", value: totalStudents, icon: "👨‍🎓", color: "text-green-400" },
+                  { label: "المتعلمين", value: totalStudents, icon: "👨‍🎓", color: "text-green-400" },
                   { label: "إجمالي الفيديوهات", value: courses.reduce((a: number, c: Course) => a + (c.folders?.reduce((b: number, f: Folder) => b + (f._count?.videos || 0), 0) || 0), 0), icon: "🎬", color: "text-purple-400" },
                 ].map((s) => (
                   <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
@@ -569,7 +569,7 @@ export default function TeacherDashboardPage() {
                           type="text"
                           value={courseSettings.educationalStage}
                           onChange={(e) => setCourseSettings({ ...courseSettings, educationalStage: e.target.value })}
-                          placeholder="المرحلة الدراسية"
+                          placeholder="المرحلة التدريبية"
                           className="px-3 py-2 rounded-lg border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <div className="md:col-span-2">
@@ -965,7 +965,7 @@ export default function TeacherDashboardPage() {
                 <p className="text-sm uppercase tracking-[0.3em] text-blue-400/80 mb-2">Course Builder</p>
                 <h2 className="text-2xl font-black mb-2">إنشاء كورس جديد</h2>
                 <p className="text-sm text-slate-500 dark:text-gray-400 max-w-xl leading-7">
-                  املأ بيانات الكورس مرة واحدة وسيظهر مباشرة في لوحة المدرس والواجهة العامة.
+                  املأ بيانات الكورس مرة واحدة وسيظهر مباشرة في لوحة المعلم والواجهة العامة.
                 </p>
               </div>
               <form onSubmit={createCourse} className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-6 md:p-8 border border-white/10 shadow-[0_30px_80px_-35px_rgba(15,23,42,0.8)] space-y-4">
@@ -983,7 +983,7 @@ export default function TeacherDashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">المرحلة الدراسية *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">المرحلة التدريبية *</label>
                   <select required value={newCourse.educationalStage} onChange={(e) => setNewCourse({ ...newCourse, educationalStage: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">اختر المرحلة</option>
@@ -1048,7 +1048,7 @@ export default function TeacherDashboardPage() {
                   <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
                     <div className="grid grid-cols-4 gap-4 p-3 bg-white dark:bg-gray-900 text-xs text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-700 font-medium">
                       <span>الكود</span>
-                      <span>الطالب</span>
+                      <span>المتعلم</span>
                       <span>الحالة</span>
                       <span>إجراء</span>
                     </div>
@@ -1099,7 +1099,7 @@ export default function TeacherDashboardPage() {
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <button onClick={() => setSelectedCourse(null)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:text-white">← رجوع</button>
-                    <h2 className="font-bold">{selectedCourse.title} - الطلاب</h2>
+                    <h2 className="font-bold">{selectedCourse.title} - المتعلمين</h2>
                   </div>
                   <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
                     <div className="divide-y divide-gray-700">

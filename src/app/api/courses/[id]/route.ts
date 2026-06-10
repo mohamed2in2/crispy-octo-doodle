@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
   if (!access) {
     return NextResponse.json(
-      { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المدرس." },
+      { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم." },
       { status: 403 }
     );
   }

@@ -52,7 +52,7 @@ export async function GET(
     });
 
     if (!student) {
-      return NextResponse.json({ error: "الطالب غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المتعلم غير موجود" }, { status: 404 });
     }
 
     const [quizResults, watchedCount] = await Promise.all([
@@ -83,7 +83,7 @@ export async function GET(
     return NextResponse.json({ student, quizResults, watchedCount });
   } catch (error) {
     console.error("Superadmin student detail error:", error);
-    return NextResponse.json({ error: "تعذر جلب بيانات الطالب" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر جلب بيانات المتعلم" }, { status: 500 });
   }
 }
 
@@ -114,7 +114,7 @@ export async function PATCH(
     });
 
     if (!student) {
-      return NextResponse.json({ error: "الطالب غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المتعلم غير موجود" }, { status: 404 });
     }
 
     await prisma.user.update({ where: { id }, data: { isActive: body.isActive } });
@@ -131,7 +131,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, isActive: body.isActive });
   } catch (error) {
     console.error("Superadmin student PATCH error:", error);
-    return NextResponse.json({ error: "تعذر تعديل حالة الطالب" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر تعديل حالة المتعلم" }, { status: 500 });
   }
 }
 
@@ -169,7 +169,7 @@ export async function DELETE(
     });
 
     if (!student) {
-      return NextResponse.json({ error: "الطالب غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المتعلم غير موجود" }, { status: 404 });
     }
 
     if (isPermanent) {
@@ -193,6 +193,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Superadmin student DELETE error:", error);
-    return NextResponse.json({ error: "تعذر حذف الطالب" }, { status: 500 });
+    return NextResponse.json({ error: "تعذر حذف المتعلم" }, { status: 500 });
   }
 }

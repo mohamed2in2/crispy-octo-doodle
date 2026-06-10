@@ -171,7 +171,7 @@ function generateDefaultStudyPlan(stage: string): StudyPlanItem[] {
       priority: "medium",
     },
     {
-      topic: "دراسة موضوع جديد",
+      topic: "تعلم موضوع جديد",
       duration: 40,
       type: "video",
       priority: "medium",

@@ -36,7 +36,7 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
         console.error("/api/admin/teachers failed:", res.status, txt);
-        throw new Error(txt || "تعذر جلب المدرسين");
+        throw new Error(txt || "تعذر جلب المعلمين");
       }
 
       let data: { teachers?: Teacher[] } | undefined;
@@ -44,7 +44,7 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
         data = (await res.json()) as { teachers?: Teacher[] };
       } catch (err) {
         console.error("Invalid JSON from /api/admin/teachers:", err);
-        throw new Error("تعذر جلب المدرسين");
+        throw new Error("تعذر جلب المعلمين");
       }
 
       setTeachers(data?.teachers ?? []);
@@ -78,7 +78,7 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
     setTeachers((prev) =>
       prev.map((t) => (t.id === editTarget.id ? { ...t, name: json.teacher?.name ?? editName } : t))
     );
-    toastSuccess(`تم تعديل اسم المدرس بنجاح`);
+    toastSuccess(`تم تعديل اسم المعلم بنجاح`);
     setEditTarget(null);
   };
 
@@ -91,9 +91,9 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
       body: JSON.stringify({ actionPassword: password }),
     });
     const json = (await res.json()) as { error?: string };
-    if (!res.ok) throw new Error(json.error ?? "تعذر حذف حساب المدرس");
+    if (!res.ok) throw new Error(json.error ?? "تعذر حذف حساب المعلم");
     setTeachers((prev) => prev.filter((t) => t.id !== deleteTarget.id));
-    toastSuccess(`تم حذف حساب المدرس بنجاح`);
+    toastSuccess(`تم حذف حساب المعلم بنجاح`);
     setDeleteTarget(null);
   };
 
@@ -110,7 +110,7 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
       <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <h3 className="text-white font-bold">
-            المدرسون ({teachers.length})
+            المعلمون ({teachers.length})
           </h3>
           <button
             onClick={() => void fetchTeachers()}
@@ -220,8 +220,8 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
 
       {editTarget && (
         <ConfirmActionModal
-          title="تعديل اسم المدرس"
-          description={`تعديل اسم المدرس "‏${editTarget.name}‏". أدخل الاسم الجديد وكلمة مرور المشرف للتأكيد.`}
+          title="تعديل اسم المعلم"
+          description={`تعديل اسم المعلم "‏${editTarget.name}‏". أدخل الاسم الجديد وكلمة مرور المشرف للتأكيد.`}
           actionLabel="حفظ الاسم"
           variant="warning"
           extraField={{
@@ -237,8 +237,8 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
 
       {deleteTarget && (
         <ConfirmActionModal
-          title="حذف حساب المدرس نهائياً"
-          description={`تحذير: سيتم حذف حساب المدرس "‏${deleteTarget.name}‏" وجميع كورساته نهائياً. سيفقد الطلاب الوصول لهذه الكورسات.`}
+          title="حذف حساب المعلم نهائياً"
+          description={`تحذير: سيتم حذف حساب المعلم "‏${deleteTarget.name}‏" وجميع كورساته نهائياً. سيفقد المتعلمين الوصول لهذه الكورسات.`}
           actionLabel="حذف نهائياً"
           variant="danger"
           onConfirm={handleDelete}

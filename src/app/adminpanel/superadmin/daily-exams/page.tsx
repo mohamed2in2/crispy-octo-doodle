@@ -22,7 +22,7 @@ export default async function AdminDailyExamsPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">إدارة التحديات اليومية (لوحة الشرف)</h1>
-          <p className="text-slate-500 mt-1">إنشاء ومتابعة الاختبارات اليومية للطلاب</p>
+          <p className="text-slate-500 mt-1">إنشاء ومتابعة الاختبارات اليومية للمتعلمين</p>
         </div>
         <Link 
           href="/adminpanel/superadmin/daily-exams/create"
@@ -38,7 +38,7 @@ export default async function AdminDailyExamsPage() {
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="py-4 px-6 text-slate-600 font-semibold">التحدي</th>
-              <th className="py-4 px-6 text-slate-600 font-semibold">المرحلة الدراسية</th>
+              <th className="py-4 px-6 text-slate-600 font-semibold">المرحلة التدريبية</th>
               <th className="py-4 px-6 text-slate-600 font-semibold">التاريخ</th>
               <th className="py-4 px-6 text-slate-600 font-semibold">الأسئلة</th>
               <th className="py-4 px-6 text-slate-600 font-semibold">المشاركات</th>

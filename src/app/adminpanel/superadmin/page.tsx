@@ -34,8 +34,8 @@ interface Teacher {
 
 const SECTION_TITLES: Record<string, string> = {
   overview: "نظرة عامة",
-  students: "إدارة الطلاب",
-  teachers: "إدارة المدرسين",
+  students: "إدارة المتعلمين",
+  teachers: "إدارة المعلمين",
   create: "إنشاء حساب مدرس",
   "daily-exams": "امتحانات لوحة الشرف",
   "staff-accounts": "المشرفون والموظفون",
@@ -89,11 +89,11 @@ export default function SuperadminPage() {
     const data = await readJson<{ error?: string }>(res);
     setCreating(false);
     if (res.ok) {
-      toastSuccess(`تم إنشاء حساب المدرس "${newTeacher.name}" بنجاح`);
+      toastSuccess(`تم إنشاء حساب المعلم "${newTeacher.name}" بنجاح`);
       setNewTeacher({ name: "", password: "" });
       fetchTeachers();
     } else {
-      toastError(data?.error || "تعذر إنشاء حساب المدرس");
+      toastError(data?.error || "تعذر إنشاء حساب المعلم");
     }
   };
 
@@ -106,11 +106,11 @@ export default function SuperadminPage() {
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
-      toastSuccess(`تم حذف حساب المدرس "${teacherName}" بنجاح`);
+      toastSuccess(`تم حذف حساب المعلم "${teacherName}" بنجاح`);
       setDeleteTargetTeacher(null);
       fetchTeachers();
     } else {
-      throw new Error(data?.error ?? "تعذر حذف حساب المدرس");
+      throw new Error(data?.error ?? "تعذر حذف حساب المعلم");
     }
   };
 
@@ -166,7 +166,7 @@ export default function SuperadminPage() {
               {/* Teachers list */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="font-bold text-slate-900 dark:text-white">قائمة المدرسين</h2>
+                  <h2 className="font-bold text-slate-900 dark:text-white">قائمة المعلمين</h2>
                   <button
                     onClick={() => setActiveSection("create")}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -228,8 +228,8 @@ export default function SuperadminPage() {
 
           {deleteTargetTeacher && (
             <ConfirmActionModal
-              title="حذف حساب المدرس نهائياً"
-              description={`تحذير: سيتم حذف حساب المدرس "‏${deleteTargetTeacher.name}‏" وجميع كورساته نهائياً.`}
+              title="حذف حساب المعلم نهائياً"
+              description={`تحذير: سيتم حذف حساب المعلم "‏${deleteTargetTeacher.name}‏" وجميع كورساته نهائياً.`}
               actionLabel="حذف نهائياً"
               variant="danger"
               onConfirm={(password) =>
@@ -247,7 +247,7 @@ export default function SuperadminPage() {
 
               <form onSubmit={createTeacher} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">اسم المدرس</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">اسم المعلم</label>
                   <input
                     type="text"
                     required

@@ -15,196 +15,82 @@ interface HeroSectionProps {
 
 export function HeroSection({ isLoggedIn }: HeroSectionProps) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 min-h-[85vh] flex items-center">
-      {/* Animated background circles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute -top-40 -right-40 w-96 h-96 bg-white/5 rounded-full"
-          animate={{
-            y: [0, 20, 0],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute top-1/2 -left-20 w-64 h-64 bg-blue-400/10 rounded-full"
-          animate={{
-            y: [0, -25, 0],
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <div className="absolute bottom-0 right-1/3 w-80 h-80 bg-indigo-400/10 rounded-full animate-pulse" style={{ animationDuration: "4s" }} />
-        <svg className="absolute inset-0 w-full h-full opacity-5" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs>
-            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100" height="100" fill="url(#grid)" />
-        </svg>
+    <section className="relative overflow-hidden bg-[#0B0F19] min-h-[90vh] flex items-center justify-center pt-16 pb-24 md:pt-20 md:pb-32">
+      {/* Subtle Premium Background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#0B0F19]/0 to-transparent opacity-60"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] mix-blend-overlay"></div>
+        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <motion.div className="text-center md:text-right" variants={heroMainVariants} initial="hidden" animate="visible">
-            <motion.h1
-              className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6"
-              variants={HeroHeadingVariants}
-            >
-              تعلّم بذكاء،{" "}
-              <span className="text-yellow-300">تفوّق</span>{" "}
-              بثقة
-            </motion.h1>
-            <motion.p
-              className="text-blue-100 text-lg md:text-xl mb-8 leading-relaxed"
-              variants={heroDescriptionVariants}
-            >
-              منصة تعليمية للطلاب من الصف السادس الابتدائي حتى الثالث الثانوي — محاضرات، اختبارات فورية، ومرشد ذكي يتابع تقدّمك
-            </motion.p>
-            <motion.div
-              className="flex flex-col sm:flex-row gap-4 justify-center md:justify-end"
-              variants={heroButtonContainerVariants}
-            >
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
+        
+        <motion.div variants={heroMainVariants} initial="hidden" animate="visible" className="flex flex-col items-center">
+          
+          <motion.div 
+            variants={HeroHeadingVariants} 
+            className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-medium mb-8 md:mb-10 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default"
+          >
+            <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
+            أكثر من 1,000 طالب يثقون بنا
+          </motion.div>
+          
+          <motion.h1
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black text-white tracking-tight leading-[1.2] md:leading-[1.1] mb-6 md:mb-8"
+            variants={HeroHeadingVariants}
+          >
+            ارتقِ بتجربتك
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-300 via-white to-purple-300">
+              التعليمية
+            </span>
+          </motion.h1>
+          
+          <motion.p
+            className="text-gray-400 text-base md:text-xl mb-10 md:mb-12 leading-relaxed max-w-2xl mx-auto font-medium px-2"
+            variants={heroDescriptionVariants}
+          >
+            منصة تعليمية متكاملة مصممة خصيصاً لتسريع وتيرة تعلمك من خلال مسارات تفاعلية، ومشاريع عملية، وإرشاد شخصي مستمر.
+          </motion.p>
+          
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4 sm:px-0"
+            variants={heroButtonContainerVariants}
+          >
+            {isLoggedIn ? (
               <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
                 <Link
-                  href="/parent"
-                  className="px-8 py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all shadow-xl text-lg flex items-center justify-center gap-2 w-full"
-                  aria-label="بوابة ولي الأمر للمتابعة"
+                  href="/library"
+                  className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:scale-105 transition-all text-base md:text-lg flex items-center justify-center overflow-hidden w-full sm:w-auto min-w-[200px]"
                 >
-                  <span>بوابة ولي الأمر</span>
-                  <span className="text-xl">👨‍👩‍👧‍👦</span>
+                  <span className="relative z-10">متابعة التعلم</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Link>
               </motion.div>
-              {isLoggedIn ? (
-                <motion.div variants={heroButtonVariants}>
+            ) : (
+              <>
+                <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
                   <Link
-                    href="/courses"
-                    className="px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-xl text-lg inline-block"
-                    aria-label="تصفح الكورسات المتاحة"
+                    href="/signup"
+                    className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:scale-105 transition-all text-base md:text-lg flex items-center justify-center overflow-hidden w-full sm:w-auto min-w-[200px]"
                   >
-                    تصفح الكورسات
+                    <span className="relative z-10">ابدأ الآن مجاناً</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </Link>
                 </motion.div>
-              ) : (
-                <>
-                  <motion.div variants={heroButtonVariants}>
-                    <Link
-                      href="/signup"
-                      className="px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-xl text-lg inline-block"
-                      aria-label="إنشاء حساب جديد مجاناً"
-                    >
-                      ابدأ الآن مجاناً
-                    </Link>
-                  </motion.div>
-                  <motion.div variants={heroButtonVariants}>
-                    <Link
-                      href="/login"
-                      className="px-8 py-4 border-2 border-white text-white font-bold rounded-xl hover:bg-white/10 transition-all text-lg inline-block"
-                      aria-label="تسجيل الدخول إلى حسابك"
-                    >
-                      تسجيل الدخول
-                    </Link>
-                  </motion.div>
-                </>
-              )}
-
-          </motion.div>
-
-          </motion.div>
-
-          {/* Hero illustration */}
-          <motion.div
-            className="hidden md:flex justify-center items-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <div className="relative">
-              <motion.div
-                className="w-80 h-80 bg-white/10 rounded-3xl backdrop-blur-sm border border-white/20 p-6 shadow-2xl"
-                animate={{
-                  y: [0, -20, 0],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                {/* Mock course cards */}
-                {[
-                  { icon: "📐", name: "رياضيات", stage: "الثانوي", color: "bg-blue-500" },
-                  { icon: "⚗️", name: "كيمياء", stage: "الثانوي", color: "bg-purple-500" },
-                  { icon: "🔬", name: "أحياء", stage: "الإعدادي", color: "bg-green-500" },
-                ].map((c, i) => (
-                  <motion.div
-                    key={i}
-                    className="flex items-center gap-3 bg-white/15 rounded-xl p-3 mb-3 border border-white/10"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1, duration: 0.4 }}
-                    style={{ transform: `translateX(${i * -8}px)`, zIndex: 3 - i }}
-                    whileHover={{ x: 5 }}
+                <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
+                  <Link
+                    href="/courses"
+                    className="px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white font-bold rounded-full hover:bg-white/10 transition-all text-base md:text-lg flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
                   >
-                    <div className={`w-10 h-10 ${c.color} rounded-lg flex items-center justify-center text-xl`}>
-                      {c.icon}
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold text-sm">{c.name}</p>
-                      <p className="text-blue-200 text-xs">{c.stage}</p>
-                    </div>
-                    <div className="mr-auto">
-                      <div className="w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <motion.div
-                          className={`h-full ${c.color} rounded-full`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${60 + i * 15}%` }}
-                          transition={{ delay: 0.6 + i * 0.1, duration: 0.8 }}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-              {/* Floating elements */}
-              <motion.div
-                className="absolute -top-4 -right-4 bg-white rounded-xl shadow-xl p-3"
-                animate={{
-                  y: [0, -15, 0],
-                  rotate: [0, 5, -5, 0],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <div className="text-2xl">🏆</div>
-              </motion.div>
-              <motion.div
-                className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-3"
-                animate={{
-                  y: [0, 15, 0],
-                  rotate: [0, -5, 5, 0],
-                }}
-                transition={{
-                  duration: 3.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <div className="text-2xl">🚀</div>
-              </motion.div>
-            </div>
+                    استكشف الكورسات
+                  </Link>
+                </motion.div>
+              </>
+            )}
           </motion.div>
-        </div>
+        </motion.div>
+
       </div>
     </section>
   );

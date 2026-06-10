@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("Failed to fetch students:", error);
     return NextResponse.json(
-      { error: "تعذر جلب الطلاب" },
+      { error: "تعذر جلب المتعلمين" },
       { status: 500 }
     );
   }
@@ -67,7 +67,7 @@ export async function PATCH(req: NextRequest) {
 
     if (!studentId || !courseId || !action) {
       return NextResponse.json(
-        { error: "معرف الطالب والكورس والإجراء مطلوبة" },
+        { error: "معرف المتعلم والكورس والإجراء مطلوبة" },
         { status: 400 }
       );
     }
@@ -93,7 +93,7 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
-      return NextResponse.json({ success: true, message: "تم حظر الطالب بنجاح" });
+      return NextResponse.json({ success: true, message: "تم حظر المتعلم بنجاح" });
     } else if (action === "unban") {
       // Reactivate access codes for this student in this course
       await prisma.accessCode.updateMany({
@@ -106,7 +106,7 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
-      return NextResponse.json({ success: true, message: "تم إلغاء حظر الطالب بنجاح" });
+      return NextResponse.json({ success: true, message: "تم إلغاء حظر المتعلم بنجاح" });
     } else if (action === "remove") {
       // Delete all access codes for this student in this course
       await prisma.accessCode.deleteMany({
@@ -116,14 +116,14 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
-      return NextResponse.json({ success: true, message: "تم إزالة الطالب بنجاح" });
+      return NextResponse.json({ success: true, message: "تم إزالة المتعلم بنجاح" });
     } else {
       return NextResponse.json({ error: "إجراء غير صحيح" }, { status: 400 });
     }
   } catch (error) {
     console.error("Failed to update student status:", error);
     return NextResponse.json(
-      { error: "تعذر تحديث حالة الطالب" },
+      { error: "تعذر تحديث حالة المتعلم" },
       { status: 500 }
     );
   }
