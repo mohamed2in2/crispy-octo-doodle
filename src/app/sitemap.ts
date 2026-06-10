@@ -1,7 +1,27 @@
 import { MetadataRoute } from 'next'
+import { prisma } from '@/lib/prisma'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://code-up.tech'
+
+  let courses: any[] = []
+  try {
+    courses = await prisma.course.findMany({
+      select: {
+        id: true,
+        updatedAt: true,
+      },
+    })
+  } catch (error) {
+    console.error('Failed to fetch courses for sitemap', error)
+  }
+
+  const courseUrls = courses.map((course) => ({
+    url: `${baseUrl}/courses/${course.id}`,
+    lastModified: course.updatedAt || new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }))
 
   return [
     {
@@ -28,5 +48,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    ...courseUrls,
   ]
 }

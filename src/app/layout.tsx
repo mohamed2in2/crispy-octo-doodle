@@ -7,8 +7,13 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "منصة Code-UP الكورسات | تعلّم الرياضيات والعلوم للمتعلمين المصريين",
+  metadataBase: new URL("https://code-up.tech"),
+  title: {
+    default: "منصة Code-UP الكورسات | تعلّم الرياضيات والعلوم للمتعلمين المصريين",
+    template: "%s | منصة Code-UP",
+  },
   description: "منصة كورسات متكاملة للمتعلمين المصريين لمختلف الأعمار والمستويات. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم التدريبي.",
+  keywords: ["كورسات", "تعليم", "برمجة", "رياضيات", "علوم", "مصر", "Code-UP", "منصة تعليمية", "ثانوية عامة", "إعدادية"],
   icons: {
     icon: "/logo.jpeg",
   },
@@ -34,8 +39,19 @@ export const metadata: Metadata = {
     description: "منصة كورسات متكاملة للمتعلمين المصريين لمختلف الأعمار والمستويات. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم التدريبي.",
     images: ["/og-image.png"],
   },
-  alternates: {
-    canonical: "https://code-up.tech",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "e-Your-Google-Search-Console-Verification-Code", // placeholder, but good practice
   },
 };
 
