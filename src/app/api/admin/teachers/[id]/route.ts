@@ -84,6 +84,7 @@ export async function DELETE(
       return NextResponse.json({ error: "المعلم غير موجود" }, { status: 404 });
     }
 
+    await prisma.course.deleteMany({ where: { teacherId: id } });
     await prisma.user.delete({ where: { id } });
 
     await logAdminAction({
