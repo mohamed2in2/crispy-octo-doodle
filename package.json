@@ -29,7 +29,6 @@
     "jose": "^6.2.3",
     "libsql": "^0.5.29",
     "lightningcss": "^1.32.0",
-    "lightningcss-win32-x64-msvc": "^1.32.0",
     "lucide-react": "^1.17.0",
     "motion-dom": "^12.40.0",
     "next": "^16.2.6",
