@@ -94,6 +94,7 @@ export const SUBJECTS = [
   "دراسات اجتماعية",
   "لغة فرنسية",
   "فلسفة ومنطق",
+  "برمجة",
 ];
 
 // ========= AI STUDY ASSISTANT TYPES =========
