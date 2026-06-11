@@ -106,14 +106,14 @@ export default function AIStudyPage() {
 
   return (
     <ProfileGuard>
-      <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300 relative overflow-hidden">
+      <div className="flex flex-col h-screen max-h-[100dvh] bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300 relative overflow-hidden">
         {/* Background glow effects */}
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         
         <Navbar user={user} />
         
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col relative z-10 h-[calc(100vh-80px)]">
+        <main className="flex-1 min-h-0 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 flex flex-col relative z-10">
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 flex items-center gap-3">

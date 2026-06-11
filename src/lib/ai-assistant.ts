@@ -378,7 +378,7 @@ function fallbackResponse(
 
   if (choice === "1" || input.includes("أداء") || input.includes("اداء") || input.includes("حلل") || input.includes("تحليل") || input.includes("درج") || input.includes("قوت") || input.includes("قوة") || input.includes("علام")) {
     message = buildPerformanceAnalysis(ctx);
-  } else if (choice === "2" || input.includes("خطة") || input.includes("خطه") || input.includes("جدول") || input.includes("اذاكر") || input.includes("أذاكر") || input.includes("مراجعة") || input.includes("النهارده")) {
+  } else if (choice === "2" || input.includes("خطة") || input.includes("خطه") || input.includes("جدول") || input.includes("اذاكر") || input.includes("أذاكر") || input.includes("مراجعة") || input.includes("النهارده") || input.includes("استعد") || input.includes("اختبار")) {
     message = buildStudyPlan(ctx);
   } else if (choice === "3" || input.includes("تعديل")) {
     const { list, hasQuizzes } = buildQuizList(ctx);

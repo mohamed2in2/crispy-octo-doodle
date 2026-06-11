@@ -7,6 +7,7 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
+      await clearAuthCookie();
       return NextResponse.json({ user: null });
     }
 
