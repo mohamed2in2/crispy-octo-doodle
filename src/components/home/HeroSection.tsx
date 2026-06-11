@@ -1,97 +1,248 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
-  heroMainVariants,
-  HeroHeadingVariants,
-  heroDescriptionVariants,
-  heroButtonContainerVariants,
-  heroButtonVariants,
-} from "@/lib/animations";
+  AnimatePresence,
+  MotionConfig,
+  motion,
+  useMotionTemplate,
+  useReducedMotion,
+  useSpring,
+  type Variants,
+} from "framer-motion";
+import { useCanHover } from "@/lib/motion";
+
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const ROTATING_SUBJECTS = ["الرياضيات", "الفيزياء", "الكيمياء", "البرمجة"];
+
+const GRADE_SHORTCUTS = [
+  { stage: "sec_1", label: "الأول الثانوي" },
+  { stage: "sec_2", label: "الثاني الثانوي" },
+  { stage: "sec_3", label: "الثالث الثانوي" },
+];
+
+// Inline noise texture — keeps the grain without a third-party request.
+const NOISE_BG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+const stagger: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
+};
+
+const rise: Variants = {
+  hidden: { opacity: 0, y: 26 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+};
 
 interface HeroSectionProps {
   isLoggedIn: boolean;
 }
 
 export function HeroSection({ isLoggedIn }: HeroSectionProps) {
-  return (
-    <section className="relative overflow-hidden bg-[#0B0F19] min-h-[90vh] flex items-center justify-center pt-16 pb-24 md:pt-20 md:pb-32">
-      {/* Subtle Premium Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#0B0F19]/0 to-transparent opacity-60"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.015] mix-blend-overlay"></div>
-        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-      </div>
+  const canHover = useCanHover();
+  const reduced = useReducedMotion();
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
-        
-        <motion.div variants={heroMainVariants} initial="hidden" animate="visible" className="flex flex-col items-center">
-          
-          <motion.div 
-            variants={HeroHeadingVariants} 
-            className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-medium mb-8 md:mb-10 backdrop-blur-md hover:bg-white/10 transition-colors cursor-default"
+  const spotX = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  const spotY = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  const spotOpacity = useSpring(0, { stiffness: 120, damping: 30 });
+  const spotlight = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(99, 102, 241, 0.16), transparent 70%)`;
+
+  const trackSpotlight = (e: React.PointerEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    spotX.set(e.clientX - rect.left);
+    spotY.set(e.clientY - rect.top);
+  };
+
+  const wakeSpotlight = (e: React.PointerEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    spotX.jump(e.clientX - rect.left);
+    spotY.jump(e.clientY - rect.top);
+    spotOpacity.set(1);
+  };
+
+  const [subjectIndex, setSubjectIndex] = useState(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const id = window.setInterval(
+      () => setSubjectIndex((i) => (i + 1) % ROTATING_SUBJECTS.length),
+      2600,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced]);
+
+  const subject = ROTATING_SUBJECTS[subjectIndex];
+  const spotlightEnabled = canHover && !reduced;
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <section
+        className="relative overflow-hidden bg-[#0B0F19] min-h-[92vh] flex items-center justify-center pt-16 pb-24 md:pt-20 md:pb-32"
+        onPointerMove={spotlightEnabled ? trackSpotlight : undefined}
+        onPointerEnter={spotlightEnabled ? wakeSpotlight : undefined}
+        onPointerLeave={spotlightEnabled ? () => spotOpacity.set(0) : undefined}
+      >
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          <div className="absolute inset-0 bg-[linear-gradient(to_left,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_38%,black_25%,transparent_78%)]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/25 via-transparent to-transparent opacity-70" />
+          <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay" style={{ backgroundImage: NOISE_BG }} />
+          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
+
+        {spotlightEnabled && (
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 z-[1] pointer-events-none"
+            style={{ background: spotlight, opacity: spotOpacity }}
+          />
+        )}
+
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center"
+        >
+          <motion.div
+            variants={rise}
+            className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-medium mb-8 md:mb-10 backdrop-blur-md cursor-default"
           >
-            <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
-            أكثر من 1,000 طالب يثقون بنا
+            <span className="relative flex w-2 h-2">
+              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-60" />
+              <span className="relative inline-flex w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+            </span>
+            أكثر من ١٬٠٠٠ طالب يثقون بنا
           </motion.div>
-          
+
           <motion.h1
-            className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.5rem] font-black text-white tracking-tight leading-[1.2] md:leading-[1.1] mb-6 md:mb-8"
-            variants={HeroHeadingVariants}
+            variants={rise}
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.25rem] font-black text-white tracking-tight leading-[1.25] md:leading-[1.15] mb-6 md:mb-8"
           >
-            ارتقِ بتجربتك
+            كل ما تحتاجه للتفوّق
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-300 via-white to-purple-300">
-              التعليمية
+            <span>في </span>
+            <span className="sr-only">جميع المواد الدراسية</span>
+            <span aria-hidden className="relative inline-grid overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
+              {ROTATING_SUBJECTS.map((s) => (
+                <span key={s} className="invisible col-start-1 row-start-1 whitespace-nowrap px-1">
+                  {s}
+                </span>
+              ))}
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={subject}
+                  initial={{ y: "70%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  exit={{ y: "-70%", opacity: 0 }}
+                  transition={{ duration: 0.55, ease: EASE }}
+                  className="col-start-1 row-start-1 whitespace-nowrap px-1 text-transparent bg-clip-text bg-gradient-to-br from-indigo-300 via-white to-cyan-300"
+                >
+                  {subject}
+                </motion.span>
+              </AnimatePresence>
             </span>
           </motion.h1>
-          
+
           <motion.p
+            variants={rise}
             className="text-gray-400 text-base md:text-xl mb-10 md:mb-12 leading-relaxed max-w-2xl mx-auto font-medium px-2"
-            variants={heroDescriptionVariants}
           >
             منصة تعليمية متكاملة مصممة خصيصاً لتسريع وتيرة تعلمك من خلال مسارات تفاعلية، ومشاريع عملية، وإرشاد شخصي مستمر.
           </motion.p>
-          
+
           <motion.div
+            variants={rise}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4 sm:px-0"
-            variants={heroButtonContainerVariants}
           >
-            {isLoggedIn ? (
-              <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
-                <Link
-                  href="/library"
-                  className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:scale-105 transition-all text-base md:text-lg flex items-center justify-center overflow-hidden w-full sm:w-auto min-w-[200px]"
+            <MagneticArea className="w-full sm:w-auto">
+              <Link
+                href={isLoggedIn ? "/library" : "/signup"}
+                className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] transition-shadow text-base md:text-lg flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px]"
+              >
+                <span className="relative z-10">{isLoggedIn ? "متابعة التعلم" : "ابدأ الآن مجاناً"}</span>
+                <svg
+                  className="relative z-10 w-5 h-5 transition-transform group-hover:-translate-x-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden
                 >
-                  <span className="relative z-10">متابعة التعلم</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </Link>
-              </motion.div>
-            ) : (
-              <>
-                <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
-                  <Link
-                    href="/signup"
-                    className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:scale-105 transition-all text-base md:text-lg flex items-center justify-center overflow-hidden w-full sm:w-auto min-w-[200px]"
-                  >
-                    <span className="relative z-10">ابدأ الآن مجاناً</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  </Link>
-                </motion.div>
-                <motion.div variants={heroButtonVariants} className="w-full sm:w-auto">
-                  <Link
-                    href="/courses"
-                    className="px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white font-bold rounded-full hover:bg-white/10 transition-all text-base md:text-lg flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
-                  >
-                    استكشف الكورسات
-                  </Link>
-                </motion.div>
-              </>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+                  <span className="absolute inset-y-0 left-[-45%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent blur-sm transition-[left] duration-700 ease-out group-hover:left-[115%]" />
+                </span>
+              </Link>
+            </MagneticArea>
+
+            {!isLoggedIn && (
+              <Link
+                href="/courses"
+                className="px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white font-bold rounded-full hover:bg-white/10 hover:border-white/20 transition-all text-base md:text-lg flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
+              >
+                استكشف الكورسات
+              </Link>
             )}
+          </motion.div>
+
+          <motion.div variants={rise} className="flex flex-wrap items-center justify-center gap-2 mt-10 md:mt-12">
+            <span className="text-xs md:text-sm text-white/40 font-medium ml-1">اختر صفك وابدأ فوراً:</span>
+            {GRADE_SHORTCUTS.map((g) => (
+              <Link
+                key={g.stage}
+                href={`/courses?stage=${g.stage}`}
+                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-bold hover:bg-indigo-500/15 hover:border-indigo-400/40 hover:text-white transition-all backdrop-blur-sm"
+              >
+                {g.label}
+                <span aria-hidden className="text-indigo-300 transition-transform group-hover/chip:-translate-x-0.5">
+                  ←
+                </span>
+              </Link>
+            ))}
           </motion.div>
         </motion.div>
 
-      </div>
-    </section>
+        <div aria-hidden className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block animate-float-slow">
+          <div className="w-6 h-10 rounded-full border-2 border-white/15 flex justify-center pt-2">
+            <div className="w-1 h-2.5 rounded-full bg-white/30" />
+          </div>
+        </div>
+      </section>
+    </MotionConfig>
+  );
+}
+
+/** Eases its child toward the cursor and springs back on leave. No-ops on touch devices. */
+function MagneticArea({ children, className }: { children: React.ReactNode; className?: string }) {
+  const canHover = useCanHover();
+  const reduced = useReducedMotion();
+  const x = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
+  const y = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
+
+  const enabled = canHover && !reduced;
+
+  const pull = (e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    x.set((e.clientX - rect.left - rect.width / 2) * 0.22);
+    y.set((e.clientY - rect.top - rect.height / 2) * 0.22);
+  };
+
+  const release = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div
+      className={className}
+      style={{ x, y }}
+      onPointerMove={enabled ? pull : undefined}
+      onPointerLeave={enabled ? release : undefined}
+    >
+      {children}
+    </motion.div>
   );
 }
