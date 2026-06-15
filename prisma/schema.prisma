@@ -155,9 +155,11 @@ model Video {
   durationMinutes    Int                 @default(0)
   maxWatchesPerUser  Int                 @default(3)
   isFree             Boolean             @default(false)
+  // Scheduled unlock: null = available now; a future date locks this video until
+  // then. Effective unlock = the later of this and the folder's publishAt.
+  publishAt          DateTime?
   order              Int                 @default(0)
   folderId        String
-  publishAt       DateTime?
   createdAt       DateTime            @default(now())
   progress        Progress[]
   folder          Folder              @relation(fields: [folderId], references: [id], onDelete: Cascade)

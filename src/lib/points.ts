@@ -17,33 +17,30 @@ export async function awardDailyLoginPoints(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
+  // Compare CALENDAR DAYS, not exact timestamps. Normalizing both sides to
+  // local start-of-day makes the "already counted today" guard robust even if
+  // lastLoginDate carries a stray time component (older data / manual edits) —
+  // which was causing points to be re-awarded on every login the same day.
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const todayStart = startOfDay(new Date());
+
   let newStreak = 1;
-  let pointsToAward = 0;
+  let pointsToAward = POINTS.DAILY_LOGIN_STREAK;
 
   if (user.lastLoginDate) {
-    const lastLogin = new Date(user.lastLoginDate);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (lastLogin.getTime() === today.getTime()) {
-      // Already logged in today, do nothing
+    const dayDiff = Math.round((todayStart - startOfDay(new Date(user.lastLoginDate))) / 86_400_000);
+    if (dayDiff <= 0) {
+      // Already counted today (0) — or clock skew (negative). Award nothing.
       return;
-    } else if (lastLogin.getTime() === yesterday.getTime()) {
-      // Streak continues
+    } else if (dayDiff === 1) {
+      // Consecutive day → streak continues.
       newStreak = user.loginStreak + 1;
       pointsToAward = newStreak * POINTS.DAILY_LOGIN_STREAK;
     } else {
-      // Streak broken
+      // Gap of 2+ days → streak resets.
       newStreak = 1;
       pointsToAward = POINTS.DAILY_LOGIN_STREAK;
     }
-  } else {
-    // First ever login recorded
-    newStreak = 1;
-    pointsToAward = POINTS.DAILY_LOGIN_STREAK;
   }
 
   await prisma.user.update({
@@ -51,7 +48,7 @@ export async function awardDailyLoginPoints(userId: string) {
     data: {
       points: { increment: pointsToAward },
       loginStreak: newStreak,
-      lastLoginDate: today,
+      lastLoginDate: new Date(todayStart),
       pointsUpdatedAt: new Date(),
     },
   });
