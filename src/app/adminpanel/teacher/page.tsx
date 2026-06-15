@@ -18,7 +18,7 @@ import {
   IconKey, IconShield, IconClock, IconEye,
 } from "@/components/admin/AdminIcons";
 
-function fileToResizedDataUrl(file: File, max = 800): Promise<string> {
+function fileToResizedDataUrl(file: File, max = 600): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -33,7 +33,7 @@ function fileToResizedDataUrl(file: File, max = 800): Promise<string> {
         const ctx = canvas.getContext("2d");
         if (!ctx) return reject(new Error("no ctx"));
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
       };
       img.onerror = reject;
       img.src = reader.result as string;
@@ -943,7 +943,7 @@ export default function TeacherDashboardPage() {
                               const file = e.target.files?.[0];
                               if (file) {
                                 try {
-                                  const url = await fileToResizedDataUrl(file, 800);
+                                  const url = await fileToResizedDataUrl(file, 600);
                                   setCourseSettings({ ...courseSettings, thumbnailUrl: url });
                                 } catch (err) {
                                   notify("error", "تعذر معالجة الصورة");
@@ -957,7 +957,7 @@ export default function TeacherDashboardPage() {
                             <img src={courseSettings.thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
                           </div>
                         )}
-                        <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1)</p>
+                        <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 600×300 بكسل (نسبة 2:1)</p>
                       </div>
                       <div className="md:col-span-2">
                         <label className={label}>وصف الكورس</label>
@@ -1089,7 +1089,7 @@ export default function TeacherDashboardPage() {
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const url = await fileToResizedDataUrl(file, 800);
+                            const url = await fileToResizedDataUrl(file, 600);
                             setNewCourse({ ...newCourse, thumbnailUrl: url });
                           } catch (err) {
                             notify("error", "تعذر معالجة الصورة");
@@ -1103,7 +1103,7 @@ export default function TeacherDashboardPage() {
                       <img src={newCourse.thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
                     </div>
                   )}
-                  <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1)</p>
+                  <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 600×300 بكسل (نسبة 2:1)</p>
                 </div>
                 <div>
                   <label className={label}>وصف الكورس</label>
