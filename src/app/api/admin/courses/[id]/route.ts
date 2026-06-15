@@ -5,7 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 1000;
-const MAX_URL_LENGTH = 500;
+const MAX_URL_LENGTH = 5000000;
 const MIN_TITLE_LENGTH = 1;
 
 type CoursePatchInput = {

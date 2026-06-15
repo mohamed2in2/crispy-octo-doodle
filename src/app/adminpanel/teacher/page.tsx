@@ -18,6 +18,31 @@ import {
   IconKey, IconShield, IconClock, IconEye,
 } from "@/components/admin/AdminIcons";
 
+function fileToResizedDataUrl(file: File, max = 800): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no ctx"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function readJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
   if (!text) return null;
@@ -909,8 +934,29 @@ export default function TeacherDashboardPage() {
                         <input type="text" value={courseSettings.educationalStage} onChange={(e) => setCourseSettings({ ...courseSettings, educationalStage: e.target.value })} className={input} />
                       </div>
                       <div className="md:col-span-2">
-                        <label className={label}>رابط الصورة المصغرة</label>
-                        <input type="url" value={courseSettings.thumbnailUrl} onChange={(e) => setCourseSettings({ ...courseSettings, thumbnailUrl: e.target.value })} placeholder="https://…" dir="ltr" className={`${input} font-mono`} />
+                        <label className={label}>الصورة المصغرة (رابط أو رفع من الجهاز)</label>
+                        <div className="flex gap-2">
+                          <input type="text" value={courseSettings.thumbnailUrl} onChange={(e) => setCourseSettings({ ...courseSettings, thumbnailUrl: e.target.value })} placeholder="https://…" dir="ltr" className={`${input} font-mono flex-1`} />
+                          <label className={`${ghostBtn} cursor-pointer shrink-0`}>
+                            رفع صورة
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  const url = await fileToResizedDataUrl(file, 800);
+                                  setCourseSettings({ ...courseSettings, thumbnailUrl: url });
+                                } catch (err) {
+                                  notify("error", "تعذر معالجة الصورة");
+                                }
+                              }
+                            }} />
+                          </label>
+                        </div>
+                        {courseSettings.thumbnailUrl && courseSettings.thumbnailUrl.startsWith("data:image") && (
+                          <div className="mt-2 w-32 h-16 rounded overflow-hidden border border-[var(--border)]">
+                            <img src={courseSettings.thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                          </div>
+                        )}
                         <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1)</p>
                       </div>
                       <div className="md:col-span-2">
@@ -1034,8 +1080,29 @@ export default function TeacherDashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={label}>رابط الصورة المصغرة</label>
-                  <input type="url" value={newCourse.thumbnailUrl} onChange={(e) => setNewCourse({ ...newCourse, thumbnailUrl: e.target.value })} placeholder="https://example.com/image.jpg" dir="ltr" className={`${input} font-mono`} />
+                  <label className={label}>الصورة المصغرة (رابط أو رفع من الجهاز)</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={newCourse.thumbnailUrl} onChange={(e) => setNewCourse({ ...newCourse, thumbnailUrl: e.target.value })} placeholder="https://example.com/image.jpg" dir="ltr" className={`${input} font-mono flex-1`} />
+                    <label className={`${ghostBtn} cursor-pointer shrink-0`}>
+                      رفع صورة
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const url = await fileToResizedDataUrl(file, 800);
+                            setNewCourse({ ...newCourse, thumbnailUrl: url });
+                          } catch (err) {
+                            notify("error", "تعذر معالجة الصورة");
+                          }
+                        }
+                      }} />
+                    </label>
+                  </div>
+                  {newCourse.thumbnailUrl && newCourse.thumbnailUrl.startsWith("data:image") && (
+                    <div className="mt-2 w-32 h-16 rounded overflow-hidden border border-[var(--border)]">
+                      <img src={newCourse.thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
                   <p className="mt-1.5 text-[11px] text-[var(--ink-muted)]">الأبعاد المثالية: 800×400 بكسل (نسبة 2:1)</p>
                 </div>
                 <div>
