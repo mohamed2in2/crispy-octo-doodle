@@ -22,7 +22,7 @@ function fileToResizedDataUrl(file: File, max = 800): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const img = new Image();
+      const img = document.createElement("img") as HTMLImageElement;
       img.onload = () => {
         const scale = Math.min(1, max / Math.max(img.width, img.height));
         const w = Math.round(img.width * scale);
