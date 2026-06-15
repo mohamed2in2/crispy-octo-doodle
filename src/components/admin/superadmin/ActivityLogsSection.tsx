@@ -174,7 +174,7 @@ export function ActivityLogsSection() {
                       <th className="text-right px-4 py-3 font-medium">تفاصيل</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                     {logs.map((log) => {
                       const meta = log.metadata
                         ? (() => { try { return JSON.parse(log.metadata) as Record<string, unknown>; } catch { return null; } })()

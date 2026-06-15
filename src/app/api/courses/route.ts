@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const coursesWithAccess = courses.map((course) => ({ ...course, hasAccess: accessMap.has(course.id) }));
 
     const response = NextResponse.json({ courses: coursesWithAccess });
-    response.headers.set("Cache-Control", "private, max-age=60");
+    response.headers.set("Cache-Control", "private, no-cache, no-store, max-age=0, must-revalidate");
     return response;
   } catch (error) {
     console.error("Courses API error:", error);

@@ -9,9 +9,17 @@ import { TeachersSection } from "@/components/admin/superadmin/TeachersSection";
 import { ConfirmActionModal } from "@/components/admin/superadmin/ConfirmActionModal";
 import { ActivityLogsSection } from "@/components/admin/superadmin/ActivityLogsSection";
 import { DeletedStudentsSection } from "@/components/admin/superadmin/DeletedStudentsSection";
+import { DeletedTeachersSection } from "@/components/admin/superadmin/DeletedTeachersSection";
 import { StaffAccountsSection } from "@/components/admin/superadmin/StaffAccountsSection";
 import { ErrorMonitorSection } from "@/components/admin/superadmin/ErrorMonitorSection";
 import { DailyExamsSection } from "@/components/admin/superadmin/DailyExamsSection";
+import { IconMenu, IconTrash } from "@/components/admin/AdminIcons";
+
+const ROLE_LABEL: Record<string, string> = {
+  superadmin: "المشرف العام",
+  admin: "مشرف",
+  staff: "موظف",
+};
 
 async function readJson<T>(res: Response): Promise<T | null> {
   const text = await res.text();
@@ -50,6 +58,7 @@ export default function SuperadminPage() {
   const [creating, setCreating] = useState(false);
   const [newTeacher, setNewTeacher] = useState({ name: "", password: "" });
   const [activeSection, setActiveSection] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteTargetTeacher, setDeleteTargetTeacher] = useState<Teacher | null>(null);
   const [userRole, setUserRole] = useState<"superadmin" | "admin" | "staff">("superadmin");
 
@@ -120,26 +129,33 @@ export default function SuperadminPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-gray-950 text-white">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-gray-950 text-slate-900 dark:text-white">
       <AdminSidebar
         role={userRole}
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         onLogout={handleLogout}
+        mobileOpen={sidebarOpen}
+        onMobileOpenChange={setSidebarOpen}
       />
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+        <div className="sticky top-0 z-10 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-slate-200 dark:border-gray-800 px-4 sm:px-6 py-3.5 flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="فتح القائمة"
+            className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          >
+            <IconMenu className="w-5 h-5" />
+          </button>
+          <h1 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate flex-1">
             {SECTION_TITLES[activeSection] ?? activeSection}
           </h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/30">
-              👑 المشرف العام
-            </span>
-            <DarkModeToggle />
-          </div>
+          <span className="hidden sm:inline-flex text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-full font-bold">
+            {ROLE_LABEL[userRole]}
+          </span>
+          <DarkModeToggle />
         </div>
 
         <div className="p-6">
@@ -182,28 +198,28 @@ export default function SuperadminPage() {
                     <p>لا يوجد مدرسون بعد</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-700">
+                  <div className="divide-y divide-slate-200 dark:divide-gray-700">
                     {teachers.map((t) => (
                       <div key={t.id} className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold shrink-0">
                             {t.name[0]}
                           </div>
-                          <div>
-                            <p className="font-medium text-slate-900 dark:text-white">{t.name}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-white truncate">{t.name}</p>
                             <p className="text-xs text-slate-500 dark:text-gray-400">{t._count?.courses || 0} كورس</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-slate-500 dark:text-gray-500">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-slate-500 dark:text-gray-500 hidden sm:inline">
                             {t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : ""}
                           </span>
                           <button
                             onClick={() => setDeleteTargetTeacher(t)}
-                            className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                            className="w-9 h-9 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                             aria-label={`حذف ${t.name}`}
                           >
-                            🗑️
+                            <IconTrash className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -240,6 +256,8 @@ export default function SuperadminPage() {
           )}
 
           {activeSection === "teachers" && <TeachersSection userRole={userRole} />}
+
+          {activeSection === "deleted-teachers" && <DeletedTeachersSection userRole={userRole} />}
 
           {activeSection === "create" && (
             <div className="max-w-md">

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DarkModeToggle } from "@/components/ui/DarkModeToggle";
+import { StreakFlame } from "@/components/ui/StreakFlame";
 import { Trophy } from "lucide-react";
 
 interface NavbarProps {
@@ -11,17 +12,27 @@ interface NavbarProps {
 }
 
 const NAV_LINKS = [
-  { href: "/", label: "الرئيسية" },
-  { href: "/courses", label: "الكورسات" },
-  { href: "/library", label: "مكتبتي" },
+  { href: "/",           label: "الرئيسية" },
+  { href: "/courses",    label: "الكورسات" },
+  { href: "/library",    label: "مكتبتي" },
   { href: "/environments", label: "البيئات" },
-  { href: "/account", label: "حسابي" },
+  { href: "/account",    label: "حسابي" },
 ];
 
 export function Navbar({ user }: NavbarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname  = usePathname();
+  const router    = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* Close mobile menu on route change */
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -30,99 +41,166 @@ export function Navbar({ user }: NavbarProps) {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/40 dark:border-white/5 bg-white/80 dark:bg-slate-950/70 backdrop-blur-xl shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)]">
+    <nav
+      className={`sticky top-0 z-[var(--z-sticky)] transition-all duration-200 ${
+        scrolled
+          ? "border-b border-[var(--border)] bg-[var(--surface)]/80 dark:bg-[#0b0f19]/85 backdrop-blur-xl shadow-[0_10px_30px_-20px_rgba(15,23,42,0.35)]"
+          : "border-b border-transparent bg-[var(--surface)]/60 dark:bg-transparent backdrop-blur-md"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <img src="/logo.jpeg" alt="شعار منصة Code-UP" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
-              <div className="hidden sm:block">
-                <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
-                <div className="text-xs text-slate-500 dark:text-slate-300">
-                  <span className="block">منصة كورسات متميزة</span>
-                </div>
+
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 group" aria-label="Code-UP — الرئيسية">
+              <img
+                src="/logo.jpeg"
+                alt=""
+                aria-hidden="true"
+                className="w-8 h-8 rounded-lg object-cover shadow-sm"
+              />
+              <div className="hidden sm:block leading-tight">
+                <span className="block font-black text-lg text-[var(--ink)] tracking-tight">Code-UP</span>
+                <span className="block text-[10px] font-medium text-[var(--ink-muted)] leading-none">منصة كورسات متميزة</span>
               </div>
             </Link>
 
-            <Link 
-              href="/leaderboard" 
-              className="p-2 flex items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors border border-yellow-200 dark:border-yellow-500/30 shadow-sm"
+            <Link
+              href="/leaderboard"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+              aria-label="لوحة الشرف"
               title="لوحة الشرف"
             >
-              <Trophy className="w-5 h-5" />
+              <Trophy className="w-4 h-4" aria-hidden="true" />
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === link.href
-                    ? "bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/5"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-0.5" role="navigation" aria-label="التنقل الرئيسي">
+            {NAV_LINKS.map((link) => {
+              const active = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    active
+                      ? "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10"
+                      : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <StreakFlame role={user?.role} />
             <DarkModeToggle />
+
             {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">{user.name}</span>
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-sm font-medium text-[var(--ink-muted)] max-w-[120px] truncate">{user.name}</span>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1.5 text-sm bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                  className="px-3 py-1.5 text-sm font-semibold rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-100 dark:border-rose-500/15 transition-colors"
                 >
                   خروج
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/login" className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+              <div className="hidden sm:flex items-center gap-1.5">
+                <Link
+                  href="/login"
+                  className="px-3.5 py-1.5 text-sm font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors"
+                >
                   دخول
                 </Link>
-                <Link href="/signup" className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 transition-colors">
-                  تسجيل
+                <Link
+                  href="/signup"
+                  className="px-4 py-1.5 text-sm font-bold rounded-lg bg-[#0f172a] dark:bg-white text-white dark:text-[#0f172a] hover:bg-[#1e293b] dark:hover:bg-slate-100 transition-colors shadow-sm"
+                >
+                  إنشاء حساب
                 </Link>
               </div>
             )}
 
+            {/* Hamburger — mobile */}
             <button
-              className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400"
-              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
+              aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {menuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                {menuOpen
+                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                }
               </svg>
             </button>
           </div>
         </div>
 
+        {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden py-3 border-t border-gray-200 dark:border-gray-800 space-y-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`block px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === link.href
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div
+            id="mobile-nav"
+            role="navigation"
+            aria-label="قائمة التنقل"
+            className="md:hidden py-3 border-t border-[var(--border)] space-y-0.5 pb-4"
+          >
+            {NAV_LINKS.map((link) => {
+              const active = pathname === link.href || (link.href !== "/" && pathname?.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`block px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                    active
+                      ? "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10"
+                      : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+
+            <div className="pt-3 px-4 border-t border-[var(--border)] mt-2 flex flex-col gap-2">
+              {user ? (
+                <>
+                  <span className="text-sm font-medium text-[var(--ink-muted)]">{user.name}</span>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-center px-4 py-2.5 text-sm font-semibold rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/15 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                  >
+                    تسجيل الخروج
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="w-full text-center px-4 py-2.5 text-sm font-semibold rounded-lg text-[var(--ink-muted)] hover:text-[var(--ink)] border border-[var(--border)] hover:border-[var(--ink-muted)] transition-colors"
+                  >
+                    دخول
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="w-full text-center px-4 py-2.5 text-sm font-bold rounded-lg bg-[#0f172a] dark:bg-white text-white dark:text-[#0f172a] hover:bg-[#1e293b] dark:hover:bg-slate-100 transition-colors"
+                  >
+                    إنشاء حساب
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

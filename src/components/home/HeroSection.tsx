@@ -23,18 +23,14 @@ const GRADE_SHORTCUTS = [
   { stage: "sec_3", label: "الثالث الثانوي" },
 ];
 
-// Inline noise texture — keeps the grain without a third-party request.
-const NOISE_BG =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
-
 const stagger: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.08 } },
 };
 
 const rise: Variants = {
-  hidden: { opacity: 0, y: 26 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+  hidden:   { opacity: 0, y: 22 },
+  visible:  { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
 };
 
 interface HeroSectionProps {
@@ -43,23 +39,23 @@ interface HeroSectionProps {
 
 export function HeroSection({ isLoggedIn }: HeroSectionProps) {
   const canHover = useCanHover();
-  const reduced = useReducedMotion();
+  const reduced  = useReducedMotion();
 
-  const spotX = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
-  const spotY = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  /* Cursor spotlight */
+  const spotX       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  const spotY       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
   const spotOpacity = useSpring(0, { stiffness: 120, damping: 30 });
-  const spotlight = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(99, 102, 241, 0.16), transparent 70%)`;
+  const spotlight   = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(99,102,241,0.14), transparent 70%)`;
 
   const trackSpotlight = (e: React.PointerEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    spotX.set(e.clientX - rect.left);
-    spotY.set(e.clientY - rect.top);
+    const r = e.currentTarget.getBoundingClientRect();
+    spotX.set(e.clientX - r.left);
+    spotY.set(e.clientY - r.top);
   };
-
   const wakeSpotlight = (e: React.PointerEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    spotX.jump(e.clientX - rect.left);
-    spotY.jump(e.clientY - rect.top);
+    const r = e.currentTarget.getBoundingClientRect();
+    spotX.jump(e.clientX - r.left);
+    spotY.jump(e.clientY - r.top);
     spotOpacity.set(1);
   };
 
@@ -74,24 +70,30 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
     return () => window.clearInterval(id);
   }, [reduced]);
 
-  const subject = ROTATING_SUBJECTS[subjectIndex];
+  const subject          = ROTATING_SUBJECTS[subjectIndex];
   const spotlightEnabled = canHover && !reduced;
 
   return (
     <MotionConfig reducedMotion="user">
       <section
-        className="relative overflow-hidden bg-[#0B0F19] min-h-[92vh] flex items-center justify-center pt-16 pb-24 md:pt-20 md:pb-32"
+        className="relative overflow-hidden bg-[#0b0f19] min-h-[92vh] flex items-center justify-center pt-16 pb-24 md:pt-20 md:pb-32"
         onPointerMove={spotlightEnabled ? trackSpotlight : undefined}
         onPointerEnter={spotlightEnabled ? wakeSpotlight : undefined}
         onPointerLeave={spotlightEnabled ? () => spotOpacity.set(0) : undefined}
       >
+        {/* Background layers */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <div className="absolute inset-0 bg-[linear-gradient(to_left,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_38%,black_25%,transparent_78%)]" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/25 via-transparent to-transparent opacity-70" />
-          <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay" style={{ backgroundImage: NOISE_BG }} />
-          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          {/* Grid */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_left,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_38%,black_25%,transparent_78%)]" />
+          {/* Top radial */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent opacity-60" />
+          {/* Grain */}
+          <div className="noise" />
+          {/* Bottom rule */}
+          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
         </div>
 
+        {/* Spotlight */}
         {spotlightEnabled && (
           <motion.div
             aria-hidden
@@ -100,45 +102,55 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
           />
         )}
 
+        {/* Content */}
         <motion.div
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center"
+          className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center"
         >
+          {/* Status pill */}
           <motion.div
             variants={rise}
-            className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-medium mb-8 md:mb-10 backdrop-blur-md cursor-default"
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs md:text-sm font-semibold mb-8 md:mb-10 backdrop-blur-md cursor-default select-none"
           >
-            <span className="relative flex w-2 h-2">
-              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-60" />
-              <span className="relative inline-flex w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+            <span className="relative flex w-2 h-2 shrink-0" aria-hidden>
+              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-50" />
+              <span className="relative inline-flex w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.7)]" />
             </span>
             أكثر من ١٬٠٠٠ طالب يثقون بنا
           </motion.div>
 
+          {/* Headline */}
           <motion.h1
             variants={rise}
-            className="text-4xl sm:text-5xl md:text-7xl lg:text-[5.25rem] font-black text-white tracking-tight leading-[1.25] md:leading-[1.15] mb-6 md:mb-8"
+            className="text-balance text-4xl sm:text-5xl md:text-[4.5rem] lg:text-[5rem] font-black text-white tracking-tight leading-[1.2] md:leading-[1.15] mb-6 md:mb-7"
           >
             كل ما تحتاجه للتفوّق
             <br />
             <span>في </span>
+            {/* Accessible: screen readers get the static list; the rotating animation is aria-hidden */}
             <span className="sr-only">جميع المواد الدراسية</span>
-            <span aria-hidden className="relative inline-grid overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
+            <span
+              aria-hidden
+              className="relative inline-grid overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]"
+            >
+              {/* Ghost columns to keep width stable */}
               {ROTATING_SUBJECTS.map((s) => (
                 <span key={s} className="invisible col-start-1 row-start-1 whitespace-nowrap px-1">
                   {s}
                 </span>
               ))}
+
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={subject}
-                  initial={{ y: "70%", opacity: 0 }}
-                  animate={{ y: "0%", opacity: 1 }}
-                  exit={{ y: "-70%", opacity: 0 }}
-                  transition={{ duration: 0.55, ease: EASE }}
-                  className="col-start-1 row-start-1 whitespace-nowrap px-1 text-transparent bg-clip-text bg-gradient-to-br from-indigo-300 via-white to-cyan-300"
+                  initial={{ y: "65%", opacity: 0 }}
+                  animate={{ y: "0%",  opacity: 1 }}
+                  exit={{   y: "-65%", opacity: 0 }}
+                  transition={{ duration: 0.5, ease: EASE }}
+                  /* Solid sky-blue — no gradient text */
+                  className="col-start-1 row-start-1 whitespace-nowrap px-1 text-sky-400"
                 >
                   {subject}
                 </motion.span>
@@ -146,34 +158,38 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
             </span>
           </motion.h1>
 
+          {/* Subheading */}
           <motion.p
             variants={rise}
-            className="text-gray-400 text-base md:text-xl mb-10 md:mb-12 leading-relaxed max-w-2xl mx-auto font-medium px-2"
+            className="text-white/50 text-base md:text-lg mb-10 md:mb-12 leading-relaxed max-w-xl mx-auto font-medium px-2 text-pretty"
           >
-            منصة تعليمية متكاملة مصممة خصيصاً لتسريع وتيرة تعلمك من خلال مسارات تفاعلية، ومشاريع عملية، وإرشاد شخصي مستمر.
+            منصة تعليمية متكاملة مصممة خصيصاً للمتعلمين المصريين — مسارات تفاعلية، مشاريع عملية، ومتابعة شخصية مستمرة.
           </motion.p>
 
+          {/* CTAs */}
           <motion.div
             variants={rise}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4 sm:px-0"
+            className="flex flex-col sm:flex-row gap-3 justify-center items-center w-full px-4 sm:px-0"
           >
             <MagneticArea className="w-full sm:w-auto">
               <Link
                 href={isLoggedIn ? "/library" : "/signup"}
-                className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0B0F19] font-bold rounded-full hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] transition-shadow text-base md:text-lg flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px]"
+                className="group relative px-8 py-3.5 md:py-4 bg-white text-[#0b0f19] font-bold rounded-full hover:shadow-[0_0_36px_rgba(255,255,255,0.22)] transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px]"
               >
                 <span className="relative z-10">{isLoggedIn ? "متابعة التعلم" : "ابدأ الآن مجاناً"}</span>
                 <svg
-                  className="relative z-10 w-5 h-5 transition-transform group-hover:-translate-x-1"
+                  className="relative z-10 w-4 h-4 transition-transform group-hover:-translate-x-1"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  strokeWidth={2.5}
                   aria-hidden
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
+                {/* Shimmer sweep */}
                 <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
-                  <span className="absolute inset-y-0 left-[-45%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent blur-sm transition-[left] duration-700 ease-out group-hover:left-[115%]" />
+                  <span className="absolute inset-y-0 left-[-45%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-indigo-200/50 to-transparent blur-sm transition-[left] duration-700 ease-out group-hover:left-[115%]" />
                 </span>
               </Link>
             </MagneticArea>
@@ -181,33 +197,36 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
             {!isLoggedIn && (
               <Link
                 href="/courses"
-                className="px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white font-bold rounded-full hover:bg-white/10 hover:border-white/20 transition-all text-base md:text-lg flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
+                className="px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white/80 font-bold rounded-full hover:bg-white/8 hover:border-white/18 hover:text-white transition-all text-base flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
               >
                 استكشف الكورسات
               </Link>
             )}
           </motion.div>
 
-          <motion.div variants={rise} className="flex flex-wrap items-center justify-center gap-2 mt-10 md:mt-12">
-            <span className="text-xs md:text-sm text-white/40 font-medium ml-1">اختر صفك وابدأ فوراً:</span>
+          {/* Grade shortcuts */}
+          <motion.div
+            variants={rise}
+            className="flex flex-wrap items-center justify-center gap-2 mt-10 md:mt-12"
+          >
+            <span className="text-xs md:text-sm text-white/35 font-medium ml-1">اختر صفك:</span>
             {GRADE_SHORTCUTS.map((g) => (
               <Link
                 key={g.stage}
                 href={`/courses?stage=${g.stage}`}
-                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs md:text-sm font-bold hover:bg-indigo-500/15 hover:border-indigo-400/40 hover:text-white transition-all backdrop-blur-sm"
+                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/5 border border-white/8 text-white/60 text-xs md:text-sm font-bold hover:bg-sky-500/10 hover:border-sky-400/30 hover:text-white transition-all backdrop-blur-sm"
               >
                 {g.label}
-                <span aria-hidden className="text-indigo-300 transition-transform group-hover/chip:-translate-x-0.5">
-                  ←
-                </span>
+                <span aria-hidden className="text-sky-400 transition-transform group-hover/chip:-translate-x-0.5">←</span>
               </Link>
             ))}
           </motion.div>
         </motion.div>
 
+        {/* Scroll indicator */}
         <div aria-hidden className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block animate-float-slow">
-          <div className="w-6 h-10 rounded-full border-2 border-white/15 flex justify-center pt-2">
-            <div className="w-1 h-2.5 rounded-full bg-white/30" />
+          <div className="w-6 h-10 rounded-full border-2 border-white/12 flex justify-center pt-2">
+            <div className="w-1 h-2.5 rounded-full bg-white/25" />
           </div>
         </div>
       </section>
@@ -215,25 +234,20 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
   );
 }
 
-/** Eases its child toward the cursor and springs back on leave. No-ops on touch devices. */
 function MagneticArea({ children, className }: { children: React.ReactNode; className?: string }) {
   const canHover = useCanHover();
-  const reduced = useReducedMotion();
+  const reduced  = useReducedMotion();
   const x = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
   const y = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
 
   const enabled = canHover && !reduced;
 
   const pull = (e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    x.set((e.clientX - rect.left - rect.width / 2) * 0.22);
-    y.set((e.clientY - rect.top - rect.height / 2) * 0.22);
+    const r = e.currentTarget.getBoundingClientRect();
+    x.set((e.clientX - r.left - r.width / 2) * 0.22);
+    y.set((e.clientY - r.top - r.height / 2) * 0.22);
   };
-
-  const release = () => {
-    x.set(0);
-    y.set(0);
-  };
+  const release = () => { x.set(0); y.set(0); };
 
   return (
     <motion.div

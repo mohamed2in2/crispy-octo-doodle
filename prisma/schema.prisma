@@ -34,6 +34,8 @@ model User {
   aiInsights        AIStudentInsight[]       @relation("StudentAIInsights")
   accessCodes       AccessCode[]             @relation("StudentCodes")
   courses           Course[]                 @relation("TeacherCourses")
+  teacherProfile    TeacherProfile?
+  devices           Device[]
   dailyExamResults  DailyExamResult[]
   studyPlans        DailyStudyPlan[]         @relation("StudentStudyPlans")
   gradeRequests     GradeAdjustmentRequest[] @relation("StudentGradeRequests")
@@ -65,6 +67,7 @@ model Course {
   discountExpiresAt DateTime?
   contactPhone      String?
   maxWatchCount     Int                      @default(3)
+  sequentialAccess  Boolean                  @default(true)
   homeworkUrl       String?
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
@@ -79,11 +82,60 @@ model Course {
   @@index([educationalStage])
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  userId     String
+  deviceId   String // matches the persistent `device_id` cookie
+  label      String?
+  userAgent  String?
+  ipAddress  String?
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+model TeacherProfile {
+  id          String   @id @default(cuid())
+  teacherId   String   @unique
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  slug        String   @unique // "MR-KHALED" → /MR-KHALED
+  displayName String?
+  bio         String?
+  photoUrl    String?
+  bannerUrl   String?
+
+  navColor    String?  @default("#0b0f19")
+  accentColor String?  @default("#6366f1")
+
+  socials     String? // JSON: { facebook, youtube, tiktok }
+
+  featuredCourseId String?
+  isPublished Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+}
+
 model Folder {
   id        String     @id @default(cuid())
   name      String
   order     Int        @default(0)
   courseId  String
+  // Scheduled unlock: null = available now; a future date locks the whole folder
+  // (and all its videos) until then. Honored in every student content read path.
+  publishAt DateTime?
   createdAt DateTime   @default(now())
   course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   materials Material[]
@@ -94,15 +146,22 @@ model Folder {
 }
 
 model Video {
-  id            String              @id @default(cuid())
-  title         String
-  vdoCipherId   String
-  order         Int                 @default(0)
-  folderId      String
-  createdAt     DateTime            @default(now())
-  progress      Progress[]
-  folder        Folder              @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  watchSessions VideoWatchSession[]
+  id              String              @id @default(cuid())
+  title           String
+  // Legacy field — kept for existing rows; new rows use videoProvider + providerVideoId
+  vdoCipherId     String              @default("")
+  videoProvider   String              @default("vdocipher") // vdocipher | bunny | youtube
+  providerVideoId String              @default("")
+  durationMinutes    Int                 @default(0)
+  maxWatchesPerUser  Int                 @default(3)
+  isFree             Boolean             @default(false)
+  order              Int                 @default(0)
+  folderId        String
+  publishAt       DateTime?
+  createdAt       DateTime            @default(now())
+  progress        Progress[]
+  folder          Folder              @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  watchSessions   VideoWatchSession[]
 
   @@index([folderId])
 }
@@ -187,6 +246,11 @@ model Progress {
   videoId   String
   watched   Boolean   @default(false)
   watchedAt DateTime?
+  // Resume playback: last position kept per (student, video) — NOT per watch
+  // session — so it survives a 4h-slot expiry. A student cut off mid-video on
+  // their last watch resumes where they stopped, not at zero.
+  lastPositionSeconds Int       @default(0)
+  positionUpdatedAt   DateTime?
   student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   video     Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
 

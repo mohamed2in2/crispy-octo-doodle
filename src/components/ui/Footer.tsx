@@ -1,54 +1,79 @@
 import Link from "next/link";
 
 export function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="mt-auto border-t border-white/40 dark:border-white/5 bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+    <footer className="border-t border-white/5 bg-[#0b0f19] text-white/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+
           {/* Brand */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.jpeg" alt="شعار منصة Code-UP" className="w-9 h-9 rounded-xl object-cover shadow-lg" />
-              <span className="font-black text-xl text-slate-900 dark:text-white">Code-UP</span>
-            </div>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              منصة كورسات مصريّة تهدف إلى تمكين المتعلمين لمختلف الأعمار والمستويات من خلال محتوى عالي الجودة وأدوات متابعة ذكية.
+          <div className="col-span-2">
+            <Link href="/" className="inline-flex items-center gap-2.5 mb-4 group" aria-label="Code-UP — الرئيسية">
+              <img src="/logo.jpeg" alt="" aria-hidden className="w-8 h-8 rounded-lg object-cover" />
+              <span className="font-black text-lg text-white tracking-tight">Code-UP</span>
+            </Link>
+            <p className="text-sm leading-relaxed text-white/40 max-w-xs">
+              منصة كورسات مصرية تهدف إلى تمكين المتعلمين من المحتوى عالي الجودة وأدوات المتابعة الذكية.
             </p>
           </div>
 
-          {/* Links */}
+          {/* Quick links */}
           <div>
-            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">روابط سريعة</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/" className="hover:text-blue-500 transition-colors">الرئيسية</Link></li>
-              <li><Link href="/courses" className="hover:text-blue-500 transition-colors">الكورسات</Link></li>
-              <li><Link href="/library" className="hover:text-blue-500 transition-colors">مكتبتي</Link></li>
-              <li><Link href="/account" className="hover:text-blue-500 transition-colors">حسابي</Link></li>
+            <h4 className="text-xs font-bold text-white/25 uppercase tracking-widest mb-4">المنصة</h4>
+            <ul className="space-y-2.5 text-sm">
+              {[
+                { href: "/",        label: "الرئيسية" },
+                { href: "/courses", label: "الكورسات" },
+                { href: "/library", label: "مكتبتي" },
+                { href: "/account", label: "حسابي" },
+              ].map(({ href, label }) => (
+                <li key={href}>
+                  <Link href={href} className="text-white/45 hover:text-white transition-colors">
+                    {label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">قانوني</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/terms" className="hover:text-blue-500 transition-colors">شروط الاستخدام</Link></li>
-              <li><Link href="/privacy" className="hover:text-blue-500 transition-colors">سياسة الخصوصية</Link></li>
+            <h4 className="text-xs font-bold text-white/25 uppercase tracking-widest mb-4">قانوني</h4>
+            <ul className="space-y-2.5 text-sm">
+              <li>
+                <Link href="/terms" className="text-white/45 hover:text-white transition-colors">
+                  شروط الاستخدام
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="text-white/45 hover:text-white transition-colors">
+                  سياسة الخصوصية
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold mb-4 text-slate-900 dark:text-white">تواصل معنا</h4>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5" aria-hidden="true">📧</span>
-                <a href="mailto:contact@code-up.tech" className="hover:text-blue-500 transition-colors break-all">
+            <h4 className="text-xs font-bold text-white/25 uppercase tracking-widest mb-4">تواصل</h4>
+            <ul className="space-y-2.5 text-sm">
+              <li>
+                <a
+                  href="mailto:contact@code-up.tech"
+                  className="text-white/45 hover:text-white transition-colors break-all"
+                  dir="ltr"
+                >
                   contact@code-up.tech
                 </a>
               </li>
-              <li className="flex items-center gap-2">
-                <span aria-hidden="true">📞</span>
-                <a href="tel:+201285353604" className="hover:text-blue-500 transition-colors" dir="ltr">
+              <li>
+                <a
+                  href="tel:+201285353604"
+                  className="text-white/45 hover:text-white transition-colors"
+                  dir="ltr"
+                >
                   01285353604
                 </a>
               </li>
@@ -56,30 +81,26 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-white/50 dark:border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            © {new Date().getFullYear()} Code-UP. جميع الحقوق محفوظة.
+        {/* Bottom bar */}
+        <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-white/25">
+            © {year} Code-UP. جميع الحقوق محفوظة.
           </p>
-
-          <div className="flex items-center gap-2">
-            {/* Admin portal link — subtle but reachable without a student account */}
+          <div className="flex items-center gap-3">
             <Link
               href="/adminpanel"
-              title="لوحة إدارة المنصة"
-              className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
-              aria-label="Admin Panel Login"
+              aria-label="Admin Panel"
+              className="text-xs text-white/15 hover:text-white/50 transition-colors"
+              title="لوحة الإدارة"
             >
               ⚙
             </Link>
-
-            {/* Developer credit — hidden but discoverable */}
             <a
               href="https://kemetcraft.me/"
               target="_blank"
               rel="noopener noreferrer"
-              title="Made by 2n2 DEV"
-              className="px-2 py-1 rounded text-xs opacity-20 hover:opacity-100 focus:opacity-100 transition-opacity text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-amber-400 hover:underline"
               aria-label="Developer: 2n2 DEV"
+              className="text-xs text-white/15 hover:text-white/50 transition-colors"
             >
               2n2 DEV
             </a>

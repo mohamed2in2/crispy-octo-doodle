@@ -126,7 +126,7 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
             <p>لا يوجد مدرسون بعد</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-700">
+          <div className="divide-y divide-slate-200 dark:divide-gray-700">
             {teachers.map((t) => (
               <div key={t.id}>
                 {/* Teacher row */}

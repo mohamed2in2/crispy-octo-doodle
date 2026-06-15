@@ -79,18 +79,18 @@ function FilterPill({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`relative shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+      className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
         active
           ? "text-white"
-          : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
       }`}
     >
       {active && (
         <motion.span
           layoutId={layoutId}
           aria-hidden
-          className={`absolute inset-0 rounded-full shadow-lg ${activeClass}`}
-          transition={{ type: "spring", stiffness: 400, damping: 34 }}
+          className={`absolute inset-0 rounded-full ${activeClass}`}
+          transition={{ type: "spring", stiffness: 420, damping: 36 }}
         />
       )}
       <span className="relative z-10 whitespace-nowrap">{children}</span>
@@ -183,55 +183,54 @@ export default function CoursesPage() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#0B0F19]">
+      <div className="flex flex-col min-h-screen bg-[var(--bg)]">
         <Navbar user={user} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 md:py-12">
+
+          {/* Page header */}
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className="mb-8 md:mb-10 text-center flex flex-col items-center"
+            transition={{ duration: 0.55, ease: EASE }}
+            className="mb-8 md:mb-10"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold mb-5 border border-indigo-100 dark:border-indigo-500/20">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              استكشف مكتبتنا
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black mb-3 text-gray-900 dark:text-white tracking-tight">
-              مكتبة <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">الدورات</span>
+            <h1 className="text-balance text-3xl md:text-4xl font-black text-[var(--ink)] tracking-tight mb-2">
+              الكورسات
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto md:text-lg">
+            <p className="text-[var(--ink-muted)] text-base">
               اختر صفك ومادتك، وابدأ المذاكرة خلال دقيقة واحدة
             </p>
           </motion.div>
 
-          {/* Filter rail — docks under the navbar while browsing */}
-          <div className="sticky top-20 z-30 mb-8">
-            <div className="rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/85 dark:bg-[#0B0F19]/85 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/25 p-3 md:p-4 space-y-3">
+          {/* Filter rail — sticky under navbar */}
+          <div className="sticky top-16 z-[var(--z-dropdown)] mb-8">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 dark:bg-[#0f172a]/90 backdrop-blur-xl shadow-sm p-3 md:p-4 space-y-3">
+
+              {/* Search */}
               <div className="relative">
-                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-[var(--ink-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
                 <input
                   ref={searchRef}
                   type="text"
-                  placeholder="ابحث عن دورة…"
+                  placeholder="ابحث عن كورس…"
                   value={filters.search}
                   onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                  className="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0F141F] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm transition-all"
-                  aria-label="البحث في الدورات"
+                  className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] dark:bg-[#1e293b] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:border-sky-400/50 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] text-sm transition-all"
+                  aria-label="البحث في الكورسات"
                 />
                 <kbd
                   aria-hidden
-                  className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-xs font-mono text-gray-400"
+                  className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 items-center justify-center rounded border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--ink-muted)]"
                 >
                   /
                 </kbd>
               </div>
 
+              {/* Stage filter pills */}
               <div
                 role="group"
                 aria-label="تصفية حسب المستوى"
@@ -241,7 +240,7 @@ export default function CoursesPage() {
                   active={stage === ""}
                   onClick={() => writeStageParam("")}
                   layoutId="stage-pill"
-                  activeClass="bg-indigo-600 shadow-indigo-500/30"
+                  activeClass="bg-[#2563eb] dark:bg-sky-500"
                 >
                   كل المستويات
                 </FilterPill>
@@ -251,24 +250,25 @@ export default function CoursesPage() {
                     active={stage === s.value}
                     onClick={() => writeStageParam(s.value)}
                     layoutId="stage-pill"
-                    activeClass="bg-indigo-600 shadow-indigo-500/30"
+                    activeClass="bg-[#2563eb] dark:bg-sky-500"
                   >
                     {shortStageLabel(s.label)}
                   </FilterPill>
                 ))}
               </div>
 
+              {/* Teacher filter pills */}
               {teachers.length > 0 && (
                 <div
                   role="group"
                   aria-label="تصفية حسب المعلم"
-                  className="flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-t border-gray-100 dark:border-white/5 pt-2.5"
+                  className="flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-t border-[var(--border)] pt-2.5"
                 >
                   <FilterPill
                     active={filters.teacher === ""}
                     onClick={() => setFilters((f) => ({ ...f, teacher: "" }))}
                     layoutId="teacher-pill"
-                    activeClass="bg-emerald-600 shadow-emerald-500/30"
+                    activeClass="bg-[#2563eb] dark:bg-sky-500"
                   >
                     كل المعلمين
                   </FilterPill>
@@ -278,7 +278,7 @@ export default function CoursesPage() {
                       active={filters.teacher === t.id}
                       onClick={() => setFilters((f) => ({ ...f, teacher: t.id }))}
                       layoutId="teacher-pill"
-                      activeClass="bg-emerald-600 shadow-emerald-500/30"
+                      activeClass="bg-[#2563eb] dark:bg-sky-500"
                     >
                       {t.name}
                     </FilterPill>
@@ -294,59 +294,62 @@ export default function CoursesPage() {
             </div>
           )}
 
+          {/* Count + clear row */}
           {!loading && !error && (
             <div className="mb-5 flex items-center justify-between gap-3">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-bold text-gray-900 dark:text-white">{courses.length.toLocaleString("ar-EG")}</span> كورس متاح
+              <p className="text-sm text-[var(--ink-muted)]">
+                <span className="font-bold text-[var(--ink)]">{courses.length.toLocaleString("ar-EG")}</span> كورس
               </p>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
                 >
                   مسح الفلاتر
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               )}
             </div>
           )}
 
+          {/* Error state */}
           {error && (
-            <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-5 py-4 text-sm text-red-700 dark:text-red-300">
+            <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-[var(--error)]/25 bg-[var(--error)]/8 px-5 py-4 text-sm text-[var(--error)]">
               <span>{error}</span>
               <button
                 onClick={fetchCourses}
-                className="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition-colors"
+                className="shrink-0 rounded-lg bg-[var(--error)] px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition-opacity"
               >
                 إعادة المحاولة
               </button>
             </div>
           )}
 
+          {/* Loading skeletons */}
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {Array.from({ length: 8 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
           ) : courses.length > 0 ? (
-            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               <AnimatePresence mode="popLayout" initial={false}>
                 {courses.map((course, i) => (
                   <motion.div
                     key={course.id}
                     layout
-                    initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                    initial={{ opacity: 0, y: 16, scale: 0.97 }}
                     animate={{
                       opacity: 1,
                       y: 0,
                       scale: 1,
-                      transition: { duration: 0.35, ease: EASE, delay: Math.min(i * 0.04, 0.36) },
+                      transition: { duration: 0.32, ease: EASE, delay: Math.min(i * 0.035, 0.32) },
                     }}
-                    exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18 } }}
-                    transition={{ layout: { duration: 0.35, ease: EASE } }}
+                    exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.16 } }}
+                    transition={{ layout: { duration: 0.32, ease: EASE } }}
                     className="h-full"
                   >
                     <CourseCard course={course} onCodeApplied={fetchCourses} />
@@ -355,22 +358,25 @@ export default function CoursesPage() {
               </AnimatePresence>
             </motion.div>
           ) : (
+            /* Empty state */
             !error && (
               <motion.div
-                initial={{ opacity: 0, y: 14 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: EASE }}
-                className="text-center py-20"
+                transition={{ duration: 0.4, ease: EASE }}
+                className="text-center py-24"
               >
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-50 dark:bg-indigo-500/10 text-4xl">
-                  📚
+                <div className="mx-auto mb-5 w-14 h-14 flex items-center justify-center rounded-2xl bg-[var(--card)] border border-[var(--border)]">
+                  <svg className="w-7 h-7 text-[var(--ink-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
                 </div>
-                <p className="text-xl font-bold text-gray-700 dark:text-gray-200">لا توجد كورسات بهذه المعايير</p>
-                <p className="text-sm mt-2 text-gray-500 dark:text-gray-400">جرب توسيع البحث أو امسح الفلاتر الحالية</p>
+                <p className="text-lg font-bold text-[var(--ink)]">لا توجد كورسات بهذه المعايير</p>
+                <p className="text-sm mt-1.5 text-[var(--ink-muted)]">جرب توسيع البحث أو مسح الفلاتر الحالية</p>
                 {hasActiveFilters && (
                   <button
                     onClick={clearFilters}
-                    className="mt-6 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-700 transition-colors"
+                    className="mt-5 rounded-xl bg-[#2563eb] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#1d4ed8] transition-colors"
                   >
                     مسح الفلاتر
                   </button>

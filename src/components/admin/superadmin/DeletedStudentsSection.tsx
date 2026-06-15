@@ -160,7 +160,7 @@ export function DeletedStudentsSection({ userRole = "superadmin" }: { userRole?:
             </div>
           ) : (
             <>
-              <div className="divide-y divide-gray-700">
+              <div className="divide-y divide-slate-200 dark:divide-gray-700">
                 {students.map((s) => (
                   <div
                     key={s.id}

@@ -1,7 +1,9 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { StudentDetailModal } from "./StudentDetailModal";
+import { useToast } from "@/components/ui/Toast";
+import { hasPermission } from "@/lib/rbac";
 
 interface Student {
   id: string;
@@ -38,6 +40,13 @@ function stageLabel(value: string | null) {
 }
 
 export function StudentsSection({ userRole = "superadmin" }: { userRole?: string }) {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const canManageDevices = hasPermission(userRole, "suspend_student");
+  const [maxDevices, setMaxDevices] = useState<number | null>(null);
+  const [deviceBounds, setDeviceBounds] = useState({ min: 1, max: 10 });
+  const [draftMaxDevices, setDraftMaxDevices] = useState("");
+  const [savingDevices, setSavingDevices] = useState(false);
+
   const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [students, setStudents] = useState<Student[]>([]);
   const [total, setTotal] = useState(0);
@@ -95,10 +104,81 @@ export function StudentsSection({ userRole = "superadmin" }: { userRole?: string
     void search(EMPTY_FILTERS, 0);
   };
 
+  // Load the global device limit (number of devices a student may sign in from).
+  useEffect(() => {
+    if (!canManageDevices) return;
+    fetch("/api/admin/superadmin/settings/max-devices", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { maxDevices?: number; min?: number; max?: number } | null) => {
+        if (!d || typeof d.maxDevices !== "number") return;
+        setMaxDevices(d.maxDevices);
+        setDraftMaxDevices(String(d.maxDevices));
+        setDeviceBounds({ min: d.min ?? 1, max: d.max ?? 10 });
+      })
+      .catch(() => {});
+  }, [canManageDevices]);
+
+  const handleSaveMaxDevices = async () => {
+    const n = Number(draftMaxDevices);
+    if (!Number.isFinite(n) || n < deviceBounds.min || n > deviceBounds.max) {
+      toastError(`عدد الأجهزة يجب أن يكون بين ${deviceBounds.min} و ${deviceBounds.max}`);
+      return;
+    }
+    setSavingDevices(true);
+    try {
+      const res = await fetch("/api/admin/superadmin/settings/max-devices", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ maxDevices: n }),
+      });
+      const json = (await res.json()) as { maxDevices?: number; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "تعذر حفظ الحد");
+      setMaxDevices(json.maxDevices ?? n);
+      setDraftMaxDevices(String(json.maxDevices ?? n));
+      toastSuccess(`تم ضبط الحد الأقصى للأجهزة على ${json.maxDevices ?? n}`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "تعذر حفظ الحد");
+    } finally {
+      setSavingDevices(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div dir="rtl">
+      {/* Device limit setting */}
+      {canManageDevices && maxDevices !== null && (
+        <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="text-white font-bold text-sm">الحد الأقصى لأجهزة المتعلم</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                عدد الأجهزة التي يمكن للمتعلم تسجيل الدخول منها. عند الوصول للحد، يُمنع الدخول من جهاز جديد حتى يُصفّر المعلم أجهزته.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <input
+                type="number"
+                min={deviceBounds.min}
+                max={deviceBounds.max}
+                value={draftMaxDevices}
+                onChange={(e) => setDraftMaxDevices(e.target.value)}
+                className="w-20 px-3 py-2 rounded-lg bg-gray-900 border border-gray-600 text-white text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleSaveMaxDevices}
+                disabled={savingDevices || draftMaxDevices === String(maxDevices)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {savingDevices ? "جارٍ الحفظ..." : "حفظ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search Form */}
       <form
         onSubmit={handleSubmit}
@@ -209,7 +289,7 @@ export function StudentsSection({ userRole = "superadmin" }: { userRole?: string
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700">
+                <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                   {students.map((s) => (
                     <tr key={s.id} className="hover:bg-gray-700/40 transition-colors">
                       <td className="px-4 py-3">

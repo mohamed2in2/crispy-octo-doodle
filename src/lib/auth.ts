@@ -18,6 +18,7 @@ export interface JWTPayload {
   email: string;
   name: string;
   role: string;
+  deviceId?: string;
   iat?: number;
   exp?: number;
 }
@@ -34,6 +35,7 @@ export interface SessionUser {
   age?: number | null;
   educationalStage?: string | null;
   createdAt?: Date;
+  deviceId?: string;
 }
 
 type PhoneChallengePayload = {
@@ -165,6 +167,7 @@ async function getJwtSession(): Promise<SessionUser | null> {
       name: payload.name,
       role: payload.role,
       profileCompleted: true,
+      deviceId: payload.deviceId,
     };
   }
 
@@ -187,6 +190,7 @@ async function getJwtSession(): Promise<SessionUser | null> {
     age: user.age,
     educationalStage: user.educationalStage,
     createdAt: user.createdAt,
+    deviceId: payload.deviceId,
   };
 }
 

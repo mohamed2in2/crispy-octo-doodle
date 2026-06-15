@@ -259,7 +259,7 @@ export function DailyExamsSection() {
             </div>
             <div className="divide-y divide-slate-100 dark:divide-gray-700">
               {exams.map(exam => (
-                <div key={exam.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-gray-750 transition-colors">
+                <div key={exam.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors">
                   <div>
                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       {exam.title}

@@ -4,118 +4,136 @@ import { prisma } from "@/lib/prisma";
 
 // GET — teacher gets quiz results for their quizzes
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!session || session.role !== "teacher") {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
 
-  const quizId = req.nextUrl.searchParams.get("quizId");
-  const courseId = req.nextUrl.searchParams.get("courseId");
+      try {
+      const session = await getSession();
+      if (!session || session.role !== "teacher") {
+        return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+      }
 
-  // Get teacher's courses
-  const teacherCourses = await prisma.course.findMany({
-    where: { teacherId: session.id },
-    select: { id: true },
-  });
-  const courseIds = teacherCourses.map((c) => c.id);
+      const quizId = req.nextUrl.searchParams.get("quizId");
+      const courseId = req.nextUrl.searchParams.get("courseId");
 
-  if (courseIds.length === 0) {
-    return NextResponse.json({ results: [] });
-  }
+      // Get teacher's courses
+      const teacherCourses = await prisma.course.findMany({
+        where: { teacherId: session.id },
+        select: { id: true },
+      });
+      const courseIds = teacherCourses.map((c) => c.id);
 
-  // Build filter
-  const where: Record<string, unknown> = {
-    quiz: {
-      folder: {
-        courseId: courseId ? { equals: courseId, in: courseIds } : { in: courseIds },
-      },
-    },
-  };
-  if (quizId) where.quizId = quizId;
+      if (courseIds.length === 0) {
+        return NextResponse.json({ results: [] });
+      }
 
-  const results = await prisma.quizResult.findMany({
-    where,
-    orderBy: { completedAt: "desc" },
-    include: {
-      student: { select: { id: true, name: true, email: true, phone: true } },
-      quiz: {
-        select: {
-          id: true,
-          title: true,
+      // Build filter
+      const where: Record<string, unknown> = {
+        quiz: {
           folder: {
+            courseId: courseId ? { equals: courseId, in: courseIds } : { in: courseIds },
+          },
+        },
+      };
+      if (quizId) where.quizId = quizId;
+
+      const results = await prisma.quizResult.findMany({
+        where,
+        orderBy: { completedAt: "desc" },
+        include: {
+          student: { select: { id: true, name: true, email: true, phone: true } },
+          quiz: {
             select: {
-              name: true,
-              courseId: true,
-              course: { select: { title: true } },
+              id: true,
+              title: true,
+              folder: {
+                select: {
+                  name: true,
+                  courseId: true,
+                  course: { select: { title: true } },
+                },
+              },
             },
           },
         },
-      },
-    },
-  });
+      });
 
-  return NextResponse.json({
-    results: results.map((r) => ({
-      id: r.id,
-      studentId: r.studentId,
-      student: r.student,
-      quizId: r.quizId,
-      quiz: {
-        id: r.quiz.id,
-        title: r.quiz.title,
-        folderName: r.quiz.folder.name,
-        courseId: r.quiz.folder.courseId,
-        courseTitle: r.quiz.folder.course.title,
-      },
-      score: r.score,
-      totalQ: r.totalQ,
-      allowRetake: r.allowRetake,
-      completedAt: r.completedAt,
-    })),
-  });
+      return NextResponse.json({
+        results: results.map((r) => ({
+          id: r.id,
+          studentId: r.studentId,
+          student: r.student,
+          quizId: r.quizId,
+          quiz: {
+            id: r.quiz.id,
+            title: r.quiz.title,
+            folderName: r.quiz.folder.name,
+            courseId: r.quiz.folder.courseId,
+            courseTitle: r.quiz.folder.course.title,
+          },
+          score: r.score,
+          totalQ: r.totalQ,
+          allowRetake: r.allowRetake,
+          completedAt: r.completedAt,
+        })),
+      });
+    } catch (error) {
+        console.error("[admin/quiz-results] error:", error);
+        return NextResponse.json(
+          { error: "حدث خطأ داخلي" },
+          { status: 500 }
+        );
+      }
 }
 
 // PATCH — teacher toggles allowRetake for a specific result
 export async function PATCH(req: NextRequest) {
-  const session = await getSession();
-  if (!session || session.role !== "teacher") {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
 
-  const { resultId, allowRetake } = await req.json();
-  if (!resultId || typeof allowRetake !== "boolean") {
-    return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
-  }
+      try {
+      const session = await getSession();
+      if (!session || session.role !== "teacher") {
+        return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+      }
 
-  // Verify teacher owns the course
-  const result = await prisma.quizResult.findUnique({
-    where: { id: resultId },
-    include: {
-      quiz: {
+      const { resultId, allowRetake } = await req.json();
+      if (!resultId || typeof allowRetake !== "boolean") {
+        return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
+      }
+
+      // Verify teacher owns the course
+      const result = await prisma.quizResult.findUnique({
+        where: { id: resultId },
         include: {
-          folder: {
-            select: { course: { select: { teacherId: true } } },
+          quiz: {
+            include: {
+              folder: {
+                select: { course: { select: { teacherId: true } } },
+              },
+            },
           },
         },
-      },
-    },
-  });
+      });
 
-  if (!result) {
-    return NextResponse.json({ error: "النتيجة غير موجودة" }, { status: 404 });
-  }
+      if (!result) {
+        return NextResponse.json({ error: "النتيجة غير موجودة" }, { status: 404 });
+      }
 
-  if (result.quiz.folder.course.teacherId !== session.id) {
-    return NextResponse.json({ error: "ليست لديك صلاحية" }, { status: 403 });
-  }
+      if (result.quiz.folder.course.teacherId !== session.id) {
+        return NextResponse.json({ error: "ليست لديك صلاحية" }, { status: 403 });
+      }
 
-  const updated = await prisma.quizResult.update({
-    where: { id: resultId },
-    data: { allowRetake },
-  });
+      const updated = await prisma.quizResult.update({
+        where: { id: resultId },
+        data: { allowRetake },
+      });
 
-  return NextResponse.json({
-    result: updated,
-    message: allowRetake ? "تم السماح بإعادة الاختبار" : "تم إلغاء إعادة الاختبار",
-  });
+      return NextResponse.json({
+        result: updated,
+        message: allowRetake ? "تم السماح بإعادة الاختبار" : "تم إلغاء إعادة الاختبار",
+      });
+    } catch (error) {
+        console.error("[admin/quiz-results] error:", error);
+        return NextResponse.json(
+          { error: "حدث خطأ داخلي" },
+          { status: 500 }
+        );
+      }
 }

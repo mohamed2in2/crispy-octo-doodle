@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { SecurePlayer } from "@/components/ui/SecurePlayer";
+
+type VideoProvider = "vdocipher" | "bunny" | "youtube";
 
 interface WatchSessionData {
   sessionId: string;
@@ -12,6 +15,8 @@ interface WatchSessionData {
     id: string;
     title: string;
     vdoCipherId: string;
+    videoProvider: VideoProvider;
+    providerVideoId: string;
     courseId: string;
     courseTitle: string;
   };
@@ -29,6 +34,12 @@ function formatCountdown(expiresAt: string) {
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatMMSS(totalSeconds: number) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function WatchCountBar({ used, total }: { used: number; total: number }) {
@@ -65,6 +76,46 @@ export default function VideoWatchPage() {
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState("");
   const [iframeSrc, setIframeSrc] = useState("");
+  const [wmLabel, setWmLabel] = useState("");
+  const [resumeSeconds, setResumeSeconds] = useState(0);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setWmLabel(d.user ? (d.user.phone || d.user.name || "") : ""))
+      .catch(() => setWmLabel(""));
+  }, []);
+
+  // Resume playback: load the saved position before the player mounts so the
+  // YouTube player can seek to it on ready.
+  useEffect(() => {
+    if (!videoId) return;
+    let cancelled = false;
+    fetch(`/api/videos/${videoId}/position`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { seconds?: number } | null) => {
+        if (!cancelled) setResumeSeconds(d?.seconds ?? 0);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setResumeLoaded(true); });
+    return () => { cancelled = true; };
+  }, [videoId]);
+
+  // Save the current position (throttled by the player to ~5s + a final flush).
+  const saveProgress = useCallback(
+    (seconds: number) => {
+      if (!videoId) return;
+      fetch(`/api/videos/${videoId}/position`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seconds }),
+        keepalive: true,
+      }).catch(() => {});
+    },
+    [videoId]
+  );
 
   const loadSession = useCallback(async () => {
     setLoading(true);
@@ -89,7 +140,11 @@ export default function VideoWatchPage() {
           sessionId: verifyData.sessionId,
           sessionToken: verifyData.sessionToken,
           videoId: verifyData.videoId,
-          video: verifyData.video,
+          video: {
+            ...verifyData.video,
+            videoProvider: verifyData.video?.videoProvider ?? "vdocipher",
+            providerVideoId: verifyData.video?.providerVideoId ?? verifyData.video?.vdoCipherId ?? "",
+          },
           expiresAt: verifyData.expiresAt,
           isExpired: verifyData.isExpired,
           remainingWatches: verifyData.remainingWatches,
@@ -174,6 +229,8 @@ export default function VideoWatchPage() {
           id: videoId,
           title: videoTitle,
           vdoCipherId: "",
+          videoProvider: (watchData.provider ?? "vdocipher") as VideoProvider,
+          providerVideoId: "",
           courseId,
           courseTitle: courseData.course?.title ?? "",
         },
@@ -209,6 +266,29 @@ export default function VideoWatchPage() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [session]);
+
+  // Client-side deterrents: block DevTools keyboard shortcuts and right-click.
+  // These are UX-level barriers (not cryptographic), but they stop casual extraction.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // F12
+      if (e.key === "F12") { e.preventDefault(); return; }
+      // Ctrl/Cmd + Shift + I / J / C (DevTools)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase())) {
+        e.preventDefault(); return;
+      }
+      // Ctrl+U (view source)
+      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === "U") {
+        e.preventDefault(); return;
+      }
+      // Ctrl+S (save page)
+      if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === "S") {
+        e.preventDefault(); return;
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleReturn = () => {
     router.push(`/courses/${courseId}/learn`);
@@ -351,7 +431,10 @@ export default function VideoWatchPage() {
           </div>
 
           {/* Player card wrapper for glowing effect */}
-          <div className="relative group">
+          <div
+            className="relative group"
+            onContextMenu={(e) => e.preventDefault()}
+          >
             {/* Animated Glow Behind Player */}
             <div className="absolute -inset-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-500 rounded-[1.5rem] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse" />
             
@@ -381,6 +464,18 @@ export default function VideoWatchPage() {
               </div>
             )}
 
+            {/* Resume indicator — YouTube auto-seeks to the saved position */}
+            {session.video.videoProvider === "youtube" && resumeSeconds > 3 && (
+              <div className="absolute top-16 right-4 z-20">
+                <div className="flex items-center gap-1.5 bg-sky-900/80 backdrop-blur-sm border border-sky-600/40 rounded-full px-3 py-1.5">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-sky-300">
+                    <path d="M12 8v4l3 2M12 3a9 9 0 109 9" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-xs text-sky-100 font-medium">تابعنا من {formatMMSS(resumeSeconds)}</span>
+                </div>
+              </div>
+            )}
+
             {/* Back button overlay */}
             <div className="absolute top-4 left-4 z-20">
               <button
@@ -394,24 +489,24 @@ export default function VideoWatchPage() {
               </button>
             </div>
 
-            {/* The iframe */}
-            <div style={{ paddingTop: "56.25%" }} className="relative bg-slate-900">
-              {iframeSrc ? (
-                <iframe
-                  src={iframeSrc}
-                  title={session.video.title}
-                  className="absolute inset-0 w-full h-full"
-                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-                  allowFullScreen
-                  style={{ border: "none" }}
-                />
-              ) : (
+            {/* The player — provider-aware, watermark-safe in fullscreen */}
+            {iframeSrc && resumeLoaded ? (
+              <SecurePlayer
+                embedUrl={iframeSrc}
+                title={session.video.title}
+                watermark={wmLabel}
+                provider={session.video.videoProvider}
+                startSeconds={resumeSeconds}
+                onProgress={saveProgress}
+              />
+            ) : (
+              <div style={{ paddingTop: "56.25%" }} className="relative bg-slate-900">
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900">
                   <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                   <p className="text-slate-400 text-sm">جارٍ تحميل الفيديو...</p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Bottom bar */}
             <div className="bg-slate-950/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex items-center justify-between gap-4">
@@ -420,6 +515,21 @@ export default function VideoWatchPage() {
                 <p className="text-sky-400/80 text-xs mt-1 font-medium">
                   {session.video.courseTitle} • جلستك صالحة لمدة 4 ساعات
                 </p>
+              </div>
+              {/* Provider badge */}
+              <div className={`shrink-0 flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border ${
+                session.video.videoProvider === "bunny"
+                  ? "border-orange-500/20 bg-orange-500/10 text-orange-400"
+                  : session.video.videoProvider === "youtube"
+                  ? "border-red-500/20 bg-red-500/10 text-red-400"
+                  : "border-blue-500/20 bg-blue-500/10 text-blue-400"
+              }`}>
+                <span>
+                  {session.video.videoProvider === "bunny" ? "🐰" : session.video.videoProvider === "youtube" ? "▶️" : "🔐"}
+                </span>
+                <span>
+                  {session.video.videoProvider === "bunny" ? "Bunny" : session.video.videoProvider === "youtube" ? "YouTube" : "VdoCipher"}
+                </span>
               </div>
             </div>
           </div>

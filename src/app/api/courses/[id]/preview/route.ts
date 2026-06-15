@@ -75,7 +75,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     };
 
     const response = NextResponse.json({ course: preview });
-    response.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    response.headers.set("Cache-Control", "private, no-cache, no-store, max-age=0, must-revalidate");
     return response;
   } catch (error) {
     console.error("Preview API error:", error);

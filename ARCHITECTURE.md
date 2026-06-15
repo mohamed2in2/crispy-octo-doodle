@@ -1,27 +1,35 @@
-# EdTech Platform - Architecture & Implementation Guide
+# Code-UP — Architecture & Implementation Guide
 
 ## Project Overview
-A comprehensive EdTech platform targeting Egyptian students (6th Primary to 3rd Secondary) with modern UI/UX, AI-powered study planning, and secure content delivery.
+Code-UP is a premium Egyptian EdTech platform targeting secondary students (covering 4th Primary → 3rd Secondary) with an Arabic-first, dark-native UI, AI-powered study planning, multi-provider secure video delivery, and an access-code enrollment model managed by teachers and a superadmin.
+
+> **Last updated:** 2026-06-14. See [Recent Additions](#recent-additions-2026-06) for the latest changes (multi-provider video, per-video watch quotas, mark-complete flow, and the teacher analytics dashboard).
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 16.2.4 (React 19.2.4)
-- **Styling**: Tailwind CSS 4
-- **Animations**: Framer Motion 12.38.0
+- **Framework**: Next.js 16 App Router (React 19)
+- **Styling**: Tailwind CSS 4 with a CSS-variable design-token layer (`--bg / --surface / --card / --border / --ink / --ink-muted / --accent`, plus a semantic z-index scale)
+- **Animations**: Framer Motion ^12.40
+- **Charts**: hand-rolled dependency-free SVG charts (`src/components/admin/Charts.tsx`) — no chart library
 - **Language**: TypeScript
+- **Direction**: RTL (Arabic primary), `Cairo` font family
 
 ### Backend
 - **Runtime**: Node.js + Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT-based with jose 6.2.3
+- **Database**: **SQLite** (dev) via Prisma ORM. The Prisma client is generated to `src/generated/prisma` (provider `prisma-client`, not the legacy `prisma-client-js`).
+- **Authentication**: JWT-based via `jose`, HTTP-only cookie (`auth_token`)
 - **Password Hashing**: bcryptjs
 
-### Video Delivery
-- **CDN**: Bunny Stream (650875 - Library ID)
-- **Benefits**: Prevents video piracy, secure playback tokens
+### Video Delivery — Multi-Provider
+Videos are no longer Bunny-only. Each video chooses a provider; a single dispatcher resolves the embed URL:
+- **VdoCipher** — server-side OTP (strongest DRM)
+- **Bunny Stream** — SHA256-signed embed token
+- **YouTube** — unlisted/private via `youtube-nocookie.com` (autoplay + modestbranding; protection is domain + referrer + client-side deterrents, no server token)
+
+Dispatcher: `src/lib/video-provider.ts` → `resolveEmbedUrl(video)` + `validateProviderId(provider, id)`. Per-provider helpers in `src/lib/bunny.ts` and `src/lib/youtube.ts`.
 
 ---
 
@@ -47,9 +55,21 @@ A comprehensive EdTech platform targeting Egyptian students (6th Primary to 3rd 
 - Sortable via `order` field
 
 #### Video
-- Bunny Stream integration (stores `bunnyId`)
-- Progress tracking per student
-- Organized by folder
+- **Multi-provider**: `videoProvider` (`vdocipher` | `bunny` | `youtube`) + `providerVideoId`. `vdoCipherId` is kept as a legacy column for old rows.
+- `durationMinutes` — teacher-entered; drives the watch-progress bar and the mark-complete gate.
+- `maxWatchesPerUser` (default 3) — **per-video** watch quota (replaces the old course-wide `maxWatchCount`).
+- Progress tracking per student; organized by folder.
+
+#### VideoWatchSession
+- One row per watch session: `sessionToken`, `videoId`, `studentId`, `startedAt`, `expiresAt`, `endedAt`, `usedWatchSlot`.
+- 4-hour session tokens; a session consumes one of the video's `maxWatchesPerUser` slots.
+- Used to compute remaining watches and powers the analytics "views over time".
+
+#### Progress
+- `(studentId, videoId)` unique; `watched` + `watchedAt`. Set by the mark-complete endpoint (manual button, or auto on YouTube end event).
+
+#### SupportTicket / StudentFeedback / ClientError
+- Surfaced in the teacher overview "issues feed" (complaints, unresolved feedback, platform errors).
 
 #### Quiz
 - Multiple-choice format (A, B, C, D options)
@@ -114,24 +134,25 @@ A comprehensive EdTech platform targeting Egyptian students (6th Primary to 3rd 
 }
 ```
 
-### 3. Video Management (Bunny Stream)
+### 3. Video Management (Multi-Provider)
 
-**Configuration:**
-- Library ID: 650875
-- API Key: (in .env.local as BUNNY_API_KEY)
-- Token Auth Key: (in .env.local as BUNNY_TOKEN_KEY)
-- CDN Hostname: vz-a3ef6e25-703.b-cdn.net
+**Teacher Workflow (per video):**
+1. Pick a provider in the panel: VdoCipher / Bunny / YouTube.
+2. Paste the matching ID (`validateProviderId` enforces format — e.g. YouTube must be 11 chars).
+3. Optionally set **duration (minutes)** and **watches-per-student** (1/2/3/5/10/20, or custom).
+4. Video appears to enrolled students; the watch limit is editable inline later.
 
-**Teacher Workflow:**
-1. Upload video to Bunny Stream (external)
-2. Copy Bunny ID from dashboard
-3. Paste ID in admin panel under folder
-4. Video appears automatically to students with access
+**Playback Security (per provider):**
+- **VdoCipher**: server-side OTP, fetched on demand — strongest DRM.
+- **Bunny**: SHA256-signed embed token (`getBunnyEmbedUrl`).
+- **YouTube**: `youtube-nocookie.com` embed with `autoplay=1`, `modestbranding=1`, `rel=0`; no server token, so protection is domain + `referrerPolicy="strict-origin"` + client deterrents (right-click block, F12/Ctrl+Shift+I/U/S suppression).
+- The raw provider URL is never sent to the page until a valid watch session exists.
 
-**Playback Security:**
-- Custom Bunny Player component
-- Secure token generation per request
-- No raw MP4 downloads possible
+### 3a. Watch Sessions, Quotas & Completion
+
+- `POST /api/videos/[id]/watch` opens (or reuses) a 4-hour `VideoWatchSession`, consuming one of the video's `maxWatchesPerUser` slots, and returns the resolved `embedUrl` + `provider`.
+- The learn page (`/courses/[id]/learn`, TOFAS-style split panel) plays the video **inline** with: a sequential lock (next lesson locked until the previous is watched), a course-progress ring, a per-video watch-slot bar, and a session countdown.
+- A **time-progress bar** (from `durationMinutes`) gates a green **"أنهيت المحاضرة"** button at ≥80% elapsed. Clicking it calls `POST /api/videos/[id]/complete` → marks `Progress.watched`. YouTube also auto-completes on the player `ended` event.
 
 ### 4. Quiz System
 
@@ -193,22 +214,23 @@ Output: JSON-based study plan with:
 - Study plan widget
 
 #### Teacher Dashboard (/adminpanel/teacher)
-- Analytics cards:
-  - Total students viewing courses
-  - Average quiz scores
-  - Video watch statistics
-  
-- Course management:
-  - Create/delete courses
-  - Organize folders
-  - Add videos & quizzes
-  - Manage access codes
+Mobile-responsive (shared `AdminSidebar` = static rail on desktop, slide-in drawer + hamburger on mobile). SVG icon set (`AdminIcons.tsx`), design-token styling throughout.
 
-- Student management:
-  - View all students by course
-  - See grades and progress
-  - View watched/unwatched videos
-  - Deactivate codes
+- **Overview / analytics** (`TeacherOverview.tsx` ← `/api/admin/analytics`):
+  - Personalized welcome (`أهلاً، <name> 👋`)
+  - **Period filter** (7d / 30d / 90d / all) + **manual course filter**
+  - KPI cards with period-over-period deltas: total students (+new this period), views, completed lessons, avg quiz score
+  - **Views & enrollments over time** (SVG area + dashed line chart)
+  - **Top videos** and **low-view videos** (the "needs attention" list)
+  - Per-course performance + quiz-score distribution
+  - **Issues feed**: open support tickets, unresolved feedback, recent client errors, and data-health warnings (missing course thumbnail, videos without duration, empty folders, 0-view videos)
+
+- **Course editor** (tabbed: المحتوى / الإعدادات / التسعير):
+  - Create/delete courses **and folders** (folder delete cascades content)
+  - Add videos/quizzes/materials; inline per-video watch-limit selector
+  - Settings + pricing (free/paid, discount with expiry)
+
+- **Student & code management**: view students per course, ban/unban, generate/toggle access codes.
 
 #### Superadmin Dashboard (/adminpanel/superadmin)
 - Teacher account creation (Name + Password)
@@ -258,7 +280,7 @@ Output: JSON-based study plan with:
 ## File Structure
 
 ```
-/workspaces/Thefake/
+j:/crispy-octo-doodle-1/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                 # Root layout with dark mode
@@ -302,11 +324,14 @@ Output: JSON-based study plan with:
 │   │   ├── player/
 │   │   │   └── BunnyPlayer.tsx        # Custom video player
 │   │   ├── admin/
-│   │   │   ├── AdminSidebar.tsx       # Admin navigation
-│   │   │   ├── TeacherDashboard.tsx   # Teacher overview
-│   │   │   ├── CourseForm.tsx         # Course creation/edit
-│   │   │   ├── AccessCodeManager.tsx  # Code generation UI
-│   │   │   └── StudentAnalytics.tsx   # Student metrics
+│   │   │   ├── AdminSidebar.tsx       # Admin nav (desktop rail + mobile drawer)
+│   │   │   ├── AdminIcons.tsx         # Shared SVG icon set + SECTION_ICONS map
+│   │   │   ├── Charts.tsx             # Dependency-free SVG charts (area/bars/dist)
+│   │   │   ├── TeacherOverview.tsx    # Analytics dashboard (KPIs, charts, issues)
+│   │   │   ├── TeacherQuizResults.tsx # Quiz scores + retakes
+│   │   │   ├── TeacherRequests.tsx    # Grade requests + tickets
+│   │   │   ├── TeacherFeedback.tsx    # Student feedback
+│   │   │   └── superadmin/            # Superadmin section components
 │   │   ├── ai/
 │   │   │   ├── StudyPlanCard.tsx      # Plan display
 │   │   │   ├── StudyPlanChat.tsx      # Chat interface
@@ -318,16 +343,18 @@ Output: JSON-based study plan with:
 │   │       ├── TimerDisplay.tsx       # Quiz timer
 │   │       └── ResultsDisplay.tsx     # Score feedback
 │   ├── lib/
-│   │   ├── auth.ts                    # JWT utilities
+│   │   ├── auth.ts                    # JWT utilities + getSession
 │   │   ├── prisma.ts                  # DB client
-│   │   ├── ai-service.ts              # AI API integration
-│   │   ├── bunny-stream.ts            # Bunny CDN helpers
-│   │   └── animations.ts              # Framer Motion presets
+│   │   ├── video-provider.ts          # resolveEmbedUrl + validateProviderId
+│   │   ├── bunny.ts                   # Bunny signed embed URL
+│   │   ├── youtube.ts                 # YouTube nocookie embed
+│   │   └── motion.ts                  # Framer Motion / format helpers
+│   ├── generated/prisma/              # Generated Prisma client (provider: prisma-client)
 │   └── types/
-│       └── index.ts                   # TypeScript definitions
+│       └── index.ts                   # TypeScript definitions, SUBJECTS, EDUCATIONAL_STAGES
 ├── prisma/
-│   ├── schema.prisma                  # Database schema
-│   ├── seed.ts                        # Development seed data
+│   ├── schema.prisma                  # Database schema (SQLite)
+│   ├── dev.db                         # Dev SQLite database
 │   └── migrations/                    # Database migrations
 ├── public/
 │   └── images/                        # Static assets
@@ -356,8 +383,16 @@ Output: JSON-based study plan with:
 - `DELETE /api/admin/courses/[id]` - Delete course (teacher)
 
 ### Videos
-- `GET /api/videos/[id]/secure-url` - Bunny Stream token
-- `POST /api/admin/folders/[id]/videos` - Add video (teacher)
+- `GET  /api/videos/[id]/secure-url` - Resolve provider embed URL (dispatcher)
+- `POST /api/videos/[id]/watch` - Open/reuse a 4h watch session (consumes a per-video slot)
+- `POST /api/videos/[id]/complete` - Mark the video watched for the student
+- `POST /api/admin/folders/[id]/videos` - Add video (provider, id, duration, watch limit) (teacher)
+- `PATCH /api/admin/videos/[id]` - Update a video's `maxWatchesPerUser` / `durationMinutes` (teacher)
+- `GET  /api/courses/[id]/watch-count` - Remaining watches summary
+
+### Folders
+- `GET/POST /api/admin/courses/[id]/folders` - List / create folders (teacher)
+- `DELETE   /api/admin/courses/[id]/folders` - Delete folder + cascade content (teacher)
 
 ### Quizzes
 - `GET /api/quizzes/[id]` - Quiz questions
@@ -377,7 +412,7 @@ Output: JSON-based study plan with:
 - `GET /api/admin/teachers` - List teachers (superadmin)
 - `POST /api/admin/teachers` - Create teacher (superadmin)
 - `DELETE /api/admin/teachers/[id]` - Delete teacher (superadmin)
-- `GET /api/admin/analytics` - System analytics
+- `GET /api/admin/analytics?period=7d|30d|90d|all&courseId=` - Teacher analytics (KPIs, series, top/low videos, course breakdown, quiz distribution, issues feed)
 
 ### AI Study Plans
 - `GET /api/ai/study-plan?date=YYYY-MM-DD` - Get daily plan
@@ -389,17 +424,21 @@ Output: JSON-based study plan with:
 ## Environment Variables
 
 ```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/thefake
+# Database (SQLite in dev)
+DATABASE_URL=file:./prisma/dev.db
 
 # JWT
 JWT_SECRET=your-secret-key-here
 
-# Bunny Stream
-BUNNY_LIBRARY_ID=650875
+# Video providers
+# VdoCipher (server-side OTP)
+VDOCIPHER_API_SECRET=your-vdocipher-secret
+# Bunny Stream (signed embed token)
+BUNNY_LIBRARY_ID=your-library-id
 BUNNY_API_KEY=your-api-key
-BUNNY_TOKEN_KEY=your-token-key
-BUNNY_CDN_HOSTNAME=vz-a3ef6e25-703.b-cdn.net
+BUNNY_TOKEN_AUTHENTICATION_KEY=your-token-key
+BUNNY_CDN_HOSTNAME=iframe.mediadelivery.net
+# YouTube needs no key (unlisted + nocookie embed)
 
 # AI APIs (with fallback)
 AI_PRIMARY_API_KEY=primary-key
@@ -410,30 +449,45 @@ AI_BACKUP_BASE_URL=https://backup-api.example.com
 # Admin
 SUPERADMIN_MASTER_PASSWORD=your-master-password
 
+# Paid-course purchase contact (global WhatsApp number for the buy CTA)
+NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD=+20XXXXXXXXXX
+
 # Site
-NEXT_PUBLIC_APP_NAME=منصة التعليم
+NEXT_PUBLIC_APP_NAME=Code-UP
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
+> Note: the student "buy" CTA on a paid course uses the global `NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD` number, **not** a per-course phone — so the old per-course contact-phone field was removed from the teacher form.
+
 ---
+
+## Recent Additions (2026-06)
+
+- **Multi-provider video** — VdoCipher / Bunny / YouTube via `video-provider.ts` dispatcher; teacher picks provider + ID per video.
+- **Per-video watch quotas** — `Video.maxWatchesPerUser` (replaces course-wide limit); inline editor in the panel; enforced by `VideoWatchSession`.
+- **Inline learn experience** — TOFAS-style split panel at `/courses/[id]/learn`: sequential lock, progress ring, watch-slot bar, 4h session countdown.
+- **Mark-complete flow** — `durationMinutes`-based progress bar gates a green finish button at ≥80%; YouTube auto-completes on `ended`.
+- **Teacher analytics dashboard** — `/api/admin/analytics` + `TeacherOverview.tsx` with KPIs/deltas, SVG charts, period & course filters, and an issues feed.
+- **Mobile-responsive admin** — `AdminSidebar` drawer + hamburger; design-token light/dark fixes across teacher & superadmin panels.
+- **Folder delete** — `DELETE /api/admin/courses/[id]/folders` with content cascade.
+- Enrollment/code activation now redirects to `/library`.
 
 ## Implementation Checklist
 
 - [x] Database schema with all models
 - [x] Type definitions
-- [x] Dark mode infrastructure
-- [ ] Enhanced Navbar with animations
-- [ ] Landing page with hero section
-- [ ] Courses page with access code input
-- [ ] Library with AI study assistant
-- [ ] Teacher admin panel
-- [ ] Superadmin panel
-- [ ] Quiz interface
-- [ ] Skeleton loaders
-- [ ] Custom Bunny player
-- [ ] AI API fallback mechanism
-- [ ] Responsive mobile design
-- [ ] Arabic/RTL support testing
+- [x] Dark mode infrastructure (CSS-variable tokens)
+- [x] Landing page with hero section
+- [x] Courses page with access code input
+- [x] Library with AI study assistant
+- [x] Teacher admin panel (analytics overview + tabbed course editor)
+- [x] Superadmin panel
+- [x] Quiz interface
+- [x] Skeleton loaders
+- [x] Multi-provider secure video playback
+- [x] Responsive mobile design (admin drawer)
+- [x] Arabic/RTL support
+- [ ] AI API fallback mechanism (verify in prod)
 - [ ] Security audit
 
 ---

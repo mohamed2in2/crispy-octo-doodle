@@ -6,6 +6,15 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Trophy, Medal, Star, Gift, Clock, Target } from "lucide-react";
 
+function getCompetitionTier(stage: string | null): string[] {
+  if (!stage) return [];
+  if (["grade_1","grade_2","grade_3","grade_4","grade_5","grade_6"].includes(stage))
+    return ["grade_1","grade_2","grade_3","grade_4","grade_5","grade_6"];
+  if (["grade_7","grade_8","grade_9"].includes(stage))
+    return ["grade_7","grade_8","grade_9"];
+  return ["grade_10","grade_11","grade_12"];
+}
+
 export default async function LeaderboardPage() {
   const session = await getSession({ preferStudent: true });
 
@@ -13,11 +22,20 @@ export default async function LeaderboardPage() {
     redirect("/login?callbackUrl=/leaderboard");
   }
 
-  // Get Top 10 students
+  // Fetch current user first to get educationalStage
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { id: true, points: true, pointsUpdatedAt: true, educationalStage: true }
+  });
+
+  const competitionTier = getCompetitionTier(currentUser?.educationalStage ?? null);
+
+  // Get Top 10 students for the same educational stage tier
   const topStudents = await prisma.user.findMany({
     where: { 
       role: "student",
-      points: { gt: 0 }
+      points: { gt: 0 },
+      ...(competitionTier.length > 0 ? { educationalStage: { in: competitionTier } } : {})
     },
     orderBy: [
       { points: "desc" },
@@ -33,18 +51,12 @@ export default async function LeaderboardPage() {
   });
 
   // Find the logged-in student's rank
-  // Since we don't want to load all students in memory, we can count students with more points,
-  // or same points but earlier pointsUpdatedAt
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.id },
-    select: { id: true, points: true, pointsUpdatedAt: true, educationalStage: true }
-  });
-
   let currentRank = 0;
   if (currentUser) {
     const studentsAhead = await prisma.user.count({
       where: {
         role: "student",
+        ...(competitionTier.length > 0 ? { educationalStage: { in: competitionTier } } : {}),
         OR: [
           { points: { gt: currentUser.points } },
           { 

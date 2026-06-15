@@ -171,7 +171,7 @@ export function StaffAccountsSection({ userRole = "superadmin" }: { userRole?: s
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-700">
+          <div className="divide-y divide-slate-200 dark:divide-gray-700">
             {accounts.map((acc) => (
               <div key={acc.id} className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">

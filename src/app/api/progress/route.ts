@@ -3,80 +3,98 @@ import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await getStudentSession();
-  if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const codes = await prisma.accessCode.findMany({
-    where: { studentId: session.id },
-    include: {
-      course: {
+      try {
+      const session = await getStudentSession();
+      if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+
+      const codes = await prisma.accessCode.findMany({
+        where: { studentId: session.id },
         include: {
-          teacher: { select: { id: true, name: true } },
-          folders: {
+          course: {
             include: {
-              videos: true,
-              quizzes: true,
+              teacher: { select: { id: true, name: true } },
+              folders: {
+                include: {
+                  videos: true,
+                  quizzes: true,
+                },
+              },
+              _count: { select: { folders: true } },
             },
           },
-          _count: { select: { folders: true } },
         },
-      },
-    },
-  });
+      });
 
-  const quizResults = await prisma.quizResult.findMany({
-    where: { studentId: session.id },
-    orderBy: { completedAt: "desc" },
-    take: 10,
-    include: {
-      quiz: {
-        select: {
-          id: true,
-          title: true,
-          folder: {
+      const quizResults = await prisma.quizResult.findMany({
+        where: { studentId: session.id },
+        orderBy: { completedAt: "desc" },
+        take: 10,
+        include: {
+          quiz: {
             select: {
-              name: true,
-              course: { select: { id: true, title: true, subject: true } },
+              id: true,
+              title: true,
+              folder: {
+                select: {
+                  name: true,
+                  course: { select: { id: true, title: true, subject: true } },
+                },
+              },
             },
           },
         },
-      },
-    },
-  });
+      });
 
-  return NextResponse.json({ courses: codes.map((c) => c.course), quizResults });
+      return NextResponse.json({ courses: codes.map((c) => c.course), quizResults });
+    } catch (error) {
+        console.error("[progress] error:", error);
+        return NextResponse.json(
+          { error: "حدث خطأ داخلي" },
+          { status: 500 }
+        );
+      }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getStudentSession();
-  if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const { videoId, watched = true } = await req.json();
-  if (!videoId) return NextResponse.json({ error: "videoId مطلوب" }, { status: 400 });
+      try {
+      const session = await getStudentSession();
+      if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const video = await prisma.video.findUnique({
-    where: { id: videoId },
-    include: { folder: { select: { courseId: true } } },
-  });
+      const { videoId, watched = true } = await req.json();
+      if (!videoId) return NextResponse.json({ error: "videoId مطلوب" }, { status: 400 });
 
-  if (!video) return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
+      const video = await prisma.video.findUnique({
+        where: { id: videoId },
+        include: { folder: { select: { courseId: true } } },
+      });
 
-  const hasAccess = await prisma.accessCode.findFirst({
-    where: {
-      courseId: video.folder.courseId,
-      studentId: session.id,
-      isActive: true,
-    },
-    select: { id: true },
-  });
+      if (!video) return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
 
-  if (!hasAccess) return NextResponse.json({ error: "لا يوجد صلاحية للوصول" }, { status: 403 });
+      const hasAccess = await prisma.accessCode.findFirst({
+        where: {
+          courseId: video.folder.courseId,
+          studentId: session.id,
+          isActive: true,
+        },
+        select: { id: true },
+      });
 
-  const progress = await prisma.progress.upsert({
-    where: { studentId_videoId: { studentId: session.id, videoId } },
-    update: { watched, watchedAt: watched ? new Date() : null },
-    create: { studentId: session.id, videoId, watched, watchedAt: watched ? new Date() : null },
-  });
+      if (!hasAccess) return NextResponse.json({ error: "لا يوجد صلاحية للوصول" }, { status: 403 });
 
-  return NextResponse.json({ progress });
+      const progress = await prisma.progress.upsert({
+        where: { studentId_videoId: { studentId: session.id, videoId } },
+        update: { watched, watchedAt: watched ? new Date() : null },
+        create: { studentId: session.id, videoId, watched, watchedAt: watched ? new Date() : null },
+      });
+
+      return NextResponse.json({ progress });
+    } catch (error) {
+        console.error("[progress] error:", error);
+        return NextResponse.json(
+          { error: "حدث خطأ داخلي" },
+          { status: 500 }
+        );
+      }
 }

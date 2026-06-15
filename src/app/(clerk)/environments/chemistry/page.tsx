@@ -789,6 +789,7 @@ export default function ChemistryPage() {
                         className={`relative p-1 sm:p-2 rounded-lg cursor-grab active:cursor-grabbing bg-gradient-to-br ${getCategoryColor(element.category)} text-white shadow-md hover:shadow-lg hover:scale-105 transition-all`}
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDrop(element)}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => handleDrop(element)}
                       >

@@ -1,148 +1,249 @@
-export function FeaturesSection() {
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
+
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const FEATURES = [
+  {
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+    ),
+    title: "محاضرات فيديو عالية الجودة",
+    body: "دروس مسجلة من أفضل المعلمين، منظمة في مسارات واضحة تناسب كل صف دراسي.",
+    wide: true,
+    visual: <VideoMockup />,
+  },
+  {
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+    title: "اختبارات ذكية",
+    body: "أسئلة تفاعلية تُقيّم مستواك الفعلي وتحدد نقاط ضعفك فوراً.",
+    wide: false,
+    visual: null,
+  },
+  {
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+    title: "مرشد أكاديمي بالذكاء الاصطناعي",
+    body: "يحلل تقدمك ويقترح المسار الأفضل والإجابات الفورية على أسئلتك.",
+    wide: false,
+    visual: null,
+  },
+  {
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+    title: "تحليلات أدائك",
+    body: "إحصائيات بصرية تُريك نقاط قوتك والمواضيع التي تحتاج مراجعة.",
+    wide: true,
+    visual: <StatsMockup />,
+  },
+];
+
+function VideoMockup() {
   return (
-    <section className="py-16 md:py-32 bg-[#0B0F19] relative z-10 border-t border-white/5 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16 md:mb-24 relative">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-sm font-bold mb-6 border border-indigo-500/20">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-            مميزات المنصة
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-white mb-4 md:mb-6 tracking-tight leading-tight">
-            لماذا تختار{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">منصتنا؟</span>
+    <div className="w-full max-w-[260px] aspect-video rounded-xl overflow-hidden border border-white/8 bg-[#0b0f19] shadow-xl flex flex-col">
+      <div className="h-8 bg-[#1e293b]/60 border-b border-white/5 flex items-center px-3 gap-1.5 shrink-0">
+        <div className="w-2 h-2 rounded-full bg-white/10" />
+        <div className="w-2 h-2 rounded-full bg-white/10" />
+        <div className="w-2 h-2 rounded-full bg-white/10" />
+      </div>
+      <div className="flex-1 flex items-center justify-center relative">
+        <div className="w-10 h-10 rounded-full bg-sky-500/20 border border-sky-400/30 flex items-center justify-center">
+          <svg className="w-4 h-4 text-sky-400" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+        <div className="absolute bottom-3 inset-x-3 h-1 rounded-full bg-white/8">
+          <div className="w-[38%] h-full rounded-full bg-sky-400/70" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsMockup() {
+  const bars = [45, 72, 55, 88, 62, 95, 70];
+  return (
+    <div className="w-full max-w-[260px] rounded-xl border border-white/8 bg-[#0b0f19] shadow-xl p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center">
+        <div className="w-20 h-2.5 rounded-full bg-white/10" />
+        <div className="w-12 h-2 rounded-full bg-sky-400/30" />
+      </div>
+      <div className="flex items-end gap-1.5 h-20">
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t-sm bg-sky-400/20 border-t border-sky-400/40"
+            style={{ height: `${h}%` }}
+          />
+        ))}
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+          <div className="flex-1 h-1.5 rounded-full bg-white/8" />
+          <div className="w-8 h-1.5 rounded-full bg-sky-400/40" />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+          <div className="flex-1 h-1.5 rounded-full bg-white/5" />
+          <div className="w-6 h-1.5 rounded-full bg-white/15" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FeaturesSection() {
+  const reduced = useReducedMotion();
+
+  return (
+    <section className="py-20 md:py-32 bg-[#0b0f19] relative border-t border-white/5 overflow-hidden">
+      {/* Subtle ambient top glow — single indigo, no multi-color chaos */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-indigo-900/20 blur-[120px] rounded-full pointer-events-none" aria-hidden />
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        {/* Section header — no eyebrow chip */}
+        <div className="mb-14 md:mb-20">
+          <h2 className="text-balance text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-4">
+            لماذا Code-UP؟
           </h2>
-          <p className="text-gray-400 text-base md:text-xl max-w-2xl mx-auto font-medium leading-relaxed px-2">
-            بنيت منصتنا لتجمع بين التكنولوجيا الحديثة والتجربة الإنسانية، لتوفر لك بيئة تعليمية ذكية ومريحة تلبي كل احتياجاتك.
+          <p className="text-white/45 text-base md:text-lg max-w-xl font-medium leading-relaxed text-pretty">
+            بنيناها لطلاب الثانوية المصرية — كل ميزة تخدم هدفاً واحداً: تسهيل المذاكرة.
           </p>
         </div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 auto-rows-auto md:auto-rows-[340px]">
-          
-          {/* Feature 1 - Wide Card */}
-          <div className="md:col-span-2 bg-gradient-to-br from-[#151B2B] to-[#0F141F] rounded-[2rem] p-6 md:p-10 border border-white/5 hover:border-indigo-500/30 transition-all group relative overflow-hidden flex flex-col md:flex-row items-center md:items-stretch gap-8 shadow-xl shadow-black/20 text-center md:text-right">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 blur-[100px] rounded-full group-hover:bg-indigo-500/20 transition-colors pointer-events-none"></div>
-            
-            <div className="flex-1 relative z-10 flex flex-col justify-center items-center md:items-start">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-4 md:mb-6 border border-indigo-500/20 shadow-lg shadow-indigo-500/10 group-hover:scale-110 transition-transform">
-                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>
-              </div>
-              <h3 className="font-black text-white text-2xl md:text-3xl mb-3 tracking-tight">مجتمع تفاعلي متكامل</h3>
-              <p className="text-gray-400 leading-relaxed text-sm md:text-lg max-w-md">تواصل مع زملائك والمعلمين بحرية. اطرح أسئلتك، وشارك في نقاشات هادفة في بيئة مصممة خصيصاً للتعلم ومشاركة المعرفة.</p>
-            </div>
+        {/* Feature grid — asymmetric, not identical cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            {/* Decorative Visual for Wide Card */}
-            <div className="hidden md:flex flex-1 justify-end relative z-10 w-full h-full">
-              <div className="relative w-full h-full min-h-[200px]">
-                <div className="absolute right-4 top-4 w-48 p-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transform rotate-6 group-hover:rotate-12 transition-transform duration-500">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400"></div>
-                    <div className="w-20 h-2 rounded-full bg-white/20"></div>
+          {/* Wide card — Video */}
+          <FeatureCard wide reduced={!!reduced}>
+            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-10 h-full">
+              <div className="flex-1 flex flex-col justify-between h-full gap-6">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-sky-400 mb-4">
+                    {FEATURES[0].icon}
                   </div>
-                  <div className="space-y-2">
-                    <div className="w-full h-2 rounded-full bg-white/10"></div>
-                    <div className="w-3/4 h-2 rounded-full bg-white/10"></div>
-                  </div>
-                </div>
-                <div className="absolute left-4 bottom-4 w-48 p-4 bg-indigo-500/20 backdrop-blur-xl border border-indigo-500/30 rounded-2xl shadow-2xl transform -rotate-6 group-hover:-rotate-12 transition-transform duration-500 delay-100">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-400"></div>
-                    <div className="w-24 h-2 rounded-full bg-white/30"></div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="w-full h-2 rounded-full bg-white/20"></div>
-                    <div className="w-5/6 h-2 rounded-full bg-white/20"></div>
-                  </div>
+                  <h3 className="text-white font-bold text-xl mb-2 tracking-tight">{FEATURES[0].title}</h3>
+                  <p className="text-white/45 text-sm leading-relaxed">{FEATURES[0].body}</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Feature 2 - Square Card */}
-          <div className="md:col-span-1 bg-gradient-to-br from-[#151B2B] to-[#0F141F] rounded-[2rem] p-6 md:p-8 border border-white/5 hover:border-fuchsia-500/30 transition-all group relative overflow-hidden flex flex-col justify-center text-center items-center shadow-xl shadow-black/20 min-h-[260px] md:min-h-0">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] bg-fuchsia-500/10 blur-[70px] rounded-full group-hover:bg-fuchsia-500/20 transition-colors pointer-events-none"></div>
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-fuchsia-500/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-fuchsia-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform border border-fuchsia-500/20 relative z-10 shadow-lg shadow-fuchsia-500/10 rotate-3 group-hover:-rotate-3">
-              <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-            </div>
-            <div className="relative z-10">
-              <h3 className="font-bold text-white text-xl md:text-2xl mb-2 md:mb-3 tracking-tight">اختبارات ذكية</h3>
-              <p className="text-gray-400 leading-relaxed text-sm md:text-base px-2">أسئلة تفاعلية تقيم مستواك الفعلي وتساعدك على التطور.</p>
-            </div>
-          </div>
-
-          {/* Feature 3 - Square Card */}
-          <div className="md:col-span-1 bg-gradient-to-br from-[#151B2B] to-[#0F141F] rounded-[2rem] p-6 md:p-8 border border-white/5 hover:border-emerald-500/30 transition-all group relative overflow-hidden flex flex-col justify-center text-center items-center shadow-xl shadow-black/20 min-h-[260px] md:min-h-0">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] bg-emerald-500/10 blur-[70px] rounded-full group-hover:bg-emerald-500/20 transition-colors pointer-events-none"></div>
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-emerald-500/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-emerald-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform border border-emerald-500/20 relative z-10 shadow-lg shadow-emerald-500/10 -rotate-3 group-hover:rotate-3">
-              <svg className="w-8 h-8 md:w-10 md:h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-            </div>
-            <div className="relative z-10">
-              <h3 className="font-bold text-white text-xl md:text-2xl mb-2 md:mb-3 tracking-tight">مرشد أكاديمي</h3>
-              <p className="text-gray-400 leading-relaxed text-sm md:text-base px-2">نظام توجيه مستمر يوفر الإجابات والمسار الأفضل للتعلم.</p>
-            </div>
-          </div>
-
-          {/* Feature 4 - Wide Card */}
-          <div className="md:col-span-2 bg-gradient-to-br from-[#151B2B] to-[#0F141F] rounded-[2rem] p-6 md:p-10 border border-white/5 hover:border-rose-500/30 transition-all group relative overflow-hidden flex flex-col md:flex-row items-center md:items-stretch gap-8 shadow-xl shadow-black/20 text-center md:text-right">
-            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-rose-500/10 blur-[100px] rounded-full group-hover:bg-rose-500/20 transition-colors pointer-events-none"></div>
-            
-            <div className="flex-1 relative z-10 flex flex-col justify-center items-center md:items-start">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center text-rose-400 mb-4 md:mb-6 border border-rose-500/20 shadow-lg shadow-rose-500/10 group-hover:scale-110 transition-transform">
-                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-              </div>
-              <h3 className="font-black text-white text-2xl md:text-3xl mb-3 tracking-tight">تحليلات دقيقة</h3>
-              <p className="text-gray-400 leading-relaxed text-sm md:text-lg max-w-md">راقب تقدمك خطوة بخطوة من خلال إحصائيات بصرية ورسوم بيانية لأدائك في الكورسات تحدد نقاط قوتك وضعفك.</p>
-            </div>
-
-            {/* Decorative Visual */}
-            <div className="hidden md:flex flex-1 justify-end relative z-10 w-full h-full">
-              <div className="relative w-full h-full min-h-[200px] flex items-end justify-center gap-4 pb-4">
-                <div className="w-12 bg-gradient-to-t from-rose-500/40 to-rose-400/80 rounded-t-xl h-24 transform group-hover:h-32 transition-all duration-500"></div>
-                <div className="w-12 bg-gradient-to-t from-rose-500/40 to-rose-400/80 rounded-t-xl h-36 transform group-hover:h-48 transition-all duration-500 delay-75"></div>
-                <div className="w-12 bg-gradient-to-t from-rose-500/40 to-rose-400/80 rounded-t-xl h-20 transform group-hover:h-40 transition-all duration-500 delay-150"></div>
-                <div className="w-12 bg-gradient-to-t from-rose-500/40 to-rose-400/80 rounded-t-xl h-48 transform group-hover:h-56 transition-all duration-500 delay-200"></div>
+              <div className="flex items-center justify-center md:justify-end shrink-0">
+                <VideoMockup />
               </div>
             </div>
-          </div>
+          </FeatureCard>
 
-          {/* Feature 5 - Extra Wide Card */}
-          <div className="md:col-span-3 bg-gradient-to-br from-[#151B2B] to-[#0F141F] rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-14 border border-white/5 hover:border-cyan-500/30 transition-all group relative overflow-hidden flex flex-col md:flex-row items-center md:items-stretch gap-8 md:gap-12 shadow-xl shadow-black/20 text-center md:text-right">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full group-hover:bg-cyan-500/20 transition-colors pointer-events-none"></div>
-            
-            <div className="flex-1 relative z-10 flex flex-col justify-center items-center md:items-start">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-4 md:mb-6 border border-cyan-500/20 shadow-lg shadow-cyan-500/10 group-hover:scale-110 transition-transform">
-                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-              </div>
-              <h3 className="font-black text-white text-2xl md:text-3xl mb-3 tracking-tight">تجربة بصرية مريحة</h3>
-              <p className="text-gray-400 leading-relaxed text-sm md:text-lg max-w-2xl">استمتع بواجهة مستخدم عصرية بتصميم داكن مريح للعين، مصمم خصيصاً لتتمكن من المذاكرة لفترات طويلة دون إرهاق بصري. كل تفصيلة صممت لتوفير تجربة خالية من التشتت.</p>
+          {/* Narrow card — Quizzes */}
+          <FeatureCard reduced={!!reduced}>
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-sky-400 mb-4">
+              {FEATURES[1].icon}
             </div>
-
-            {/* Decorative Visual */}
-            <div className="hidden md:flex flex-1 justify-end relative z-10 w-full h-full">
-              <div className="relative w-full max-w-sm h-48 bg-[#0B0F19] rounded-2xl border border-white/10 shadow-2xl overflow-hidden group-hover:scale-105 transition-transform duration-500 flex flex-col mt-4 md:mt-0">
-                {/* Mock UI Header */}
-                <div className="h-10 border-b border-white/5 flex items-center px-4 gap-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-500/50"></div>
-                  <div className="w-3 h-3 rounded-full bg-amber-500/50"></div>
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/50"></div>
+            <h3 className="text-white font-bold text-lg mb-2 tracking-tight">{FEATURES[1].title}</h3>
+            <p className="text-white/45 text-sm leading-relaxed">{FEATURES[1].body}</p>
+            {/* Decorative quiz row */}
+            <div className="mt-6 space-y-2">
+              {["أ", "ب", "ج", "د"].map((opt, i) => (
+                <div
+                  key={opt}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm ${
+                    i === 1
+                      ? "border-sky-400/40 bg-sky-400/8 text-sky-300"
+                      : "border-white/6 bg-white/3 text-white/30"
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold shrink-0 ${i === 1 ? "border-sky-400/60 text-sky-400" : "border-white/15 text-white/30"}`}>{opt}</span>
+                  <div className={`h-1.5 rounded-full ${i === 1 ? "w-24 bg-sky-400/40" : "w-16 bg-white/8"}`} />
+                  {i === 1 && <svg className="w-4 h-4 text-sky-400 shrink-0 mr-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                 </div>
-                {/* Mock UI Body */}
-                <div className="flex-1 p-4 flex gap-4">
-                  <div className="w-1/3 h-full rounded-xl bg-white/5"></div>
-                  <div className="w-2/3 h-full flex flex-col gap-3">
-                    <div className="w-full h-8 rounded-lg bg-white/5"></div>
-                    <div className="w-3/4 h-4 rounded-full bg-white/5"></div>
-                    <div className="w-1/2 h-4 rounded-full bg-white/5"></div>
+              ))}
+            </div>
+          </FeatureCard>
+
+          {/* Narrow card — AI */}
+          <FeatureCard reduced={!!reduced}>
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-sky-400 mb-4">
+              {FEATURES[2].icon}
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2 tracking-tight">{FEATURES[2].title}</h3>
+            <p className="text-white/45 text-sm leading-relaxed">{FEATURES[2].body}</p>
+            {/* Decorative chat */}
+            <div className="mt-6 space-y-2.5">
+              <div className="flex justify-end">
+                <div className="max-w-[80%] px-3 py-2 rounded-2xl rounded-tl-sm bg-sky-500/20 border border-sky-400/20 text-sky-200 text-xs leading-relaxed">
+                  ما هي معادلة كيرشهوف؟
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="max-w-[80%] px-3 py-2 rounded-2xl rounded-tr-sm bg-white/5 border border-white/8 text-white/60 text-xs leading-relaxed">
+                  مجموع التيارات الداخلة يساوي مجموع التيارات الخارجة عند أي عقدة...
+                </div>
+              </div>
+            </div>
+          </FeatureCard>
+
+          {/* Wide card — Stats */}
+          <FeatureCard wide reduced={!!reduced} className="md:col-start-1">
+            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-10 h-full">
+              <div className="flex-1 flex flex-col justify-between h-full gap-6">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-sky-400 mb-4">
+                    {FEATURES[3].icon}
                   </div>
+                  <h3 className="text-white font-bold text-xl mb-2 tracking-tight">{FEATURES[3].title}</h3>
+                  <p className="text-white/45 text-sm leading-relaxed">{FEATURES[3].body}</p>
                 </div>
-                {/* Overlay Glow */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent pointer-events-none"></div>
+              </div>
+              <div className="flex items-center justify-center md:justify-end shrink-0">
+                <StatsMockup />
               </div>
             </div>
-          </div>
+          </FeatureCard>
 
         </div>
       </div>
     </section>
+  );
+}
+
+function FeatureCard({
+  children,
+  wide = false,
+  reduced,
+  className = "",
+}: {
+  children: React.ReactNode;
+  wide?: boolean;
+  reduced: boolean;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+      className={`
+        relative rounded-2xl border border-white/6 bg-[#111827]/60 p-6 md:p-8
+        hover:border-white/12 transition-colors duration-200
+        ${wide ? "md:col-span-2" : "md:col-span-1"}
+        ${className}
+      `}
+    >
+      {children}
+    </motion.div>
   );
 }

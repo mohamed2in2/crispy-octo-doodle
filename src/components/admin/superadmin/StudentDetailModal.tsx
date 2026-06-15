@@ -50,10 +50,19 @@ interface QuizResultEntry {
   };
 }
 
+interface DeviceEntry {
+  id: string;
+  label: string | null;
+  lastSeenAt: string;
+  ipAddress: string | null;
+}
+
 interface DetailResponse {
   student: StudentDetail;
   quizResults: QuizResultEntry[];
   watchedCount: number;
+  devices: DeviceEntry[];
+  maxDevices: number;
   error?: string;
 }
 
@@ -107,6 +116,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resettingDevices, setResettingDevices] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/superadmin/students/${studentId}`, { credentials: "include" })
@@ -165,9 +176,32 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
     onClose();
   };
 
+  const handleResetDevices = async () => {
+    setResettingDevices(true);
+    try {
+      const res = await fetch(`/api/admin/students/${studentId}/reset-devices`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = (await res.json()) as { cleared?: number; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "تعذر تصفير الأجهزة");
+      if (data) setData({ ...data, devices: [] });
+      toastSuccess(
+        json.cleared ? `تم تصفير ${json.cleared} جهاز — يمكن للمتعلم الدخول من جهاز جديد` : "لا توجد أجهزة مسجّلة"
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر تصفير الأجهزة");
+    } finally {
+      setResettingDevices(false);
+      setConfirmingReset(false);
+    }
+  };
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  const canResetDevices = hasPermission(userRole, "suspend_student");
 
   return (
     <div
@@ -282,6 +316,68 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                 </div>
               </div>
 
+              {/* Registered devices */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-white font-semibold text-sm">
+                    الأجهزة المسجّلة ({data.devices.length}/{data.maxDevices})
+                  </h4>
+                  {canResetDevices && data.devices.length > 0 && !confirmingReset && (
+                    <button
+                      onClick={() => setConfirmingReset(true)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
+                    >
+                      تصفير الأجهزة
+                    </button>
+                  )}
+                </div>
+
+                {confirmingReset && (
+                  <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-950/30 p-4">
+                    <p className="text-amber-200 text-sm leading-relaxed mb-3">
+                      سيتم حذف كل الأجهزة المسجّلة لهذا المتعلم. سيتمكن من تسجيل الدخول من أي جهاز جديد بعد ذلك (حتى الحد الأقصى المسموح). هل تريد المتابعة؟
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleResetDevices}
+                        disabled={resettingDevices}
+                        className="px-4 py-2 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white transition-colors"
+                      >
+                        {resettingDevices ? "جارٍ التصفير..." : "تأكيد التصفير"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmingReset(false)}
+                        disabled={resettingDevices}
+                        className="px-4 py-2 text-xs font-semibold rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-60 text-gray-300 transition-colors"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {data.devices.length === 0 ? (
+                  <p className="text-gray-500 text-sm">لا توجد أجهزة مسجّلة</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data.devices.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between bg-gray-900/50 rounded-lg px-4 py-3 border border-gray-700"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{d.label ?? "جهاز غير معروف"}</p>
+                          <p className="text-gray-400 text-xs font-mono">{d.ipAddress ?? "—"}</p>
+                        </div>
+                        <span className="text-gray-400 text-xs shrink-0">
+                          آخر دخول {fmtDate(d.lastSeenAt)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Enrolled courses */}
               <div>
                 <h4 className="text-white font-semibold text-sm mb-3">
@@ -341,7 +437,7 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                                   <th className="text-right px-3 py-2 font-medium">التاريخ</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-700">
+                              <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                                 {results.map((r) => (
                                   <tr key={r.id}>
                                     <td className="px-3 py-2 text-gray-300">{r.quiz.title}</td>

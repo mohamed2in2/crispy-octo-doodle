@@ -2,9 +2,35 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/ui/Navbar";
-import { Footer } from "@/components/ui/Footer";
 import { useToast } from "@/components/ui/Toast";
+import { SecurePlayer } from "@/components/ui/SecurePlayer";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type VideoItem = {
+  id: string;
+  title: string;
+  durationMinutes?: number;
+  maxWatchesPerUser?: number;
+  usedWatches?: number;
+  progress?: Array<{ watched: boolean; watchedAt?: string | null }>;
+  publishAt?: string | null;
+};
+
+type MaterialItem = { id: string; title: string; url: string; type: string };
+
+type QuizItem = { id: string; title: string; timeLimitMinutes: number };
+
+type FolderItem = {
+  id: string;
+  name: string;
+  publishAt?: string | null;
+  videos: VideoItem[];
+  materials: MaterialItem[];
+  quizzes: QuizItem[];
+};
 
 type CourseData = {
   id: string;
@@ -13,164 +39,149 @@ type CourseData = {
   description?: string | null;
   teacher: { id: string; name: string };
   homeworkUrl?: string | null;
+  sequentialAccess?: boolean;
   maxWatchCount?: number;
-  folders: Array<{
-    id: string;
-    name: string;
-    videos: Array<{
-      id: string;
-      title: string;
-      progress?: Array<{ watched: boolean }>;
-    }>;
-    materials: Array<{
-      id: string;
-      title: string;
-      url: string;
-      type: string;
-    }>;
-    quizzes: Array<{
-      id: string;
-      title: string;
-      timeLimitMinutes: number;
-      questions: Array<{
-        id: string;
-        question: string;
-        optionA: string;
-        optionB: string;
-        optionC: string;
-        optionD: string;
-      }>;
-    }>;
-  }>;
+  folders: FolderItem[];
 };
 
-type WatchCountData = {
-  courseId: string;
-  maxWatchCount: number;
-  usedWatches: number;
-  remainingWatches: number;
+
+type PlayerState = {
+  videoId: string;
+  sessionToken: string;
+  embedUrl: string;
+  expiresAt: string;
+  provider: string;
+  startedAt: string;
+  durationMinutes: number;
 };
 
-function WatchPipBar({ used, total }: { used: number; total: number }) {
+// ─── Icons ──────────────────────────────────────────────────────────────────
+
+function IconLock({ className }: { className?: string }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">المشاهدات المستخدمة</span>
-        <span className="text-xs font-mono text-slate-600">{used}/{total}</span>
-      </div>
-      <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${
-            used >= total ? "bg-red-500" : used >= total - 1 ? "bg-amber-500" : "bg-emerald-500"
-          }`}
-          style={{ width: `${total > 0 ? (used / total) * 100 : 0}%` }}
-        />
-      </div>
-      <p className="text-xs text-slate-500">
-        {used < total ? (
-          <span className="text-emerald-600 dark:text-emerald-400">
-            {total - used} مشاهدة متبقية
-          </span>
-        ) : (
-          <span className="text-red-500 font-semibold">استنفذت جميع المحاولات!</span>
-        )}
-      </p>
-    </div>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0110 0v4" />
+    </svg>
   );
 }
 
-function WatchConfirmModal({
-  videoTitle,
-  usedWatches,
-  totalWatches,
-  onConfirm,
-  onCancel,
-  isLoading,
-}: {
-  videoTitle: string;
-  usedWatches: number;
-  totalWatches: number;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
+function IconClock({ className }: { className?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onCancel}
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconPlay({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function IconChevron({ className, open }: { className?: string; open: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden
+    >
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  );
+}
+
+
+function IconQuiz({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconFile({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function IconLink({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+// ─── Progress ring ───────────────────────────────────────────────────────────
+
+function ProgressRing({ pct, size = 44, stroke = 3.5 }: { pct: number; size?: number; stroke?: number }) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="#38bdf8"
+        strokeWidth={stroke}
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: "stroke-dashoffset 0.7s cubic-bezier(0.16,1,0.3,1)" }}
       />
-      {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-200">
-        {/* Icon */}
-        <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">
-          📺
-        </div>
+    </svg>
+  );
+}
 
-        <h2 className="text-xl font-black text-slate-900 dark:text-white text-center mb-2">
-          هل تريد مشاهدة هذا الفيديو؟
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-center text-sm mb-6 leading-relaxed">
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{videoTitle}</span>
-        </p>
+// ─── Countdown ───────────────────────────────────────────────────────────────
 
-        {/* Watch info */}
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 mb-6 space-y-3">
-          <div className="flex items-start gap-3">
-            <span className="text-xl shrink-0">⏱️</span>
-            <div>
-              <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">
-                ستستغرق جلسة المشاهدة
-              </p>
-              <p className="text-amber-700 dark:text-amber-300 text-xs mt-0.5">
-                4 ساعات كاملة — يمكنك مشاهدة الفيديو في أي وقت خلال هذه المدة
-              </p>
-            </div>
-          </div>
-          <div className="h-px bg-amber-200 dark:bg-amber-800/50" />
-          <div className="flex items-start gap-3">
-            <span className="text-xl shrink-0">🎯</span>
-            <div>
-              <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">
-                ستستخدم {usedWatches + 1} من {totalWatches} مشاهدة
-              </p>
-              <WatchPipBar used={usedWatches + 1} total={totalWatches} />
-            </div>
-          </div>
-        </div>
+function fmtCountdown(expiresAt: string, nowMs?: number) {
+  const diff = new Date(expiresAt).getTime() - (nowMs ?? Date.now());
+  if (diff <= 0) return "00:00:00";
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  
+  if (d > 0) {
+    return `${d}d ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex-1 py-3 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
-          >
-            إلغاء
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                جارٍ البدء...
-              </>
-            ) : (
-              <>
-                <span>🎬</span>
-                ابدأ المشاهدة
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+
+// ─── Watch slots bar ─────────────────────────────────────────────────────────
+
+function WatchSlots({ used, total }: { used: number; total: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1 flex-1 rounded-full transition-colors ${i < used ? "bg-sky-400/70" : "bg-[var(--border)]"}`}
+        />
+      ))}
     </div>
   );
 }
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function CourseLearningPage() {
   const router = useRouter();
@@ -179,85 +190,97 @@ export default function CourseLearningPage() {
   const courseId = params.id;
 
   const [course, setCourse] = useState<CourseData | null>(null);
-  const [watchCount, setWatchCount] = useState<WatchCountData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [pageError, setPageError] = useState("");
+  const [user, setUser] = useState<{ name: string; role: string; phone?: string | null } | null>(null);
 
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"lectures" | "quizzes">("lectures");
-  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
-  const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+  // Sidebar
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // Watch confirm modal state
-  const [watchModalVideoId, setWatchModalVideoId] = useState<string | null>(null);
-  const [watchModalVideoTitle, setWatchModalVideoTitle] = useState("");
-  const [watchStarting, setWatchStarting] = useState(false);
+  // Player
+  const [player, setPlayer] = useState<PlayerState | null>(null);
+  const [countdown, setCountdown] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [completing, setCompleting] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
-  const theme = useMemo(() => {
-    const subject = (course?.subject || "").toLowerCase();
-    if (subject.includes("رياض") || subject.includes("math")) {
-      return {
-        badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-        panel: "from-emerald-500 via-cyan-500 to-blue-600",
-        accent: "text-emerald-700 dark:text-emerald-300",
-      };
-    }
-    if (subject.includes("فيزياء") || subject.includes("physics")) {
-      return {
-        badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
-        panel: "from-indigo-500 via-sky-500 to-cyan-600",
-        accent: "text-indigo-700 dark:text-indigo-300",
-      };
-    }
-    if (subject.includes("كيمياء") || subject.includes("chem")) {
-      return {
-        badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-        panel: "from-amber-500 via-orange-500 to-red-500",
-        accent: "text-amber-700 dark:text-amber-300",
-      };
-    }
-    return {
-      badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-      panel: "from-blue-500 via-indigo-500 to-violet-600",
-      accent: "text-blue-700 dark:text-blue-300",
-    };
-  }, [course?.subject]);
+  // Watch modal
+  const [modalVideo, setModalVideo] = useState<{ id: string; title: string } | null>(null);
+  const [watching, setWatching] = useState(false);
 
-  const allVideos = useMemo(() => course?.folders.flatMap((f) => f.videos) ?? [], [course]);
-  const allQuizzes = useMemo(() => course?.folders.flatMap((f) => f.quizzes) ?? [], [course]);
-  const selectedVideo = allVideos.find((v) => v.id === selectedVideoId) ?? null;
-  const selectedQuiz = allQuizzes.find((q) => q.id === selectedQuizId) ?? null;
+  // ── Derived ──────────────────────────────────────────────────────────────
+
+  const flatVideos = useMemo(() => course?.folders.flatMap((f) => f.videos) ?? [], [course]);
+
+  const totalVideos = flatVideos.length;
+  const watchedCount = useMemo(
+    () => flatVideos.filter((v) => v.progress?.some((p) => p.watched)).length,
+    [flatVideos]
+  );
+  const progressPct = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
+
+  const isWatched = (v: VideoItem) => v.progress?.some((p) => p.watched) ?? false;
+
+  // Sequential lock: video[i] is locked if video[i-1] is not watched
+  const isLocked = useCallback(
+    (videoId: string) => {
+      // Teacher can allow free navigation — then nothing is locked.
+      if (course?.sequentialAccess === false) return false;
+      const idx = flatVideos.findIndex((v) => v.id === videoId);
+      if (idx <= 0) return false;
+      return !flatVideos[idx - 1].progress?.some((p) => p.watched);
+    },
+    [flatVideos, course?.sequentialAccess]
+  );
+
+  const activeVideo = flatVideos.find((v) => v.id === activeVideoId) ?? null;
+  const activeFolder = course?.folders.find((f) => f.videos.some((v) => v.id === activeVideoId)) ?? null;
+  const isPlayerActive = player?.videoId === activeVideoId;
+
+  const getScheduledUnlockTime = useCallback(
+    (videoId: string) => {
+      const video = flatVideos.find((v) => v.id === videoId);
+      if (!video) return null;
+      const folder = course?.folders.find((f) => f.videos.some((v) => v.id === videoId));
+      
+      const vTime = video.publishAt ? new Date(video.publishAt).getTime() : 0;
+      const fTime = folder?.publishAt ? new Date(folder.publishAt).getTime() : 0;
+      const maxTime = Math.max(vTime, fTime);
+      
+      if (maxTime > now) return new Date(maxTime).toISOString();
+      return null;
+    },
+    [flatVideos, course, now]
+  );
+
+  // Per-video watch counts
+  const videoRemainingWatches = (v: VideoItem) =>
+    Math.max(0, (v.maxWatchesPerUser ?? 3) - (v.usedWatches ?? 0));
+  const hasNoWatches = activeVideo ? videoRemainingWatches(activeVideo) <= 0 : false;
+
+  // ── Data loading ─────────────────────────────────────────────────────────
 
   const loadCourse = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setPageError("");
     try {
-      const res = await fetch(`/api/courses/${courseId}`);
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 401) { router.replace("/login"); return; }
-        if (res.status === 403) { router.replace(`/courses/${courseId}`); return; }
-        throw new Error(data.error || "فشل تحميل الكورس");
+      const courseRes = await fetch(`/api/courses/${courseId}`);
+      const courseJson = await courseRes.json();
+      if (!courseRes.ok) {
+        if (courseRes.status === 401) { router.replace("/login"); return; }
+        if (courseRes.status === 403) { router.replace(`/courses/${courseId}`); return; }
+        throw new Error(courseJson.error || "فشل تحميل الكورس");
       }
-      const nextCourse = data.course as CourseData;
-      setCourse(nextCourse);
-      const firstVideo = nextCourse.folders.flatMap((f) => f.videos)[0];
-      const firstQuiz = nextCourse.folders.flatMap((f) => f.quizzes)[0];
-      setSelectedVideoId(firstVideo?.id ?? null);
-      setSelectedQuizId(firstQuiz?.id ?? null);
-      const initialCollapse: Record<string, boolean> = {};
-      nextCourse.folders.forEach((folder, index) => { initialCollapse[folder.id] = index !== 0; });
-      setCollapsedFolders(initialCollapse);
-
-      // Load watch count
-      const wcRes = await fetch(`/api/courses/${courseId}/watch-count`);
-      if (wcRes.ok) {
-        const wcData = await wcRes.json();
-        setWatchCount(wcData);
-      }
+      const c = courseJson.course as CourseData;
+      setCourse(c);
+      const firstVideo = c.folders.flatMap((f) => f.videos)[0];
+      if (firstVideo) setActiveVideoId((prev) => prev ?? firstVideo.id);
+      const init: Record<string, boolean> = {};
+      c.folders.forEach((f, i) => { init[f.id] = i !== 0; });
+      setCollapsed((prev) => Object.keys(prev).length > 0 ? prev : init);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "حدث خطأ أثناء تحميل الكورس");
+      setPageError(err instanceof Error ? err.message : "حدث خطأ أثناء تحميل الكورس");
     } finally {
       setLoading(false);
     }
@@ -266,343 +289,632 @@ export default function CourseLearningPage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role } : null))
+      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role, phone: d.user.phone ?? null } : null))
       .catch(() => setUser(null));
   }, []);
 
+  useEffect(() => { if (courseId) void loadCourse(); }, [courseId, loadCourse]);
+
+  // ── Countdown ticker ─────────────────────────────────────────────────────
+
   useEffect(() => {
-    const run = async () => { if (courseId) await loadCourse(); };
-    run();
-  }, [courseId, loadCourse]);
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-  const toggleFolder = (folderId: string) =>
-    setCollapsedFolders((prev) => ({ ...prev, [folderId]: !prev[folderId] }));
+  useEffect(() => {
+    if (!player) return;
+    const tick = () => setCountdown(fmtCountdown(player.expiresAt, now));
+    tick();
+  }, [player, now]);
 
-  const lecturesCount = allVideos.length;
-  const quizzesCount = allQuizzes.length;
+  // ── DevTools deterrents (active while player is open) ────────────────────
 
-  const openWatchModal = (video: { id: string; title: string }) => {
-    setSelectedVideoId(video.id);
-    setWatchModalVideoId(video.id);
-    setWatchModalVideoTitle(video.title);
+  useEffect(() => {
+    if (!player) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "F12") { e.preventDefault(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
+      if ((e.ctrlKey || e.metaKey) && ["U", "S"].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [player]);
+
+  // ── Elapsed time ticker ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!player) { setElapsedSeconds(0); return; }
+    const tick = () => {
+      setElapsedSeconds(Math.floor((Date.now() - new Date(player.startedAt).getTime()) / 1000));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [player]);
+
+  // YouTube end-detection is handled by SecurePlayer's onEnded (IFrame API) below.
+
+  // ── Mark complete ────────────────────────────────────────────────────────
+
+  const markCompleteFor = async (videoId: string) => {
+    setCompleting(true);
+    try {
+      const res = await fetch(`/api/videos/${videoId}/complete`, { method: "POST", credentials: "include" });
+      if (res.ok) {
+        setPlayer(null);
+        setElapsedSeconds(0);
+        await loadCourse();
+      } else {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        toastError(d.error || "تعذر تسجيل الإنجاز");
+      }
+    } catch { toastError("تعذر تسجيل الإنجاز"); }
+    finally { setCompleting(false); }
+  };
+
+  // ── Watch flow ───────────────────────────────────────────────────────────
+
+  const openModal = (video: VideoItem) => {
+    if (isLocked(video.id)) return;
+    if (hasNoWatches) { toastError("استنفذت جميع محاولات المشاهدة — تواصل مع المعلم"); return; }
+    setModalVideo({ id: video.id, title: video.title });
   };
 
   const confirmWatch = async () => {
-    if (!watchModalVideoId) return;
-    setWatchStarting(true);
+    if (!modalVideo) return;
+    setWatching(true);
     try {
-      // POST to start the session (consumes 1 watch slot)
-      const res = await fetch(`/api/videos/${watchModalVideoId}/watch`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch(`/api/videos/${modalVideo.id}/watch`, { method: "POST", credentials: "include" });
       const data = await res.json();
-
-      if (!res.ok) {
-        toastError(data.error || "تعذر بدء جلسة المشاهدة");
-        setWatchStarting(false);
-        setWatchModalVideoId(null);
-        return;
-      }
-
-      // Navigate with token in URL so refresh re-uses the same session (no duplicate slot consumed)
-      router.push(`/courses/${courseId}/watch/${watchModalVideoId}?token=${encodeURIComponent(data.sessionToken)}`);
-    } catch {
-      toastError("تعذر بدء جلسة المشاهدة");
-      setWatchStarting(false);
-    }
+      if (!res.ok) { toastError(data.error || "تعذر بدء جلسة المشاهدة"); return; }
+      const vid = flatVideos.find((v) => v.id === modalVideo.id);
+      setPlayer({
+        videoId: modalVideo.id,
+        sessionToken: data.sessionToken,
+        embedUrl: data.embedUrl,
+        expiresAt: data.expiresAt,
+        provider: data.provider ?? "vdocipher",
+        startedAt: new Date().toISOString(),
+        durationMinutes: vid?.durationMinutes ?? 0,
+      });
+      setModalVideo(null);
+      await loadCourse();
+    } catch { toastError("تعذر بدء جلسة المشاهدة"); }
+    finally { setWatching(false); }
   };
 
-  const cancelWatch = () => {
-    setWatchModalVideoId(null);
-    setWatchModalVideoTitle("");
-    setWatchStarting(false);
-  };
-
-  const hasNoWatches = watchCount ? watchCount.remainingWatches <= 0 : false;
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_36%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_38%,#f7fafc_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.2),_transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_100%)]">
+    <div className="flex flex-col h-dvh bg-[var(--bg)] overflow-hidden">
       <Navbar user={user} />
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {loading ? (
-          <div className="text-center py-16 text-gray-500">جارٍ تحميل الكورس...</div>
-        ) : error ? (
-          <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl p-8 border border-red-200 dark:border-red-900/40 text-center">
-            <p className="text-red-600 dark:text-red-400 mb-6">{error}</p>
-            <button onClick={() => router.push("/courses")} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
-              الرجوع إلى الكورسات
+
+      {/* ── Loading ── */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
+            <p className="text-sm text-[var(--ink-muted)]">جارٍ تحميل الكورس...</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Error ── */}
+      {!loading && pageError && (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 max-w-sm w-full text-center space-y-4">
+            <p className="text-[var(--error)] text-sm leading-relaxed">{pageError}</p>
+            <button onClick={() => router.push("/courses")} className="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors">
+              الرجوع للكورسات
             </button>
           </div>
-        ) : course ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main content */}
-            <section className="lg:col-span-2 space-y-6">
-              {/* Course hero */}
-              <div className={`relative overflow-hidden rounded-[2rem] p-6 sm:p-8 border border-white/50 dark:border-white/10 shadow-[0_30px_80px_-35px_rgba(15,23,42,0.5)] bg-gradient-to-r ${theme.panel} text-white`}>
-                <div className="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_top_right,_white,_transparent_40%)]" />
-                <div className="relative">
-                  <h1 className="text-3xl font-black">{course.title}</h1>
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    <span className="text-sm text-white/90">👨‍🏫 {course.teacher.name}</span>
-                    <span className={`text-xs px-2.5 py-1 rounded-full ${theme.badge}`}>{course.subject}</span>
-                  </div>
-                  {course.description && <p className="text-sm text-white/90 mt-3 max-w-2xl leading-7">{course.description}</p>}
-                  <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/85">
-                    <span className="rounded-full bg-white/10 px-3 py-1">{lecturesCount} محاضرة</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">{quizzesCount} اختبار</span>
-                  </div>
+        </div>
+      )}
+
+      {/* ── Content ── */}
+      {!loading && !pageError && course && (
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* ════════════════════════════════════════════
+              SIDEBAR — right side in RTL
+          ════════════════════════════════════════════ */}
+          <aside className="w-72 shrink-0 flex flex-col bg-[var(--surface)] border-e border-[var(--border)] overflow-hidden">
+
+            {/* Course identity + progress */}
+            <div className="px-4 pt-4 pb-3 border-b border-[var(--border)] space-y-3 shrink-0">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[var(--ink-muted)] uppercase tracking-widest mb-1 truncate">{course.subject}</p>
+                <h1 className="text-sm font-black text-[var(--ink)] leading-snug truncate">{course.title}</h1>
+                <p className="text-[11px] text-[var(--ink-muted)] mt-0.5 truncate">د. {course.teacher.name}</p>
+              </div>
+
+              {/* Progress ring + stats */}
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <ProgressRing pct={progressPct} size={44} stroke={3.5} />
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-sky-400" aria-hidden>
+                    {progressPct}%
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[var(--ink)] leading-tight">تقدمك في الكورس</p>
+                  <p className="text-[11px] text-[var(--ink-muted)] mt-0.5">{watchedCount} من {totalVideos} محاضرة مكتملة</p>
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="flex items-center gap-2 rounded-3xl p-2 border border-white/70 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg">
-                <button onClick={() => setActiveTab("lectures")} className={`flex-1 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${activeTab === "lectures" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>محاضرات</button>
-                <button onClick={() => setActiveTab("quizzes")} className={`flex-1 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${activeTab === "quizzes" ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-lg" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>الاختبارات</button>
-              </div>
-
-              {/* Homework section */}
-              {activeTab === "lectures" && course.homeworkUrl && (
-                <div className="rounded-[1.75rem] border border-amber-200 dark:border-amber-800/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-5 shadow-xl">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/50 rounded-xl flex items-center justify-center text-xl">📋</div>
-                      <div>
-                        <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">واجب منزلي متاح</p>
-                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">انتقل إلى صفحة الواجب المنزلي</p>
-                      </div>
-                    </div>
-                    <a
-                      href={course.homeworkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition-colors shrink-0"
-                    >
-                      فتح الواجب ↗
-                    </a>
-                  </div>
+              {/* Per-video watch count for selected video */}
+              {activeVideo && (
+                <div className="space-y-1.5">
+                  <WatchSlots
+                    used={activeVideo.usedWatches ?? 0}
+                    total={activeVideo.maxWatchesPerUser ?? 3}
+                  />
+                  <p className="text-[11px] text-[var(--ink-muted)]">
+                    {videoRemainingWatches(activeVideo) > 0
+                      ? `${videoRemainingWatches(activeVideo)} مشاهدة متبقية للفيديو الحالي`
+                      : "استنفدت مشاهدات هذا الفيديو"}
+                  </p>
                 </div>
               )}
+            </div>
 
-              {/* Watch panel */}
-              {activeTab === "lectures" ? (
-                <div className="rounded-[1.75rem] border border-white/70 dark:border-white/10 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl p-5 shadow-xl space-y-5">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                      🎬 المحاضرة المحددة
-                    </h2>
-                    {watchCount && (
-                      <div className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-                        {watchCount.remainingWatches} مشاهدة متبقية
+            {/* Lesson tree */}
+            <nav className="flex-1 overflow-y-auto py-1" aria-label="محتوى الكورس">
+              {course.folders.map((folder) => {
+                const isOpen = !collapsed[folder.id];
+                const folderWatched = folder.videos.filter((v) => isWatched(v)).length;
+
+                return (
+                  <div key={folder.id}>
+                    {/* Folder header */}
+                    <button
+                      onClick={() => setCollapsed((p) => ({ ...p, [folder.id]: !p[folder.id] }))}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-right hover:bg-[var(--border)] transition-colors group"
+                    >
+                      <span className="text-[11px] font-bold text-[var(--ink)] truncate flex-1">{folder.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-[var(--ink-muted)]">{folderWatched}/{folder.videos.length}</span>
+                        <IconChevron className="w-3 h-3 text-[var(--ink-muted)]" open={isOpen} />
+                      </div>
+                    </button>
+
+                    {/* Folder items */}
+                    {isOpen && (
+                      <div>
+                        {/* Videos */}
+                        {folder.videos.map((video) => {
+                          const watched = isWatched(video);
+                          const locked = isLocked(video.id);
+                          const scheduledUnlock = getScheduledUnlockTime(video.id);
+                          const active = activeVideoId === video.id;
+                          const playing = player?.videoId === video.id;
+
+                          return (
+                            <button
+                              key={video.id}
+                              onClick={() => setActiveVideoId(video.id)}
+                              aria-current={active ? "true" : undefined}
+                              className={`relative w-full flex items-center gap-2.5 px-4 py-2.5 text-right transition-colors ${
+                                active
+                                  ? "bg-sky-400/8 dark:bg-sky-400/6"
+                                  : "hover:bg-[var(--border)]"
+                              } ${locked || scheduledUnlock ? "opacity-50" : ""}`}
+                            >
+                              {/* Active rail */}
+                              {active && (
+                                <span className="absolute inset-y-0 start-0 w-0.5 bg-sky-400 rounded-e-full" aria-hidden />
+                              )}
+
+                              {/* State icon */}
+                              <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+                                playing ? "bg-sky-400/20" :
+                                watched ? "bg-sky-400/12" :
+                                "bg-[var(--border)]"
+                              }`}>
+                                {playing ? (
+                                  <IconPlay className="w-2.5 h-2.5 text-sky-400" />
+                                ) : watched ? (
+                                  <IconCheck className="w-3 h-3 text-sky-400" />
+                                ) : scheduledUnlock ? (
+                                  <IconClock className="w-3 h-3 text-[var(--ink-muted)]" />
+                                ) : locked ? (
+                                  <IconLock className="w-3 h-3 text-[var(--ink-muted)]" />
+                                ) : (
+                                  <IconPlay className="w-2.5 h-2.5 text-[var(--ink-muted)]" />
+                                )}
+                              </span>
+
+                              <span className={`text-xs leading-relaxed flex-1 text-right truncate ${
+                                active ? "text-[var(--ink)] font-semibold" :
+                                watched ? "text-[var(--ink-muted)]" :
+                                (locked || scheduledUnlock) ? "text-[var(--ink-muted)]" :
+                                "text-[var(--ink-muted)]"
+                              }`}>
+                                {video.title}
+                              </span>
+
+                              {/* Playing pulse */}
+                              {playing && (
+                                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" aria-hidden />
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        {/* Quizzes */}
+                        {folder.quizzes.map((quiz) => (
+                          <button
+                            key={quiz.id}
+                            onClick={() => router.push(`/quizzes/${quiz.id}`)}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-right hover:bg-[var(--border)] transition-colors"
+                          >
+                            <span className="shrink-0 w-5 h-5 rounded-full bg-[var(--border)] flex items-center justify-center">
+                              <IconQuiz className="w-3 h-3 text-[var(--ink-muted)]" />
+                            </span>
+                            <span className="text-xs text-[var(--ink-muted)] flex-1 truncate">{quiz.title}</span>
+                            <span className="text-[10px] text-[var(--ink-muted)] shrink-0" dir="ltr">{quiz.timeLimitMinutes}د</span>
+                          </button>
+                        ))}
+
+                        {/* Materials */}
+                        {folder.materials.map((m) => (
+                          <a
+                            key={m.id}
+                            href={m.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-right hover:bg-[var(--border)] transition-colors"
+                          >
+                            <span className="shrink-0 w-5 h-5 rounded-full bg-[var(--border)] flex items-center justify-center">
+                              {m.type === "pdf" ? <IconFile className="w-3 h-3 text-[var(--ink-muted)]" /> : <IconLink className="w-3 h-3 text-[var(--ink-muted)]" />}
+                            </span>
+                            <span className="text-xs text-[var(--ink-muted)] flex-1 truncate">{m.title}</span>
+                          </a>
+                        ))}
                       </div>
                     )}
                   </div>
+                );
+              })}
 
-                  {selectedVideo ? (
-                    <div className="space-y-4">
-                      {/* Video info card */}
-                      <div className="rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/60 dark:to-slate-800/40 p-5 border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-xl shrink-0">
-                            🎬
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white leading-snug">{selectedVideo.title}</p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              مدة المشاهدة: 4 ساعات • مشاهدة واحدة من رصيدك
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Watch count bar */}
-                      {watchCount && (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
-                          <WatchPipBar used={watchCount.usedWatches} total={watchCount.maxWatchCount} />
-                        </div>
-                      )}
-
-                      {/* Watch button */}
-                      <button
-                        onClick={() => openWatchModal(selectedVideo)}
-                        disabled={hasNoWatches}
-                        className={`w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 transition-all ${
-                          hasNoWatches
-                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-                            : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-900/30 hover:shadow-blue-900/50"
-                        }`}
-                      >
-                        {hasNoWatches ? (
-                          <>
-                            <span>🚫</span>
-                            استنفذت جميع المحاولات — تواصل مع المعلم
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-xl">▶</span>
-                            مشاهدة المحاضرة
-                          </>
-                        )}
-                      </button>
-
-                      {/* Watch info hint */}
-                      <div className="flex items-start gap-2 text-xs text-slate-500 bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3">
-                        <span className="shrink-0 mt-0.5">💡</span>
-                        <p>
-                          كل مشاهدة تمنحك 4 ساعات كاملة — يمكنك إيقاف الفيديو والعودة في أي وقت خلال هذه المدة.
-                          {watchCount && ` أنت الآن تملك ${watchCount.remainingWatches} مشاهدة متبقية.`}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-8">لا توجد محاضرات في هذا الكورس بعد.</p>
-                  )}
-                </div>
-              ) : (
-                /* Quizzes tab */
-                <div className="rounded-[1.75rem] border border-white/70 dark:border-white/10 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl p-5 shadow-xl space-y-4">
-                  <h2 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                    📝 الاختبار المحدد
-                  </h2>
-                  {selectedQuiz ? (
-                    <div className="space-y-4">
-                      <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-5 border border-emerald-100 dark:border-emerald-800/50">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-xl shrink-0">
-                            📝
-                          </div>
-                          <div>
-                            <p className="font-bold text-emerald-900 dark:text-emerald-200">{selectedQuiz.title}</p>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
-                              مدة الاختبار: {selectedQuiz.timeLimitMinutes} دقيقة
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => router.push(`/quizzes/${selectedQuiz.id}`)}
-                        className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition-colors"
-                      >
-                        <span>✍️</span>
-                        ابدأ الاختبار الآن
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-8">لا يوجد اختبارات في هذا الكورس بعد.</p>
-                  )}
+              {/* Homework */}
+              {course.homeworkUrl && (
+                <div className="px-4 py-3 mt-1 border-t border-[var(--border)]">
+                  <a
+                    href={course.homeworkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-[11px] text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors"
+                  >
+                    <IconFile className="w-3.5 h-3.5 shrink-0" />
+                    الواجب المنزلي
+                  </a>
                 </div>
               )}
-            </section>
+            </nav>
+          </aside>
 
-            {/* Sidebar */}
-            <aside className="space-y-4">
-              <div className="rounded-[1.75rem] p-4 border border-white/70 dark:border-white/10 bg-white/90 dark:bg-slate-900/85 backdrop-blur-xl shadow-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-black text-slate-900 dark:text-white">محتوى الكورس</h2>
-                  <span className="text-xs text-slate-500">{activeTab === "lectures" ? "محاضرات" : "اختبارات"}</span>
+          {/* ════════════════════════════════════════════
+              MAIN PANEL
+          ════════════════════════════════════════════ */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-[var(--bg)]">
+
+            {activeVideo ? (
+              <>
+                {/* Title bar */}
+                <div className="px-6 py-3.5 border-b border-[var(--border)] flex items-center justify-between gap-4 shrink-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] mb-1">
+                      <span className="truncate">{course.title}</span>
+                      {activeFolder && <><span aria-hidden>›</span><span className="truncate">{activeFolder.name}</span></>}
+                    </div>
+                    <h2 className="text-sm font-bold text-[var(--ink)] truncate">{activeVideo.title}</h2>
+                  </div>
+
+                  {/* Session countdown */}
+                  {isPlayerActive && (
+                    <div className="shrink-0 flex items-center gap-1.5 text-xs text-[var(--ink-muted)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
+                      <span className="font-mono tabular-nums" dir="ltr">{countdown}</span>
+                    </div>
+                  )}
+
+                  {/* Back to courses */}
+                  <button
+                    onClick={() => router.push(`/courses/${courseId}`)}
+                    className="shrink-0 flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors px-3 py-1.5 rounded-lg hover:bg-[var(--border)]"
+                  >
+                    <svg className="w-3.5 h-3.5 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                    الكورس
+                  </button>
                 </div>
 
-                {/* Watch count mini bar */}
-                {watchCount && activeTab === "lectures" && (
-                  <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-1.5">
-                    <WatchPipBar used={watchCount.usedWatches} total={watchCount.maxWatchCount} />
-                  </div>
-                )}
+                {/* ── PLAYER or PRE-PLAY ── */}
+                <div className="flex-1 flex flex-col overflow-auto">
+                  {isPlayerActive ? (
+                    /* ─ Active player ─ */
+                    <div className="flex flex-col flex-1" onContextMenu={(e) => e.preventDefault()}>
+                      {/* 16:9 watermark-safe player */}
+                      <SecurePlayer
+                        embedUrl={player!.embedUrl}
+                        title={activeVideo.title}
+                        watermark={user?.phone || user?.name || ""}
+                        provider={player!.provider}
+                        onEnded={() => void markCompleteFor(player!.videoId)}
+                      />
 
-                <div className="space-y-4 max-h-[65vh] overflow-auto pr-1">
-                  {course.folders.map((folder) => (
-                    <div key={folder.id} className="space-y-2">
-                      <button
-                        onClick={() => toggleFolder(folder.id)}
-                        className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 dark:text-slate-300 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/70"
-                      >
-                        <span>📁 {folder.name}</span>
-                        <span className={theme.accent}>{collapsedFolders[folder.id] ? "▸" : "▾"}</span>
-                      </button>
-                      {!collapsedFolders[folder.id] && (
-                        <div className="space-y-1">
-                          {(activeTab === "lectures" ? folder.videos : folder.quizzes).map((item) => {
-                            if (activeTab === "lectures") {
-                              const video = item as (typeof folder.videos)[number];
-                              const isSelected = selectedVideoId === video.id;
-                              return (
-                                <div key={video.id} className="space-y-1">
-                                  <button
-                                    onClick={() => setSelectedVideoId(video.id)}
-                                    className={`w-full text-right px-3 py-2 rounded-xl text-sm border transition-all ${isSelected ? "border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300" : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-sky-300"}`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span>{video.progress?.some((p) => p.watched) ? "✅" : "🎬"}</span>
-                                      <span className="truncate flex-1">{video.title}</span>
-                                    </div>
-                                  </button>
-                                  {isSelected && !hasNoWatches && (
-                                    <button
-                                      onClick={() => openWatchModal(video)}
-                                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
-                                    >
-                                      <span>▶</span>
-                                      مشاهدة
-                                    </button>
-                                  )}
+                      {/* ── Video progress + mark-complete bar ── */}
+                      {(() => {
+                        const dur = player!.durationMinutes * 60;
+                        const watchPct = dur > 0 ? Math.min(100, Math.round((elapsedSeconds / dur) * 100)) : null;
+                        const canComplete = dur === 0 || elapsedSeconds >= dur * 0.8;
+                        return (
+                          <div className="px-5 py-3 border-t border-[var(--border)] flex items-center gap-4 shrink-0">
+                            {/* Time progress bar */}
+                            {watchPct !== null && (
+                              <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                                <div className="flex-1 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-sky-400 rounded-full transition-all duration-1000"
+                                    style={{ width: `${watchPct}%` }}
+                                  />
                                 </div>
+                                <span className="text-[11px] tabular-nums text-[var(--ink-muted)] shrink-0" dir="ltr">
+                                  {watchPct}%
+                                </span>
+                              </div>
+                            )}
+                            {watchPct === null && <div className="flex-1" />}
+
+                            {/* Mark-complete button */}
+                            <button
+                              onClick={() => void markCompleteFor(player!.videoId)}
+                              disabled={!canComplete || completing}
+                              className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                canComplete
+                                  ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_14px_rgba(52,211,153,0.30)]"
+                                  : "bg-[var(--border)] text-[var(--ink-muted)] cursor-not-allowed"
+                              } disabled:opacity-60`}
+                            >
+                              {completing ? (
+                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <IconCheck className="w-3 h-3" />
+                              )}
+                              {canComplete ? "أنهيت المحاضرة" : `${watchPct !== null ? watchPct : 0}% — انتظر`}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    /* ─ Pre-play state ─ */
+                    <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
+
+                      {/* Thumbnail placeholder / state */}
+                      <div className="w-full max-w-2xl">
+                        <div className="relative aspect-video rounded-2xl bg-[var(--surface)] border border-[var(--border)] overflow-hidden flex flex-col items-center justify-center gap-4">
+
+                          {/* Subtle radial highlight */}
+                          <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle_at_50%_40%,_theme(colors.sky.400),_transparent_65%)]" aria-hidden />
+
+                          {(() => {
+                            const scheduledUnlock = getScheduledUnlockTime(activeVideo.id);
+                            if (scheduledUnlock) {
+                              return (
+                                <>
+                                  <div className="w-14 h-14 rounded-full border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center">
+                                    <IconClock className="w-7 h-7 text-[var(--ink-muted)]" />
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-[var(--ink)]">محتوى مجدول</p>
+                                    <p className="text-xs font-mono text-[var(--ink-muted)] mt-1 tracking-widest text-sky-500" dir="ltr">
+                                      {fmtCountdown(scheduledUnlock, now)}
+                                    </p>
+                                  </div>
+                                </>
                               );
                             }
-                            const quiz = item as (typeof folder.quizzes)[number];
+                            if (isLocked(activeVideo.id)) {
+                              return (
+                                <>
+                                  <div className="w-14 h-14 rounded-full border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center">
+                                    <IconLock className="w-7 h-7 text-[var(--ink-muted)]" />
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-[var(--ink)]">هذه المحاضرة مقفلة</p>
+                                    <p className="text-xs text-[var(--ink-muted)] mt-1">أكمل المحاضرة السابقة أولاً لفتح هذه</p>
+                                  </div>
+                                </>
+                              );
+                            }
+                            if (hasNoWatches) {
+                              return (
+                                <>
+                                  <div className="w-14 h-14 rounded-full border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center">
+                                    <svg className="w-7 h-7 text-[var(--ink-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-[var(--ink)]">لا توجد مشاهدات متبقية</p>
+                                    <p className="text-xs text-[var(--ink-muted)] mt-1">تواصل مع المعلم لتجديد رصيدك</p>
+                                  </div>
+                                </>
+                              );
+                            }
+                            if (isWatched(activeVideo)) {
+                              return (
+                                <>
+                                  <div className="w-14 h-14 rounded-full border border-sky-400/25 bg-sky-400/8 flex items-center justify-center">
+                                    <IconCheck className="w-7 h-7 text-sky-400" />
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-[var(--ink)]">تمت المشاهدة</p>
+                                    <p className="text-xs text-[var(--ink-muted)] mt-1">يمكنك مشاهدتها مجدداً إذا كان لديك رصيد</p>
+                                  </div>
+                                  <button
+                                    onClick={() => openModal(activeVideo)}
+                                    className="flex items-center gap-2 px-5 py-2 rounded-xl border border-[var(--border)] hover:border-sky-400/40 hover:bg-sky-400/5 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] font-semibold transition-all"
+                                  >
+                                    <IconPlay className="w-3.5 h-3.5 text-sky-400" />
+                                    مشاهدة مجدداً
+                                  </button>
+                                </>
+                              );
+                            }
+
                             return (
-                              <button
-                                key={quiz.id}
-                                onClick={() => setSelectedQuizId(quiz.id)}
-                                className={`w-full text-right px-3 py-2 rounded-xl text-sm border transition-all ${selectedQuizId === quiz.id ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300" : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-300"}`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span>📝</span>
-                                  <span className="truncate flex-1">{quiz.title}</span>
-                                  <span className="text-xs text-slate-400 shrink-0">{quiz.timeLimitMinutes}د</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                          {activeTab === "lectures" && folder.materials && folder.materials.length > 0 && (
-                            <div className="pt-2 border-t border-slate-200 dark:border-slate-700/50 mt-2 space-y-1">
-                              <p className="text-xs font-bold text-slate-500 mb-2 px-2">ملحقات المحاضرة</p>
-                              {folder.materials.map(m => (
-                                <a
-                                  key={m.id}
-                                  href={m.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="w-full text-right px-3 py-2 rounded-xl text-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-sky-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all flex items-center gap-2"
+                              <>
+                                <button
+                                  onClick={() => openModal(activeVideo)}
+                                  className="w-16 h-16 rounded-full border border-sky-400/30 bg-sky-400/10 flex items-center justify-center hover:bg-sky-400/20 hover:border-sky-400/50 transition-all group"
+                                  aria-label="مشاهدة المحاضرة"
                                 >
-                                  <span>{m.type === "pdf" ? "📄" : "🔗"}</span>
-                                  <span className="truncate flex-1">{m.title}</span>
-                                </a>
-                              ))}
+                                  <IconPlay className="w-7 h-7 text-sky-400 group-hover:scale-110 transition-transform duration-150" />
+                                </button>
+                                <div className="text-center">
+                                  <p className="text-sm font-semibold text-[var(--ink)]">{activeVideo.title}</p>
+                                  <p className="text-xs text-[var(--ink-muted)] mt-1">اضغط للبدء — مدة الجلسة 4 ساعات</p>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Watch CTA + slot counter */}
+                      {!isLocked(activeVideo.id) && !getScheduledUnlockTime(activeVideo.id) && !hasNoWatches && (
+                        <div className="flex flex-col items-center gap-3">
+                          <button
+                            onClick={() => openModal(activeVideo)}
+                            className="flex items-center gap-2.5 px-7 py-3 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-bold text-sm transition-colors shadow-[0_0_20px_rgba(56,189,248,0.22)] hover:shadow-[0_0_28px_rgba(56,189,248,0.32)]"
+                          >
+                            <IconPlay className="w-4 h-4" />
+                            مشاهدة المحاضرة
+                          </button>
+
+                          {activeVideo && (
+                            <div className="flex items-center gap-2">
+                              <WatchSlots
+                                used={activeVideo.usedWatches ?? 0}
+                                total={activeVideo.maxWatchesPerUser ?? 3}
+                              />
+                              <span className="text-xs text-[var(--ink-muted)]" dir="rtl">
+                                {videoRemainingWatches(activeVideo)} من {activeVideo.maxWatchesPerUser ?? 3} متبقية
+                              </span>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  ))}
+                  )}
+                </div>
+              </>
+            ) : (
+              /* No videos at all */
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 rounded-xl border border-[var(--border)] flex items-center justify-center mx-auto">
+                    <IconPlay className="w-6 h-6 text-[var(--ink-muted)]" />
+                  </div>
+                  <p className="text-sm text-[var(--ink-muted)]">لا توجد محاضرات في هذا الكورس بعد</p>
                 </div>
               </div>
-            </aside>
-          </div>
-        ) : null}
-      </main>
-      <Footer />
-
-      {/* Watch confirmation modal */}
-      {watchModalVideoId && (
-        <WatchConfirmModal
-          videoTitle={watchModalVideoTitle}
-          usedWatches={watchCount?.usedWatches ?? 0}
-          totalWatches={watchCount?.maxWatchCount ?? 3}
-          onConfirm={confirmWatch}
-          onCancel={cancelWatch}
-          isLoading={watchStarting}
-        />
+            )}
+          </main>
+        </div>
       )}
+
+      {/* ════════════════════════════════════════════
+          WATCH CONFIRM MODAL
+      ════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {modalVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[var(--z-modal-bg)] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="تأكيد بدء المشاهدة"
+          >
+            {/* Scrim */}
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => { if (!watching) setModalVideo(null); }}
+              aria-hidden
+            />
+
+            {/* Sheet */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 6 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 max-w-sm w-full shadow-2xl z-[var(--z-modal)]"
+            >
+              {/* Header */}
+              <h2 className="text-base font-black text-[var(--ink)] mb-0.5">مشاهدة المحاضرة</h2>
+              <p className="text-xs text-[var(--ink-muted)] mb-5 leading-relaxed">{modalVideo.title}</p>
+
+              {/* Slot info — per-video */}
+              {modalVideo && (() => {
+                const vid = flatVideos.find((v) => v.id === modalVideo.id);
+                if (!vid) return null;
+                const used = vid.usedWatches ?? 0;
+                const total = vid.maxWatchesPerUser ?? 3;
+                return (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 mb-5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[var(--ink-muted)]">مشاهدة ستُستخدم</span>
+                      <span className="text-xs font-bold text-[var(--ink)] tabular-nums" dir="ltr">
+                        {used + 1} / {total}
+                      </span>
+                    </div>
+                    <WatchSlots used={used + 1} total={total} />
+                    <p className="text-[11px] text-[var(--ink-muted)]">مدة الجلسة: 4 ساعات من لحظة الفتح</p>
+                  </div>
+                );
+              })()}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setModalVideo(null)}
+                  disabled={watching}
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--border)] hover:border-[var(--ink-muted)]/40 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] font-semibold transition-all disabled:opacity-40"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={confirmWatch}
+                  disabled={watching}
+                  className="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                >
+                  {watching ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      جارٍ البدء...
+                    </>
+                  ) : (
+                    <>
+                      <IconPlay className="w-3.5 h-3.5" />
+                      ابدأ المشاهدة
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

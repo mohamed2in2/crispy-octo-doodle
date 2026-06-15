@@ -7,6 +7,7 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { useToast } from "@/components/ui/Toast";
 import { CourseFeedbackForm } from "@/components/ai/CourseFeedbackForm";
+import { SecurePlayer } from "@/components/ui/SecurePlayer";
 
 type CoursePreview = {
   id: string;
@@ -24,6 +25,7 @@ type CoursePreview = {
   totalVideos: number;
   totalQuizzes: number;
   folders: Array<{ id: string; name: string; videoCount: number; quizCount: number }>;
+  freeVideos?: Array<{ id: string; title: string }>;
   hasAccess: boolean;
 };
 
@@ -70,22 +72,42 @@ export default function CourseProductPage() {
   const [course, setCourse] = useState<CoursePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; role: string; phone?: string | null } | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [code, setCode] = useState("");
   const [applying, setApplying] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  // Free/demo inline player
+  const [demo, setDemo] = useState<{ title: string; embedUrl: string; provider?: string } | null>(null);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
   const countdown = useCountdown(course?.discountExpiresAt ?? null);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then(async (r) => { const raw = await r.text(); return raw ? JSON.parse(raw) : {}; })
-      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role } : null))
+      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role, phone: d.user.phone ?? null } : null))
       .catch(() => setUser(null))
       .finally(() => setUserLoading(false));
   }, []);
+
+  const playDemo = async (video: { id: string; title: string }) => {
+    setDemoLoading(video.id);
+    try {
+      const res = await fetch(`/api/videos/${video.id}/watch`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (res.ok && data.embedUrl) {
+        setDemo({ title: video.title, embedUrl: data.embedUrl, provider: data.provider });
+      } else {
+        toastError(data.error || "تعذر تشغيل المحاضرة التجريبية");
+      }
+    } catch {
+      toastError("تعذر تشغيل المحاضرة التجريبية");
+    } finally {
+      setDemoLoading(null);
+    }
+  };
 
   const loadPreview = async () => {
     if (!courseId) return;
@@ -146,7 +168,7 @@ export default function CourseProductPage() {
       const data = raw ? JSON.parse(raw) : {};
       if (res.ok) {
         toastSuccess(data.message || "تم التسجيل بنجاح!");
-        router.push(`/courses/${courseId}/learn`);
+        router.push("/library");
       } else if (res.status === 401) {
         router.push(`/login?redirect_url=/courses/${courseId}`);
       } else {
@@ -171,7 +193,7 @@ export default function CourseProductPage() {
     setApplying(false);
     if (res.ok) {
       toastSuccess(data.message || "تم تفعيل الكود بنجاح! جارٍ الدخول...");
-      router.push(`/courses/${courseId}/learn`);
+      router.push("/library");
     } else if (res.status === 401) {
       router.push("/login");
     } else {
@@ -308,6 +330,41 @@ export default function CourseProductPage() {
 
           {/* Left: content overview */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Free / demo videos — watchable without enrollment */}
+            {course.freeVideos && course.freeVideos.length > 0 && !course.hasAccess && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-emerald-500/30 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-500">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">شاهد مجاناً</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">محاضرات تجريبية متاحة قبل الاشتراك</p>
+                  </div>
+                </div>
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {course.freeVideos.map((v) => (
+                    <li key={v.id} className="px-6 py-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/12 text-emerald-500 shrink-0">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
+                        </span>
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{v.title}</p>
+                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">مجاناً</span>
+                      </div>
+                      <button
+                        onClick={() => playDemo(v)}
+                        disabled={demoLoading === v.id}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold transition-colors disabled:opacity-60"
+                      >
+                        {demoLoading === v.id ? "جارٍ التحميل…" : "تشغيل"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">محتوى الكورس</h2>
@@ -318,7 +375,7 @@ export default function CourseProductPage() {
                   <li key={folder.id}>
                     <button
                       onClick={() => setOpenFolders((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))}
-                      className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-right"
+                      className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-right"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-lg">📁</span>
@@ -476,6 +533,34 @@ export default function CourseProductPage() {
         </div>
       </main>
       <Footer />
+
+      {/* Free/demo inline player */}
+      {demo && (
+        <div
+          className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={demo.title}
+        >
+          <div className="absolute inset-0 bg-black/70" onClick={() => setDemo(null)} aria-hidden />
+          <div className="relative w-full max-w-3xl bg-[var(--surface)] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border)]">
+              <p className="font-bold text-[var(--ink)] truncate flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">مجاناً</span>
+                {demo.title}
+              </p>
+              <button
+                onClick={() => setDemo(null)}
+                aria-label="إغلاق"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors shrink-0"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <SecurePlayer embedUrl={demo.embedUrl} title={demo.title} watermark={user?.phone || user?.name || ""} provider={demo.provider} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

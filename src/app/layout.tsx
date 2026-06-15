@@ -9,35 +9,35 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://code-up.tech"),
   title: {
-    default: "منصة Code-UP الكورسات | تعلّم الرياضيات والعلوم للمتعلمين المصريين",
+    default: "منصة Code-UP التعليمية",
     template: "%s | منصة Code-UP",
   },
-  description: "منصة كورسات متكاملة للمتعلمين المصريين لمختلف الأعمار والمستويات. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم التدريبي.",
+  description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
   keywords: ["كورسات", "تعليم", "برمجة", "رياضيات", "علوم", "مصر", "Code-UP", "منصة تعليمية", "ثانوية عامة", "إعدادية"],
   icons: {
     icon: "/logo.jpeg",
   },
   openGraph: {
-    title: "منصة Code-UP الكورسات | تعلّم الرياضيات والعلوم للمتعلمين المصريين",
-    description: "منصة كورسات متكاملة للمتعلمين المصريين لمختلف الأعمار والمستويات. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم التدريبي.",
+    title: "منصة Code-UP التعليمية",
+    description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
     url: "https://code-up.tech",
     siteName: "منصة Code-UP",
-    locale: "ar_EG",
+    locale: "ar",
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://code-up.tech/og-image.jpeg",
         width: 1200,
         height: 630,
-        alt: "منصة Code-UP الكورسات",
+        alt: "منصة Code-UP التعليمية",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "منصة Code-UP الكورسات | تعلّم الرياضيات والعلوم للمتعلمين المصريين",
-    description: "منصة كورسات متكاملة للمتعلمين المصريين لمختلف الأعمار والمستويات. محاضرات فيديو، اختبارات تفاعلية، ومتابعة ذكية للتقدم التدريبي.",
-    images: ["/og-image.png"],
+    title: "منصة Code-UP التعليمية",
+    description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
+    images: ["https://code-up.tech/og-image.jpeg"],
   },
   robots: {
     index: true,

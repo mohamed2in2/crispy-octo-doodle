@@ -154,7 +154,7 @@ export function ErrorMonitorSection() {
             <p className="text-gray-400">لا توجد أخطاء مسجّلة</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-700">
+          <div className="divide-y divide-slate-200 dark:divide-gray-700">
             {errors.map((err) => {
               const meta = TYPE_META[err.type] ?? TYPE_META.error;
               const isExpanded = expandedId === err.id;
