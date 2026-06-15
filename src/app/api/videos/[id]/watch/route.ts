@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveEmbedUrl } from "@/lib/video-provider";
+import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
 
 // Verify an existing watch session (used when loading the watch page on refresh)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         include: {
           folder: {
             select: {
-              course: { select: { id: true, title: true, teacherId: true, maxWatchCount: true } },
+              publishAt: true,
+              course: { select: { id: true, title: true, teacherId: true } },
             },
           },
         },
@@ -44,15 +46,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const now = new Date();
   const isExpired = watchSession.expiresAt < now || !!watchSession.endedAt;
 
+  // Per-video watch quota
   const usedWatchCount = await prisma.videoWatchSession.count({
-    where: {
-      studentId: session.id,
-      usedWatchSlot: true,
-      video: { folder: { courseId: watchSession.video.folder.course.id } },
-    },
+    where: { studentId: session.id, videoId, usedWatchSlot: true },
   });
 
-  const course = watchSession.video.folder.course;
+  const video = watchSession.video;
+  const course = video.folder.course;
+  const total = video.maxWatchesPerUser;
 
   return NextResponse.json({
     videoId,
@@ -61,15 +62,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     isExpired,
     startedAt: watchSession.startedAt.toISOString(),
     expiresAt: watchSession.expiresAt.toISOString(),
-    remainingWatches: Math.max(0, course.maxWatchCount - usedWatchCount),
-    totalWatches: course.maxWatchCount,
+    remainingWatches: Math.max(0, total - usedWatchCount),
+    totalWatches: total,
     usedWatches: usedWatchCount,
     video: {
-      id: watchSession.video.id,
-      title: watchSession.video.title,
-      vdoCipherId: watchSession.video.vdoCipherId,
-      videoProvider: watchSession.video.videoProvider,
-      providerVideoId: watchSession.video.providerVideoId,
+      id: video.id,
+      title: video.title,
+      vdoCipherId: video.vdoCipherId,
+      videoProvider: video.videoProvider,
+      providerVideoId: video.providerVideoId,
       courseId: course.id,
       courseTitle: course.title,
     },
@@ -91,7 +92,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       folder: {
         select: {
           courseId: true,
-          course: { select: { id: true, title: true, teacherId: true, maxWatchCount: true } },
+          publishAt: true,
+          course: { select: { id: true, title: true, teacherId: true } },
         },
       },
     },
@@ -103,6 +105,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const course = video.folder.course;
   const now = new Date();
+
+  // ── Scheduled unlock: a not-yet-published video can't start a session ──────
+  if (isScheduledLocked(video.folder.publishAt, video.publishAt, now.getTime())) {
+    return NextResponse.json(
+      {
+        error: "هذه المحاضرة لم تُفتح بعد. ستتاح في موعدها المحدد.",
+        code: "SCHEDULED",
+        unlockAt: unlockAtISO(video.folder.publishAt, video.publishAt),
+      },
+      { status: 403 }
+    );
+  }
 
   // ── FREE / DEMO video: bypass enrollment + quota, no session row consumed ──
   if (video.isFree) {
@@ -148,7 +162,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (activeSession) {
     const activeUsedWatchCount = await prisma.videoWatchSession.count({
-      where: { studentId: session.id, usedWatchSlot: true, video: { folder: { courseId: course.id } } },
+      where: { studentId: session.id, videoId, usedWatchSlot: true },
     });
 
     const embedResult = await resolveEmbedUrl(video);
@@ -158,8 +172,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       sessionId: activeSession.id,
       expiresAt: activeSession.expiresAt.toISOString(),
       watchDurationHours: WATCH_DURATION_HOURS,
-      remainingWatches: Math.max(0, course.maxWatchCount - activeUsedWatchCount),
-      totalWatches: course.maxWatchCount,
+      remainingWatches: Math.max(0, video.maxWatchesPerUser - activeUsedWatchCount),
+      totalWatches: video.maxWatchesPerUser,
       usedWatches: activeUsedWatchCount,
       embedUrl: embedResult.embedUrl,
       provider: embedResult.provider,
@@ -176,14 +190,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
   }
 
-  // Course-level watch quota
+  // Per-video watch quota
   const usedWatchCount = await prisma.videoWatchSession.count({
-    where: { studentId: session.id, usedWatchSlot: true, video: { folder: { courseId: course.id } } },
+    where: { studentId: session.id, videoId, usedWatchSlot: true },
   });
-  if (usedWatchCount >= course.maxWatchCount) {
+  if (usedWatchCount >= video.maxWatchesPerUser) {
     return NextResponse.json(
       {
-        error: `لقد استنفدت جميع محاولات المشاهدة المتاحة لك في هذا الكورس (${course.maxWatchCount} مشاهدة)`,
+        error: `لقد استنفدت جميع محاولات المشاهدة لهذا الفيديو (${video.maxWatchesPerUser} مشاهدة)`,
         code: "NO_WATCHES_REMAINING",
       },
       { status: 403 }
@@ -218,8 +232,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     sessionId: watchSession.id,
     expiresAt: expiresAt.toISOString(),
     watchDurationHours: WATCH_DURATION_HOURS,
-    remainingWatches: course.maxWatchCount - usedWatchCount - 1,
-    totalWatches: course.maxWatchCount,
+    remainingWatches: video.maxWatchesPerUser - usedWatchCount - 1,
+    totalWatches: video.maxWatchesPerUser,
     usedWatches: usedWatchCount + 1,
     embedUrl: embedResult.embedUrl,
     provider: embedResult.provider,

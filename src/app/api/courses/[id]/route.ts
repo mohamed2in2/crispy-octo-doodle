@@ -4,85 +4,93 @@ import { prisma } from "@/lib/prisma";
 import { getStudentSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getStudentSession();
+    if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-      try {
-      const session = await getStudentSession();
-      if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    const { id } = await params;
 
-      const { id } = await params;
+    const access = await prisma.accessCode.findFirst({
+      where: { courseId: id, studentId: session.id },
+    });
+    if (!access) {
+      return NextResponse.json(
+        { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم." },
+        { status: 403 }
+      );
+    }
 
-      const access = await prisma.accessCode.findFirst({
-        where: { courseId: id, studentId: session.id },
-      });
-      if (!access) {
-        return NextResponse.json(
-          { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم." },
-          { status: 403 }
-        );
-      }
-
-      const course = await prisma.course.findUnique({
-        where: { id },
-        include: {
-          teacher: { select: { id: true, name: true } },
-          folders: {
-            orderBy: { order: "asc" },
-            include: {
-              videos: {
-                orderBy: { order: "asc" },
-                include: {
-                  progress: {
-                    where: { studentId: session.id },
-                    select: { watched: true, watchedAt: true },
-                  },
+    const course = await prisma.course.findFirst({
+      where: { id, teacher: { isDeleted: false } },
+      include: {
+        teacher: { select: { id: true, name: true } },
+        folders: {
+          orderBy: { order: "asc" },
+          include: {
+            videos: {
+              orderBy: { order: "asc" },
+              include: {
+                progress: {
+                  where: { studentId: session.id },
+                  select: { watched: true, watchedAt: true },
+                },
+                watchSessions: {
+                  where: { studentId: session.id, usedWatchSlot: true },
+                  select: { id: true },
                 },
               },
-              materials: { orderBy: { order: "asc" } },
-              quizzes: {
-                select: ({
-                  id: true,
-                  title: true,
-                  timeLimitMinutes: true,
-                  questions: { orderBy: { order: "asc" } },
-                } as any),
-              },
+            },
+            materials: { orderBy: { order: "asc" } },
+            quizzes: {
+              select: ({
+                id: true,
+                title: true,
+                timeLimitMinutes: true,
+                questions: { orderBy: { order: "asc" } },
+              } as any),
             },
           },
         },
-      });
+      },
+    });
 
-      if (!course) return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
+    if (!course) return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
 
-      const safeCourse = {
-        ...course,
-        homeworkUrl: course.homeworkUrl,
-        maxWatchCount: course.maxWatchCount,
-        folders: course.folders.map((folder) => ({
-          ...folder,
-          videos: folder.videos.map((video) => ({ ...video, vdoCipherId: undefined })),
-          quizzes: folder.quizzes.map((quiz) => {
-            const q = quiz as unknown as {
-              id: string;
-              title: string;
-              timeLimitMinutes: number;
-              questions?: Array<{ correctAnswer?: string; [key: string]: unknown }>;
-            };
-            return {
-              id: q.id,
-              title: q.title,
-              timeLimitMinutes: q.timeLimitMinutes,
-              questions: (q.questions ?? []).map((question) => ({ ...question, correctAnswer: undefined })),
-            };
-          }),
+    const safeCourse = {
+      ...course,
+      homeworkUrl: course.homeworkUrl,
+      maxWatchCount: course.maxWatchCount,
+      folders: course.folders.map((folder) => ({
+        ...folder,
+        // folder.publishAt is kept so the learn page can compute the unlock time.
+        videos: folder.videos.map((video) => ({
+          ...video,
+          // publishAt kept (used by the learn page); sensitive provider IDs stripped.
+          vdoCipherId: undefined,
+          providerVideoId: undefined,
+          usedWatches: video.watchSessions.length,
+          watchSessions: undefined,
         })),
-      };
+        quizzes: folder.quizzes.map((quiz) => {
+          const q = quiz as unknown as {
+            id: string;
+            title: string;
+            timeLimitMinutes: number;
+            questions?: Array<{ correctAnswer?: string; [key: string]: unknown }>;
+          };
+          return {
+            id: q.id,
+            title: q.title,
+            timeLimitMinutes: q.timeLimitMinutes,
+            questions: (q.questions ?? []).map((question) => ({ ...question, correctAnswer: undefined })),
+          };
+        }),
+      })),
+    };
 
-      return NextResponse.json({ course: safeCourse });
-    } catch (error) {
-        console.error("[courses/[id]] error:", error);
-        return NextResponse.json(
-          { error: "حدث خطأ داخلي" },
-          { status: 500 }
-        );
-      }
+    return NextResponse.json({ course: safeCourse });
+  } catch (error) {
+    console.error("[courses/[id]] error:", error);
+    return NextResponse.json({ error: "حدث خطأ داخلي" }, { status: 500 });
+  }
 }

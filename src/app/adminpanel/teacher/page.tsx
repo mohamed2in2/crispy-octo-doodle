@@ -127,7 +127,8 @@ export default function TeacherDashboardPage() {
     title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "",
   });
   const [newFolder, setNewFolder] = useState("");
-  const [newVideo, setNewVideo] = useState({ title: "", videoProvider: "vdocipher", providerVideoId: "", durationMinutes: 0, maxWatchesPerUser: 3, folderId: "" });
+  const [newFolderPublishAt, setNewFolderPublishAt] = useState("");
+  const [newVideo, setNewVideo] = useState({ title: "", videoProvider: "vdocipher", providerVideoId: "", durationMinutes: 0, maxWatchesPerUser: 3, publishAt: "", folderId: "" });
   const [newQuiz, setNewQuiz] = useState({
     title: "", folderId: "",
     timeLimitMinutes: 30,
@@ -277,11 +278,12 @@ export default function TeacherDashboardPage() {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newFolder }),
+      body: JSON.stringify({ name: newFolder, publishAt: newFolderPublishAt || null }),
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
       setNewFolder("");
+      setNewFolderPublishAt("");
       if (selectedCourse) fetchFolders(selectedCourse.id);
       notify("success", "تم إضافة المحاضرة بنجاح");
     } else {
@@ -320,11 +322,12 @@ export default function TeacherDashboardPage() {
         providerVideoId: newVideo.providerVideoId,
         durationMinutes: newVideo.durationMinutes,
         maxWatchesPerUser: newVideo.maxWatchesPerUser,
+        publishAt: newVideo.publishAt || null,
       }),
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
-      setNewVideo({ title: "", videoProvider: "vdocipher", providerVideoId: "", durationMinutes: 0, maxWatchesPerUser: 3, folderId: "" });
+      setNewVideo({ title: "", videoProvider: "vdocipher", providerVideoId: "", durationMinutes: 0, maxWatchesPerUser: 3, publishAt: "", folderId: "" });
       if (selectedCourse) fetchFolders(selectedCourse.id);
       notify("success", "تم إضافة الفيديو بنجاح");
     } else {
@@ -654,11 +657,21 @@ export default function TeacherDashboardPage() {
                     {/* Add folder */}
                     <div className={cardPad}>
                       <h3 className="font-bold text-[var(--ink)] mb-3 flex items-center gap-2"><IconFolder className="w-4 h-4 text-sky-500" /> إضافة محاضرة</h3>
-                      <form onSubmit={createFolder} className="flex gap-2">
-                        <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="مثال: المحاضرة الأولى" className={input} />
-                        <button type="submit" disabled={!newFolder.trim()} className={`${primaryBtn} shrink-0`}>
-                          <IconPlus className="w-4 h-4" /> <span className="hidden sm:inline">إضافة</span>
-                        </button>
+                      <form onSubmit={createFolder} className="space-y-2">
+                        <div className="flex gap-2">
+                          <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="مثال: المحاضرة الأولى" className={input} />
+                          <button type="submit" disabled={!newFolder.trim()} className={`${primaryBtn} shrink-0`}>
+                            <IconPlus className="w-4 h-4" /> <span className="hidden sm:inline">إضافة</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] text-[var(--ink-muted)] whitespace-nowrap"><IconClock className="w-3.5 h-3.5 inline -mt-0.5 me-1" />يُفتح في (اختياري):</label>
+                          <input type="datetime-local" value={newFolderPublishAt} onChange={(e) => setNewFolderPublishAt(e.target.value)} className={`${input} text-xs`} dir="ltr" />
+                          {newFolderPublishAt && (
+                            <button type="button" onClick={() => setNewFolderPublishAt("")} className="text-[11px] text-[var(--ink-muted)] hover:text-[var(--error)] shrink-0">مسح</button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[var(--ink-muted)]">عند تحديد موعد، تظل المحاضرة وكل فيديوهاتها مقفلة للطلاب حتى ذلك الوقت.</p>
                       </form>
                     </div>
 
@@ -836,6 +849,18 @@ export default function TeacherDashboardPage() {
                               ))}
                               <input type="number" min="1" max="99" value={newVideo.maxWatchesPerUser} onChange={(e) => setNewVideo({ ...newVideo, maxWatchesPerUser: Math.max(1, parseInt(e.target.value) || 1) })} className={`${input} w-16 text-center`} dir="ltr" />
                             </div>
+                          </div>
+
+                          {/* Scheduled unlock */}
+                          <div>
+                            <label className={label}><IconClock className="w-3.5 h-3.5 inline -mt-0.5 me-1" />موعد فتح الفيديو (اختياري)</label>
+                            <div className="flex items-center gap-2">
+                              <input type="datetime-local" value={newVideo.publishAt} onChange={(e) => setNewVideo({ ...newVideo, publishAt: e.target.value })} className={input} dir="ltr" />
+                              {newVideo.publishAt && (
+                                <button type="button" onClick={() => setNewVideo({ ...newVideo, publishAt: "" })} className="text-[11px] text-[var(--ink-muted)] hover:text-[var(--error)] shrink-0">مسح</button>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-[var(--ink-muted)] mt-1">يظل الفيديو مقفلاً للطلاب حتى هذا الوقت. اتركه فارغاً ليكون متاحاً فوراً.</p>
                           </div>
 
                           <button type="submit" disabled={!newVideo.folderId || !newVideo.title || !newVideo.providerVideoId} className={`${primaryBtn} w-full`}>

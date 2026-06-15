@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateProviderId, type VideoProvider } from "@/lib/video-provider";
+import { parsePublishAt } from "@/lib/publish";
 
-// Validation constants
 const MAX_TITLE_LENGTH = 100;
-const MIN_TITLE_LENGTH = 1;
-const VDOCIPHER_ID_REGEX = /^[a-z0-9-]+$/i;
+const VALID_PROVIDERS: VideoProvider[] = ["vdocipher", "bunny", "youtube"];
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,17 +15,39 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { id: folderId } = await params;
-    const { title, vdoCipherId } = await req.json();
+    const body = (await req.json()) as {
+      title?: string;
+      videoProvider?: string;
+      providerVideoId?: string;
+      durationMinutes?: number;
+      maxWatchesPerUser?: number;
+      publishAt?: string | null;
+      // Legacy field — accepted for backwards compat, treated as vdocipher
+      vdoCipherId?: string;
+    };
 
-    // Validate title
-    if (!title || typeof title !== "string") {
+    const durationMinutes =
+      typeof body.durationMinutes === "number" && body.durationMinutes >= 0
+        ? Math.floor(body.durationMinutes)
+        : 0;
+
+    const maxWatchesPerUser =
+      typeof body.maxWatchesPerUser === "number" && body.maxWatchesPerUser >= 1
+        ? Math.floor(body.maxWatchesPerUser)
+        : 3;
+
+    const { title } = body;
+
+    // Resolve provider + id (support legacy vdoCipherId field)
+    const videoProvider: VideoProvider = VALID_PROVIDERS.includes(body.videoProvider as VideoProvider)
+      ? (body.videoProvider as VideoProvider)
+      : "vdocipher";
+
+    const providerVideoId = (body.providerVideoId ?? body.vdoCipherId ?? "").trim();
+
+    if (!title || typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "عنوان الفيديو مطلوب" }, { status: 400 });
     }
-
-    if (title.trim().length < MIN_TITLE_LENGTH) {
-      return NextResponse.json({ error: "عنوان الفيديو لا يمكن أن يكون فارغاً" }, { status: 400 });
-    }
-
     if (title.length > MAX_TITLE_LENGTH) {
       return NextResponse.json(
         { error: `عنوان الفيديو لا يمكن أن يزيد عن ${MAX_TITLE_LENGTH} حرف` },
@@ -33,57 +55,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    // Validate VdoCipher ID
-    if (!vdoCipherId || typeof vdoCipherId !== "string") {
-      return NextResponse.json({ error: "معرف VdoCipher مطلوب" }, { status: 400 });
-    }
-
-    if (vdoCipherId.trim().length === 0) {
-      return NextResponse.json({ error: "معرف VdoCipher لا يمكن أن يكون فارغاً" }, { status: 400 });
-    }
-
-    if (!VDOCIPHER_ID_REGEX.test(vdoCipherId)) {
-      return NextResponse.json(
-        { error: "معرف VdoCipher يجب أن يحتوي على أحرف وأرقام وشرطات فقط" },
-        { status: 400 }
-      );
+    const idError = validateProviderId(videoProvider, providerVideoId);
+    if (idError) {
+      return NextResponse.json({ error: idError }, { status: 400 });
     }
 
     // Verify folder exists and belongs to teacher's course
     const folder = await prisma.folder.findFirst({
-      where: {
-        id: folderId,
-        course: { teacherId: session.id },
-      },
+      where: { id: folderId, course: { teacherId: session.id } },
     });
-
     if (!folder) {
       return NextResponse.json({ error: "المحاضرة غير موجودة" }, { status: 404 });
     }
 
-    // Check for duplicate video in same folder
-    const existingVideo = await prisma.video.findFirst({
-      where: {
-        folderId,
-        title: title.trim(),
-      },
-    });
-
-    if (existingVideo) {
-      return NextResponse.json(
-        { error: "يوجد فيديو بنفس العنوان في هذه المحاضرة" },
-        { status: 400 }
-      );
+    // Check for duplicate title in same folder
+    const existing = await prisma.video.findFirst({ where: { folderId, title: title.trim() } });
+    if (existing) {
+      return NextResponse.json({ error: "يوجد فيديو بنفس العنوان في هذه المحاضرة" }, { status: 400 });
     }
 
-    // Get next order
     const count = await prisma.video.count({ where: { folderId } });
+    const publishAt = parsePublishAt(body.publishAt) ?? null;
 
-    // Create video
     const video = await prisma.video.create({
       data: {
         title: title.trim(),
-        vdoCipherId: vdoCipherId.trim(),
+        videoProvider,
+        providerVideoId,
+        vdoCipherId: videoProvider === "vdocipher" ? providerVideoId : "",
+        durationMinutes,
+        maxWatchesPerUser,
+        publishAt,
         folderId,
         order: count,
       },
@@ -104,7 +106,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const { id: folderId } = await params;
-    const { videoId } = await req.json();
+    const { videoId } = (await req.json()) as { videoId?: string };
 
     if (!videoId) {
       return NextResponse.json({ error: "معرف الفيديو مطلوب" }, { status: 400 });
@@ -112,36 +114,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     // Verify folder exists and belongs to teacher
     const folder = await prisma.folder.findFirst({
-      where: {
-        id: folderId,
-        course: { teacherId: session.id },
-      },
+      where: { id: folderId, course: { teacherId: session.id } },
     });
-
     if (!folder) {
       return NextResponse.json({ error: "المحاضرة غير موجودة" }, { status: 404 });
     }
 
-    // Find video
-    const video = await prisma.video.findFirst({
-      where: {
-        id: videoId,
-        folderId,
-      },
-    });
-
+    const video = await prisma.video.findFirst({ where: { id: videoId, folderId } });
     if (!video) {
       return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
     }
 
-    // Delete video and its progress records
-    await prisma.progress.deleteMany({
-      where: { videoId },
-    });
-
-    await prisma.video.delete({
-      where: { id: videoId },
-    });
+    await prisma.progress.deleteMany({ where: { videoId } });
+    await prisma.video.delete({ where: { id: videoId } });
 
     return NextResponse.json({ success: true, message: "تم حذف الفيديو بنجاح" });
   } catch (error) {

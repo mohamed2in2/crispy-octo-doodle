@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { resolveEmbedUrl } from "@/lib/video-provider";
+import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
 import { prisma } from "@/lib/prisma";
+
+function scheduledResponse(folderPublishAt: Date | null, videoPublishAt: Date | null) {
+  return NextResponse.json(
+    {
+      error: "هذه المحاضرة لم تُفتح بعد. ستتاح في موعدها المحدد.",
+      code: "SCHEDULED",
+      unlockAt: unlockAtISO(folderPublishAt, videoPublishAt),
+    },
+    { status: 403 }
+  );
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,7 +24,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
   }
   if (freeProbe.isFree) {
-    const video = await prisma.video.findUnique({ where: { id } });
+    const video = await prisma.video.findUnique({
+      where: { id },
+      include: { folder: { select: { publishAt: true } } },
+    });
+    if (video && isScheduledLocked(video.folder.publishAt, video.publishAt)) {
+      return scheduledResponse(video.folder.publishAt, video.publishAt);
+    }
     try {
       const result = await resolveEmbedUrl(video!);
       return NextResponse.json({
@@ -99,6 +117,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس من صفحة الكورسات أولاً." },
       { status: 403 }
     );
+  }
+
+  // Scheduled unlock: students can't resolve a not-yet-published video.
+  // Teachers/superadmin may preview scheduled content.
+  if (session.role === "student" && isScheduledLocked(video.folder.publishAt, video.publishAt)) {
+    return scheduledResponse(video.folder.publishAt, video.publishAt);
   }
 
   try {

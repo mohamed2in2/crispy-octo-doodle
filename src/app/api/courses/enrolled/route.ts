@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { getStudentSessionWithRetry } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { unlockAtISO, isScheduledLocked } from "@/lib/publish";
 
 export async function GET() {
   try {
@@ -33,8 +34,9 @@ export async function GET() {
             id: true,
             name: true,
             order: true,
+            publishAt: true,
             videos: {
-              select: { id: true, title: true, order: true },
+              select: { id: true, title: true, order: true, publishAt: true },
             },
             quizzes: {
               select: { id: true, title: true, timeLimitMinutes: true },
@@ -53,6 +55,7 @@ export async function GET() {
     });
 
     const progressMap = new Map(progress.map(p => [p.videoId, p.watched]));
+    const now = Date.now();
 
     // Build response with corrected progress calculation per course
     const coursesWithProgress = enrolledCourses.map(course => {
@@ -65,6 +68,8 @@ export async function GET() {
           title: video.title,
           order: video.order,
           watched: progressMap.get(video.id) || false,
+          unlockAt: unlockAtISO(folder.publishAt, video.publishAt),
+          scheduledLocked: isScheduledLocked(folder.publishAt, video.publishAt, now),
         })),
         quizzes: folder.quizzes.map(quiz => ({
           id: quiz.id,
