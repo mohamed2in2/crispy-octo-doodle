@@ -17,18 +17,19 @@ export async function awardDailyLoginPoints(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 
-  // Compare CALENDAR DAYS, not exact timestamps. Normalizing both sides to
-  // local start-of-day makes the "already counted today" guard robust even if
+  // Compare CALENDAR DAYS in UTC, not exact timestamps or local time. A UTC day
+  // boundary is deterministic regardless of server timezone, and normalizing
+  // both sides makes the "already counted today" guard robust even if
   // lastLoginDate carries a stray time component (older data / manual edits) —
   // which was causing points to be re-awarded on every login the same day.
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const todayStart = startOfDay(new Date());
+  const utcDayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const todayStart = utcDayStart(new Date());
 
   let newStreak = 1;
   let pointsToAward = POINTS.DAILY_LOGIN_STREAK;
 
   if (user.lastLoginDate) {
-    const dayDiff = Math.round((todayStart - startOfDay(new Date(user.lastLoginDate))) / 86_400_000);
+    const dayDiff = Math.round((todayStart - utcDayStart(new Date(user.lastLoginDate))) / 86_400_000);
     if (dayDiff <= 0) {
       // Already counted today (0) — or clock skew (negative). Award nothing.
       return;

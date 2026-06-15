@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getVdoCipherOtp } from "@/lib/vdocipher";
+import { resolveEmbedUrl } from "@/lib/video-provider";
 
-// Verify an existing watch session (used when loading the watch page)
+// Verify an existing watch session (used when loading the watch page on refresh)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getStudentSession();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -34,12 +34,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!watchSession) {
     return NextResponse.json({ error: "الجلسة غير موجودة" }, { status: 404 });
   }
-
   if (watchSession.studentId !== session.id) {
     return NextResponse.json({ error: "غير مصرح بهذه الجلسة" }, { status: 403 });
   }
-
-  // Prevent the same student from passing a different student's token
   if (watchSession.videoId !== videoId) {
     return NextResponse.json({ error: "الفيديو لا يتطابق مع الجلسة" }, { status: 400 });
   }
@@ -47,8 +44,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const now = new Date();
   const isExpired = watchSession.expiresAt < now || !!watchSession.endedAt;
 
-  // Count total watch sessions created by this student in this course (including expired ones)
-  // to reflect actual used watch slots.
   const usedWatchCount = await prisma.videoWatchSession.count({
     where: {
       studentId: session.id,
@@ -73,6 +68,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       id: watchSession.video.id,
       title: watchSession.video.title,
       vdoCipherId: watchSession.video.vdoCipherId,
+      videoProvider: watchSession.video.videoProvider,
+      providerVideoId: watchSession.video.providerVideoId,
       courseId: course.id,
       courseTitle: course.title,
     },
@@ -82,13 +79,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 const WATCH_DURATION_HOURS = 4;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Session may be null for anonymous viewers of a free/demo video.
   const session = await getStudentSession();
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
 
   const { id: videoId } = await params;
-  const ipAddress = req.headers.get("x-forwarded-for") ?? null;
+  const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
   const video = await prisma.video.findUnique({
     where: { id: videoId },
@@ -96,9 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       folder: {
         select: {
           courseId: true,
-          course: {
-            select: { id: true, title: true, teacherId: true, maxWatchCount: true },
-          },
+          course: { select: { id: true, title: true, teacherId: true, maxWatchCount: true } },
         },
       },
     },
@@ -109,16 +102,47 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const course = video.folder.course;
-
   const now = new Date();
 
+  // ── FREE / DEMO video: bypass enrollment + quota, no session row consumed ──
+  if (video.isFree) {
+    const embedResult = await resolveEmbedUrl(video);
+    const expiresAt = new Date(now.getTime() + WATCH_DURATION_HOURS * 60 * 60 * 1000);
+    return NextResponse.json({
+      sessionToken: "free",
+      expiresAt: expiresAt.toISOString(),
+      watchDurationHours: WATCH_DURATION_HOURS,
+      remainingWatches: null,
+      totalWatches: null,
+      usedWatches: 0,
+      embedUrl: embedResult.embedUrl,
+      provider: embedResult.provider,
+      free: true,
+    });
+  }
+
+  // ── PAID video from here on — requires a logged-in student ──
+  if (!session) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  // Device lock: a device-bound token whose device was reset/removed can't play.
+  // (Legacy tokens issued before the feature have no deviceId — allowed.)
+  if (session.deviceId) {
+    const device = await prisma.device.findUnique({
+      where: { userId_deviceId: { userId: session.id, deviceId: session.deviceId } },
+    });
+    if (!device) {
+      return NextResponse.json(
+        { error: "تم إلغاء تفعيل هذا الجهاز. يرجى تسجيل الدخول من جديد.", code: "DEVICE_REVOKED" },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Reuse an existing active session for this student + video
   const activeSession = await prisma.videoWatchSession.findFirst({
-    where: {
-      studentId: session.id,
-      videoId,
-      endedAt: null,
-      expiresAt: { gt: now },
-    },
+    where: { studentId: session.id, videoId, endedAt: null, expiresAt: { gt: now } },
     orderBy: { startedAt: "desc" },
   });
 
@@ -127,7 +151,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       where: { studentId: session.id, usedWatchSlot: true, video: { folder: { courseId: course.id } } },
     });
 
-    const vdoData = await getVdoCipherOtp(video.vdoCipherId);
+    const embedResult = await resolveEmbedUrl(video);
 
     return NextResponse.json({
       sessionToken: activeSession.sessionToken,
@@ -137,27 +161,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       remainingWatches: Math.max(0, course.maxWatchCount - activeUsedWatchCount),
       totalWatches: course.maxWatchCount,
       usedWatches: activeUsedWatchCount,
-      embedUrl: vdoData.embedUrl,
+      embedUrl: embedResult.embedUrl,
+      provider: embedResult.provider,
       reused: true,
     });
   }
 
-  // Verify student has access to this course
+  // Verify enrollment
   const hasAccess = await prisma.accessCode.findFirst({
     where: { courseId: course.id, studentId: session.id, isActive: true },
     select: { id: true },
   });
-
   if (!hasAccess) {
     return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
   }
 
-  // Count how many watch slots this student has used in this course
-  // (count sessions with usedWatchSlot = true)
+  // Course-level watch quota
   const usedWatchCount = await prisma.videoWatchSession.count({
     where: { studentId: session.id, usedWatchSlot: true, video: { folder: { courseId: course.id } } },
   });
-
   if (usedWatchCount >= course.maxWatchCount) {
     return NextResponse.json(
       {
@@ -168,18 +190,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  // Optionally expire any stale sessions for this student + video that haven't been ended
+  // Expire stale sessions
   await prisma.videoWatchSession.updateMany({
-    where: {
-      studentId: session.id,
-      videoId,
-      endedAt: null,
-      expiresAt: { lt: now },
-    },
+    where: { studentId: session.id, videoId, endedAt: null, expiresAt: { lt: now } },
     data: { endedAt: now },
   });
 
-  // Create a new watch session token
   const sessionToken = crypto.randomUUID();
   const expiresAt = new Date(now.getTime() + WATCH_DURATION_HOURS * 60 * 60 * 1000);
 
@@ -195,8 +211,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  // Build the VdoCipher OTP url
-  const vdoData = await getVdoCipherOtp(video.vdoCipherId);
+  const embedResult = await resolveEmbedUrl(video);
 
   return NextResponse.json({
     sessionToken,
@@ -206,6 +221,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     remainingWatches: course.maxWatchCount - usedWatchCount - 1,
     totalWatches: course.maxWatchCount,
     usedWatches: usedWatchCount + 1,
-    embedUrl: vdoData.embedUrl,
+    embedUrl: embedResult.embedUrl,
+    provider: embedResult.provider,
   });
 }

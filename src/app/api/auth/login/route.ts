@@ -3,10 +3,13 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signToken, setAuthCookie } from "@/lib/auth";
 import { normalizeEgyptPhone } from "@/lib/phone";
+import { readDeviceId, setDeviceCookie, deviceLabelFromUA } from "@/lib/devices";
+import { getStudentMaxDevices } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, password } = await req.json();
+    const body = (await req.json().catch(() => ({}))) as { phone?: string; password?: string };
+    const { phone, password } = body;
 
     if (!phone || !password) {
       return NextResponse.json({ error: "رقم الهاتف وكلمة المرور مطلوبان" }, { status: 400 });
@@ -27,14 +30,44 @@ export async function POST(req: NextRequest) {
     if (!valid) {
       return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
     }
-    
 
     if (user.role !== "student") {
       return NextResponse.json({ error: "استخدم لوحة الإدارة لتسجيل الدخول" }, { status: 403 });
     }
 
-    const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
+    // ── Device lock: bind the account to a limited number of devices ──────────
+    const { deviceId, isNew } = await readDeviceId();
+    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    const userAgent = req.headers.get("user-agent") ?? null;
+
+    const known = await prisma.device.findUnique({
+      where: { userId_deviceId: { userId: user.id, deviceId } },
+    });
+    if (known) {
+      await prisma.device.update({
+        where: { id: known.id },
+        data: { lastSeenAt: new Date(), ipAddress, userAgent },
+      });
+    } else {
+      const maxDevices = await getStudentMaxDevices();
+      const count = await prisma.device.count({ where: { userId: user.id } });
+      if (count >= maxDevices) {
+        return NextResponse.json(
+          {
+            error: `لقد سجّلت الدخول من الحد الأقصى للأجهزة المسموح بها (${maxDevices}). تواصل مع معلمك لإعادة ضبط الأجهزة.`,
+            code: "DEVICE_LIMIT",
+          },
+          { status: 403 }
+        );
+      }
+      await prisma.device.create({
+        data: { userId: user.id, deviceId, label: deviceLabelFromUA(userAgent), userAgent, ipAddress },
+      });
+    }
+
+    const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role, deviceId });
     await setAuthCookie(token);
+    if (isNew) await setDeviceCookie(deviceId);
 
     // Points Logic: Award daily login points
     const { awardDailyLoginPoints } = await import("@/lib/points");
