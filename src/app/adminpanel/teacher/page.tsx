@@ -547,7 +547,7 @@ export default function TeacherDashboardPage() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-[var(--z-sticky)] bg-[var(--surface)]/85 backdrop-blur-xl border-b border-[var(--border)] px-4 sm:px-6 py-3 flex items-center gap-3">
+        <header className="sticky top-0 z-[var(--z-sticky)] bg-[var(--surface)] lg:bg-[var(--surface)]/85 lg:backdrop-blur-xl border-b border-[var(--border)] px-4 sm:px-6 py-3 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="فتح القائمة"

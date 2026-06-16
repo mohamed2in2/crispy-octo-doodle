@@ -78,7 +78,7 @@ export function YouTubeSecurePlayer({
   /** Reports the current position (throttled to ~5s) for saving. */
   onProgress?: (seconds: number) => void;
 }) {
-  const { ref: wrapRef, isFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
+  const { ref: wrapRef, isFs, cssFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const onEndedRef = useRef(onEnded);
@@ -189,7 +189,13 @@ export function YouTubeSecurePlayer({
     <div
       ref={wrapRef}
       className="relative bg-black w-full select-none overflow-hidden"
-      style={isFs ? { height: "100%" } : { paddingTop: "56.25%" }}
+      style={
+        cssFs
+          ? { position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 2147483647 }
+          : isFs
+          ? { height: "100%" }
+          : { paddingTop: "56.25%" }
+      }
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* The YT API replaces this node with its iframe */}

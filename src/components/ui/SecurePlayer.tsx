@@ -38,7 +38,7 @@ export function SecurePlayer({
   onProgress?: (seconds: number) => void;
   className?: string;
 }) {
-  const { ref: wrapRef, isFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
+  const { ref: wrapRef, isFs, cssFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
 
   // YouTube → hardened API player (no clickable YouTube chrome).
   if (provider === "youtube") {
@@ -124,7 +124,13 @@ export function SecurePlayer({
     <div
       ref={wrapRef}
       className={`relative bg-black w-full select-none ${className}`}
-      style={isFs ? { height: "100%" } : { paddingTop: "56.25%" }}
+      style={
+        cssFs
+          ? { position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 2147483647 }
+          : isFs
+          ? { height: "100%" }
+          : { paddingTop: "56.25%" }
+      }
       onContextMenu={(e) => e.preventDefault()}
     >
       <iframe

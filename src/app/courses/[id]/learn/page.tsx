@@ -198,6 +198,7 @@ export default function CourseLearningPage() {
   // Sidebar
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [navOpen, setNavOpen] = useState(false); // mobile lesson drawer
 
   // Player
   const [player, setPlayer] = useState<PlayerState | null>(null);
@@ -461,12 +462,23 @@ export default function CourseLearningPage() {
 
       {/* ── Content ── */}
       {!loading && !pageError && !accessBlock && course && (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
+
+          {/* Mobile drawer backdrop */}
+          {navOpen && (
+            <div
+              className="lg:hidden fixed inset-0 z-30 bg-black/50"
+              onClick={() => setNavOpen(false)}
+              aria-hidden
+            />
+          )}
 
           {/* ════════════════════════════════════════════
-              SIDEBAR — right side in RTL
+              SIDEBAR — static rail on desktop, slide-in drawer on mobile
           ════════════════════════════════════════════ */}
-          <aside className="w-72 shrink-0 flex flex-col bg-[var(--surface)] border-e border-[var(--border)] overflow-hidden">
+          <aside
+            className={`fixed lg:static inset-y-0 end-0 z-40 lg:z-auto w-[85%] max-w-[320px] lg:w-72 lg:max-w-none shrink-0 flex flex-col bg-[var(--surface)] border-e border-[var(--border)] overflow-hidden shadow-2xl lg:shadow-none transition-transform duration-300 ${navOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0`}
+          >
 
             {/* Course identity + progress */}
             <div className="px-4 pt-4 pb-3 border-b border-[var(--border)] space-y-3 shrink-0">
@@ -541,7 +553,7 @@ export default function CourseLearningPage() {
                           return (
                             <button
                               key={video.id}
-                              onClick={() => setActiveVideoId(video.id)}
+                              onClick={() => { setActiveVideoId(video.id); setNavOpen(false); }}
                               aria-current={active ? "true" : undefined}
                               className={`relative w-full flex items-center gap-2.5 px-4 py-2.5 text-right transition-colors ${
                                 active
@@ -651,7 +663,17 @@ export default function CourseLearningPage() {
             {activeVideo ? (
               <>
                 {/* Title bar */}
-                <div className="px-6 py-3.5 border-b border-[var(--border)] flex items-center justify-between gap-4 shrink-0">
+                <div className="px-4 sm:px-6 py-3.5 border-b border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
+                  {/* Mobile: open lesson drawer */}
+                  <button
+                    onClick={() => setNavOpen(true)}
+                    aria-label="قائمة الدروس"
+                    className="lg:hidden shrink-0 w-9 h-9 -ms-1 rounded-lg flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                  </button>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)] mb-1">
                       <span className="truncate">{course.title}</span>

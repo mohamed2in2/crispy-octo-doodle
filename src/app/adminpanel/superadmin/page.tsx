@@ -141,7 +141,7 @@ export default function SuperadminPage() {
 
       <div className="flex-1 min-w-0 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white/85 dark:bg-gray-900/85 backdrop-blur-xl border-b border-slate-200 dark:border-gray-800 px-4 sm:px-6 py-3.5 flex items-center gap-3">
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 lg:bg-white/85 lg:dark:bg-gray-900/85 lg:backdrop-blur-xl border-b border-slate-200 dark:border-gray-800 px-4 sm:px-6 py-3.5 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="فتح القائمة"
