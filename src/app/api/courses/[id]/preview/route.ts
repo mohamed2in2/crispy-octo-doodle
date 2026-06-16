@@ -6,8 +6,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
 
-    const course = await prisma.course.findUnique({
-      where: { id },
+    // `id` may be the cuid OR the SEO slug — resolve either so professional
+    // /courses/<slug> URLs work without breaking old /courses/<id> links.
+    const course = await prisma.course.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
       include: {
         teacher: { select: { id: true, name: true } },
         folders: {
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     try {
       const session = await getStudentSession();
       if (session) {
-        hasAccess = !!(await prisma.accessCode.findFirst({ where: { courseId: id, studentId: session.id } }));
+        hasAccess = !!(await prisma.accessCode.findFirst({ where: { courseId: course.id, studentId: session.id } }));
       }
     } catch {
       // If auth fails, just show as no-access
@@ -51,6 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const preview = {
       id: course.id,
+      slug: course.slug,
       title: course.title,
       subject: course.subject,
       description: course.description,

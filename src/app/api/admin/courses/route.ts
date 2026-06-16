@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildCourseSlug } from "@/lib/course-slug";
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_SUBJECT_LENGTH = 50;
@@ -120,7 +121,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ course }, { status: 201 });
+    // Generate the SEO English slug now that we have the course id.
+    const withSlug = await prisma.course.update({
+      where: { id: course.id },
+      data: { slug: buildCourseSlug(course) },
+    });
+
+    return NextResponse.json({ course: withSlug }, { status: 201 });
   } catch (error) {
     console.error("Create course failed:", error);
     return NextResponse.json({ error: "تعذر إنشاء الكورس الآن" }, { status: 500 });

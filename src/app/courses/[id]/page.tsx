@@ -11,6 +11,7 @@ import { SecurePlayer } from "@/components/ui/SecurePlayer";
 
 type CoursePreview = {
   id: string;
+  slug?: string | null;
   title: string;
   subject: string;
   description?: string | null;
@@ -163,7 +164,7 @@ export default function CourseProductPage() {
     if (!user) { router.push(`/login?redirect_url=/courses/${courseId}`); return; }
     setEnrolling(true);
     try {
-      const res = await fetch(`/api/courses/${courseId}/enroll`, { method: "POST", credentials: "include" });
+      const res = await fetch(`/api/courses/${course?.id ?? courseId}/enroll`, { method: "POST", credentials: "include" });
       const raw = await res.text();
       const data = raw ? JSON.parse(raw) : {};
       if (res.ok) {
@@ -445,7 +446,7 @@ export default function CourseProductPage() {
                 {/* CTA */}
                 {course.hasAccess ? (
                   <button
-                    onClick={() => router.push(`/courses/${courseId}/learn`)}
+                    onClick={() => router.push(`/courses/${course.id}/learn`)}
                     className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base transition-colors"
                   >
                     ادخل الكورس الآن ←
