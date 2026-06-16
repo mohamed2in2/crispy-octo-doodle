@@ -192,6 +192,7 @@ export default function CourseLearningPage() {
   const [course, setCourse] = useState<CourseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
+  const [accessBlock, setAccessBlock] = useState<{ message: string; teacher: boolean } | null>(null);
   const [user, setUser] = useState<{ name: string; role: string; phone?: string | null } | null>(null);
 
   // Sidebar
@@ -264,12 +265,27 @@ export default function CourseLearningPage() {
   const loadCourse = useCallback(async () => {
     setLoading(true);
     setPageError("");
+    setAccessBlock(null);
     try {
       const courseRes = await fetch(`/api/courses/${courseId}`);
       const courseJson = await courseRes.json();
       if (!courseRes.ok) {
         if (courseRes.status === 401) { router.replace("/login"); return; }
-        if (courseRes.status === 403) { router.replace(`/courses/${courseId}`); return; }
+        if (courseRes.status === 403) {
+          const code = courseJson.code as string | undefined;
+          // Teacher/staff aren't allowed into the student course room — show a
+          // clear message instead of a silent redirect.
+          if (code === "TEACHER_NOT_ALLOWED" || code === "STAFF_NOT_ALLOWED") {
+            setAccessBlock({
+              message: courseJson.error || "هذه الصفحة مخصّصة للطلاب فقط.",
+              teacher: code === "TEACHER_NOT_ALLOWED",
+            });
+            return;
+          }
+          // Not enrolled → send to the course page to enroll/activate a code.
+          router.replace(`/courses/${courseId}`);
+          return;
+        }
         throw new Error(courseJson.error || "فشل تحميل الكورس");
       }
       const c = courseJson.course as CourseData;
@@ -412,8 +428,39 @@ export default function CourseLearningPage() {
         </div>
       )}
 
+      {/* ── Role block (teacher / staff) ── */}
+      {!loading && accessBlock && (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 max-w-md w-full text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center mx-auto text-2xl">
+              {accessBlock.teacher ? "👨‍🏫" : "🔒"}
+            </div>
+            <h2 className="text-lg font-black text-[var(--ink)]">
+              {accessBlock.teacher ? "مرحباً أستاذ 👋" : "غير متاح"}
+            </h2>
+            <p className="text-sm text-[var(--ink-muted)] leading-relaxed">{accessBlock.message}</p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center pt-1">
+              {accessBlock.teacher && (
+                <button
+                  onClick={() => router.push("/adminpanel/teacher")}
+                  className="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors"
+                >
+                  لوحة المعلّم
+                </button>
+              )}
+              <button
+                onClick={() => router.push("/")}
+                className="px-5 py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--border)] text-[var(--ink)] text-sm font-bold transition-colors"
+              >
+                الصفحة الرئيسية
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Content ── */}
-      {!loading && !pageError && course && (
+      {!loading && !pageError && !accessBlock && course && (
         <div className="flex flex-1 overflow-hidden">
 
           {/* ════════════════════════════════════════════

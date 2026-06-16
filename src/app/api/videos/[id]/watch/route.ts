@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { getSession, getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveEmbedUrl } from "@/lib/video-provider";
 import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
@@ -80,8 +80,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 const WATCH_DURATION_HOURS = 4;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // Session may be null for anonymous viewers of a free/demo video.
-  const session = await getStudentSession();
+  // Session may be null for anonymous viewers of a free/demo video. Use the
+  // role-agnostic session so admins/superadmins can preview too.
+  const session = await getSession();
 
   const { id: videoId } = await params;
   const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
@@ -138,6 +139,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // ── PAID video from here on — requires a logged-in student ──
   if (!session) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  // Teacher/staff have no place in the student watch flow.
+  if (session.role === "teacher" || session.role === "staff") {
+    return NextResponse.json(
+      { error: "صفحة مشاهدة الكورس مخصّصة للطلاب فقط.", code: "ROLE_NOT_ALLOWED" },
+      { status: 403 }
+    );
+  }
+
+  // Admin / superadmin: preview playback — no enrollment, no quota, no slot used.
+  if (session.role === "admin" || session.role === "superadmin") {
+    const embedResult = await resolveEmbedUrl(video);
+    const expiresAt = new Date(now.getTime() + WATCH_DURATION_HOURS * 60 * 60 * 1000);
+    return NextResponse.json({
+      sessionToken: "preview",
+      expiresAt: expiresAt.toISOString(),
+      watchDurationHours: WATCH_DURATION_HOURS,
+      remainingWatches: null,
+      totalWatches: null,
+      usedWatches: 0,
+      embedUrl: embedResult.embedUrl,
+      provider: embedResult.provider,
+      preview: true,
+    });
   }
 
   // Device lock: a device-bound token whose device was reset/removed can't play.

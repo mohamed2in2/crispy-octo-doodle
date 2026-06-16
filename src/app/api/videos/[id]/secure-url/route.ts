@@ -103,6 +103,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const course = video.folder.course;
   const isSuperadmin = session.role === "superadmin";
+  const isAdmin = session.role === "admin";
   const canAccessAsTeacher = session.role === "teacher" && course.teacherId === session.id;
   const canAccessAsStudent =
     session.role === "student"
@@ -112,7 +113,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         })
       : null;
 
-  if (!isSuperadmin && !canAccessAsTeacher && !canAccessAsStudent) {
+  if (!isSuperadmin && !isAdmin && !canAccessAsTeacher && !canAccessAsStudent) {
     return NextResponse.json(
       { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس من صفحة الكورسات أولاً." },
       { status: 403 }

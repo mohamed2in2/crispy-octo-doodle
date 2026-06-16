@@ -1,24 +1,48 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getStudentSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getStudentSession();
+    const session = await getSession();
     if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
     const { id } = await params;
 
-    const access = await prisma.accessCode.findFirst({
-      where: { courseId: id, studentId: session.id },
-    });
-    if (!access) {
+    // Course-entry access by role:
+    //  - student            → must be enrolled
+    //  - admin / superadmin → allowed (oversight / preview), no enrollment
+    //  - teacher            → blocked with a clear "you're a teacher" message
+    //  - staff              → blocked
+    const role = session.role;
+    if (role === "teacher") {
       return NextResponse.json(
-        { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم." },
+        {
+          error: "أنت مُعلّم — صفحة دخول الكورس مخصّصة للطلاب فقط. تابع كورساتك من لوحة المعلّم.",
+          code: "TEACHER_NOT_ALLOWED",
+        },
         { status: 403 }
       );
     }
+    if (role === "staff") {
+      return NextResponse.json(
+        { error: "هذه الصفحة مخصّصة للطلاب فقط.", code: "STAFF_NOT_ALLOWED" },
+        { status: 403 }
+      );
+    }
+    if (role === "student") {
+      const access = await prisma.accessCode.findFirst({
+        where: { courseId: id, studentId: session.id },
+      });
+      if (!access) {
+        return NextResponse.json(
+          { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم.", code: "NOT_ENROLLED" },
+          { status: 403 }
+        );
+      }
+    }
+    // admin / superadmin fall through — full read access.
 
     const course = await prisma.course.findFirst({
       where: { id, teacher: { isDeleted: false } },

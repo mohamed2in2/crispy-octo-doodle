@@ -25,7 +25,10 @@ export function ProfileGuard({ children }: ProfileGuardProps) {
         return;
       }
 
-      if (!me.profileCompleted) {
+      // Only STUDENTS need a completed student profile. Teachers/staff/admins/
+      // superadmins have no student profile, so don't bounce them to
+      // /complete-profile when they land on a student page.
+      if (me.role === "student" && !me.profileCompleted) {
         router.replace("/complete-profile");
         return;
       }
