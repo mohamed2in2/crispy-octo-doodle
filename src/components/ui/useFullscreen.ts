@@ -10,6 +10,29 @@ type FsDocument = Document & {
   webkitExitFullscreen?: () => void;
 };
 
+type OrientationLock = ScreenOrientation & {
+  lock?: (o: "landscape") => Promise<void>;
+  unlock?: () => void;
+};
+
+/** Best-effort: rotate to landscape on touch devices (needs real fullscreen). */
+async function lockLandscape() {
+  try {
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    await (screen.orientation as OrientationLock | undefined)?.lock?.("landscape");
+  } catch {
+    /* unsupported / not in fullscreen — ignore */
+  }
+}
+
+function unlockOrientation() {
+  try {
+    (screen.orientation as OrientationLock | undefined)?.unlock?.();
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Wrapper-based fullscreen. Cross-origin iframes can't host our DOM overlay in
  * their OWN native fullscreen, so we fullscreen a same-origin wrapper (which
@@ -61,6 +84,7 @@ export function useFullscreen<T extends HTMLElement = HTMLDivElement>() {
         if (document.exitFullscreen) await document.exitFullscreen();
         else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
       } catch { /* ignore */ }
+      unlockOrientation();
       setCssFs(false);
       return;
     }
@@ -69,10 +93,12 @@ export function useFullscreen<T extends HTMLElement = HTMLDivElement>() {
     try {
       if (el.requestFullscreen) {
         await el.requestFullscreen();
+        void lockLandscape();
         return;
       }
       if (el.webkitRequestFullscreen) {
         el.webkitRequestFullscreen();
+        void lockLandscape();
         return;
       }
       throw new Error("Fullscreen API unavailable");

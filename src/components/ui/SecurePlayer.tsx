@@ -146,11 +146,16 @@ export function SecurePlayer({
 
       <VideoWatermark label={watermark} />
 
+      {/* Our fullscreen control sits at the bottom-RIGHT, directly over the
+          VdoCipher/Bunny iframe's own (inert — no allowfullscreen) fullscreen
+          button. Being a higher-stacked sibling (z-20) it captures the click
+          there, so the spot users instinctively tap triggers OUR wrapper
+          fullscreen — which keeps the watermark on screen. */}
       <button
         type="button"
         onClick={toggleFs}
         aria-label={isFs ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
-        className="absolute bottom-3 left-3 z-20 w-9 h-9 rounded-lg bg-black/55 hover:bg-black/75 text-white flex items-center justify-center backdrop-blur-sm transition-colors"
+        className="absolute bottom-2.5 right-2.5 z-20 w-10 h-10 rounded-lg bg-black/55 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-colors"
       >
         {isFs ? (
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
