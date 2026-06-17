@@ -76,6 +76,10 @@ body {
   font-family: "Cairo", "Segoe UI", Arial, sans-serif;
   direction: rtl;
   min-height: 100dvh;
+  /* Guard: an off-screen fixed drawer (e.g. the learn-page lesson rail) must
+     never create horizontal scroll → mobile browsers zoom out and the layout
+     "splits". This clips any such overflow (propagates to the viewport). */
+  overflow-x: hidden;
   transition: background-color 0.2s ease, color 0.2s ease;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

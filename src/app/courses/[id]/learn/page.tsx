@@ -477,7 +477,7 @@ export default function CourseLearningPage() {
               SIDEBAR — static rail on desktop, slide-in drawer on mobile
           ════════════════════════════════════════════ */}
           <aside
-            className={`fixed lg:static inset-y-0 end-0 z-40 lg:z-auto w-[85%] max-w-[320px] lg:w-72 lg:max-w-none shrink-0 flex flex-col bg-[var(--surface)] border-e border-[var(--border)] overflow-hidden shadow-2xl lg:shadow-none transition-transform duration-300 ${navOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0`}
+            className={`fixed lg:static inset-y-0 right-0 z-40 lg:z-auto w-[85%] max-w-[320px] lg:w-72 lg:max-w-none shrink-0 flex flex-col bg-[var(--surface)] border-e border-[var(--border)] overflow-hidden overscroll-contain shadow-2xl lg:shadow-none transition-transform duration-300 ${navOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0`}
           >
 
             {/* Course identity + progress */}
