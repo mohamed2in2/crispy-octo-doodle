@@ -6,13 +6,19 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Trophy, Medal, Star, Gift, Clock, Target } from "lucide-react";
 
+/**
+ * Group students into a competition tier by the REAL educational-stage values
+ * used across the app (primary_* / prep_* / sec_*). The old version checked for
+ * `grade_1`…`grade_12`, which never matched any student, so the leaderboard
+ * always came back empty. An unknown/empty stage returns [] → no stage filter
+ * (show everyone) rather than excluding all.
+ */
 function getCompetitionTier(stage: string | null): string[] {
   if (!stage) return [];
-  if (["grade_1","grade_2","grade_3","grade_4","grade_5","grade_6"].includes(stage))
-    return ["grade_1","grade_2","grade_3","grade_4","grade_5","grade_6"];
-  if (["grade_7","grade_8","grade_9"].includes(stage))
-    return ["grade_7","grade_8","grade_9"];
-  return ["grade_10","grade_11","grade_12"];
+  if (stage.startsWith("primary")) return ["primary_4", "primary_5", "primary_6"];
+  if (stage.startsWith("prep")) return ["prep_1", "prep_2", "prep_3"];
+  if (stage.startsWith("sec")) return ["sec_1", "sec_2", "sec_3"];
+  return [];
 }
 
 export default async function LeaderboardPage() {
