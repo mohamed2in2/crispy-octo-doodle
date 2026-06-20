@@ -1,4 +1,6 @@
 import { StudyPlanItem } from "@/types";
+import { getConfigNumberClamped } from "@/lib/config";
+import { resolvePlanProviders, type ResolvedProvider } from "@/lib/ai-provider";
 
 interface AIResponse {
   success: boolean;
@@ -6,98 +8,103 @@ interface AIResponse {
   error?: string;
 }
 
-const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "demo-key";
-const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
-
-const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || "demo-backup-key";
-const BACKUP_API_URL = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/models";
-const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
+const SYSTEM_PROMPT =
+  "You are an expert Egyptian education tutor. Generate a daily study plan as a JSON array only — no prose, no code fences.";
 
 /**
- * Call primary AI API (Claude) to generate study plan
+ * Models often wrap JSON in ```json fences or add a sentence of preamble.
+ * Pull out the first JSON array so a valid plan isn't discarded over formatting.
  */
-async function callPrimaryAI(prompt: string): Promise<AIResponse> {
+function extractJsonArray(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
   try {
-    const response = await fetch(PRIMARY_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": PRIMARY_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1024,
-        system: "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.",
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Primary API failed: ${response.statusText}`);
+    return JSON.parse(candidate);
+  } catch {
+    const start = candidate.indexOf("[");
+    const end = candidate.lastIndexOf("]");
+    if (start !== -1 && end > start) {
+      return JSON.parse(candidate.slice(start, end + 1));
     }
-
-    const data = await response.json() as { content: Array<{ text: string }> };
-    const planText = data.content[0]?.text || "[]";
-
-    // Parse and validate JSON
-    const plan = JSON.parse(planText);
-    if (!Array.isArray(plan)) throw new Error("Invalid plan format");
-
-    return { success: true, plan };
-  } catch (error) {
-    console.error("Primary AI API error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+    throw new Error("No JSON array found in AI response");
   }
 }
 
 /**
- * Call backup AI API (Gemini) as fallback
+ * Call a configured AI provider (resolved from the DB). The request shape is
+ * chosen from the provider's kind. The decrypted key is used here only and is
+ * never logged.
  */
-async function callBackupAI(prompt: string): Promise<AIResponse> {
+async function callProvider(
+  provider: ResolvedProvider,
+  prompt: string,
+  maxTokens: number
+): Promise<AIResponse> {
   try {
-    const systemPrompt = "You are an expert Egyptian education tutor. Generate a daily study plan as JSON array.";
-    const combinedPrompt = `${systemPrompt}\n\n${prompt}`;
-    
-    const url = `${BACKUP_API_URL}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: combinedPrompt }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-        },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
+    const base = provider.baseUrl.replace(/\/+$/, "");
+    let planText = "[]";
 
-    if (!response.ok) {
-      throw new Error(`Backup API failed: ${response.statusText}`);
+    if (provider.kind === "anthropic") {
+      const res = await fetch(base, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": provider.key,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: provider.model,
+          max_tokens: maxTokens,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: prompt }],
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { content?: Array<{ text?: string }> };
+      planText = data.content?.[0]?.text || "[]";
+    } else if (provider.kind === "gemini") {
+      const res = await fetch(`${base}/${provider.model}:generateContent?key=${provider.key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }] }],
+          generationConfig: { maxOutputTokens: maxTokens },
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      planText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    } else {
+      // OpenAI-compatible chat completions
+      const res = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${provider.key}` },
+        body: JSON.stringify({
+          model: provider.model,
+          max_tokens: maxTokens,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      planText = data.choices?.[0]?.message?.content || "[]";
     }
 
-    const data = await response.json() as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
-    const planText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-
-    const plan = JSON.parse(planText);
+    const plan = extractJsonArray(planText);
     if (!Array.isArray(plan)) throw new Error("Invalid plan format");
-
     return { success: true, plan };
   } catch (error) {
-    console.error("Backup AI API error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+    // Never log the key — only the provider name + message.
+    console.error(`AI provider "${provider.name}" error:`, error instanceof Error ? error.message : "unknown");
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
 
@@ -123,23 +130,22 @@ export async function generateStudyPlan(
   
   Format: Only return the JSON array, no additional text.`;
 
-  console.log("Attempting to generate study plan via primary API...");
-  let result = await callPrimaryAI(prompt);
+  // Providers (primary → backup), models, base URLs and decrypted keys all come
+  // from the DB now — nothing read from .env.
+  const maxTokens = await getConfigNumberClamped("ai_max_tokens", 256, 8192);
+  const { primary, backup } = await resolvePlanProviders();
 
-  if (result.success) {
-    console.log("Study plan generated successfully via primary API");
-    return result;
+  if (primary) {
+    const result = await callProvider(primary, prompt, maxTokens);
+    if (result.success) return result;
   }
 
-  console.log("Primary API failed, attempting backup API...");
-  result = await callBackupAI(prompt);
-
-  if (result.success) {
-    console.log("Study plan generated successfully via backup API");
-    return result;
+  if (backup) {
+    const result = await callProvider(backup, prompt, maxTokens);
+    if (result.success) return result;
   }
 
-  // Both APIs failed, return default plan
+  // No provider configured, or both failed → graceful static default plan
   console.log("Both AI APIs failed, returning default plan");
   return {
     success: true,

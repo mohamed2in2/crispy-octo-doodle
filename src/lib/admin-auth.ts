@@ -19,6 +19,10 @@ export const LOG_ACTIONS = {
   SUSPEND_STAFF_ACCOUNT: "SUSPEND_STAFF_ACCOUNT",
   UNSUSPEND_STAFF_ACCOUNT: "UNSUSPEND_STAFF_ACCOUNT",
   RESET_STAFF_PASSWORD: "RESET_STAFF_PASSWORD",
+  BULK_DELETE_SCHEDULED: "BULK_DELETE_SCHEDULED",
+  BULK_DELETE_INSTANT: "BULK_DELETE_INSTANT",
+  BULK_DELETE_CANCELLED: "BULK_DELETE_CANCELLED",
+  BULK_DELETE_EXECUTED: "BULK_DELETE_EXECUTED",
 } as const;
 
 export type LogAction = (typeof LOG_ACTIONS)[keyof typeof LOG_ACTIONS];
@@ -57,6 +61,21 @@ export function verifyRoleActionPassword(role: string, password: string): boolea
 /** @deprecated Use verifyRoleActionPassword instead */
 export function verifyActionPassword(password: string): boolean {
   return verifyRoleActionPassword("superadmin", password);
+}
+
+// ─── Superadmin master (break-glass owner) password ──────────────────────────
+// Just the env value — one place, no DB override, no "which password?" confusion.
+export function verifyMasterPassword(password: string): boolean {
+  const env = process.env.SUPERADMIN_MASTER_PASSWORD;
+  if (!env || !password) return false;
+  return timingSafeCompare(password, env);
+}
+
+/** Verifies the bulk/danger access password (gates Danger Zone + Instance). */
+export function verifyBulkPassword(password: string): boolean {
+  const env = process.env.BULK_DELETE_PASSWORD;
+  if (!env || !password) return false;
+  return timingSafeCompare(password, env);
 }
 
 // ─── Activity logging ─────────────────────────────────────────────────────────

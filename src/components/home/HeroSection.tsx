@@ -35,9 +35,14 @@ const rise: Variants = {
 
 interface HeroSectionProps {
   isLoggedIn: boolean;
+  /** Editable from the superadmin panel; falls back to the default copy. */
+  subtitle?: string;
 }
 
-export function HeroSection({ isLoggedIn }: HeroSectionProps) {
+const DEFAULT_SUBTITLE =
+  "منصة تعليمية متكاملة مصممة خصيصاً للمتعلمين المصريين — مسارات تفاعلية، مشاريع عملية، ومتابعة شخصية مستمرة.";
+
+export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
   const canHover = useCanHover();
   const reduced  = useReducedMotion();
 
@@ -163,7 +168,7 @@ export function HeroSection({ isLoggedIn }: HeroSectionProps) {
             variants={rise}
             className="text-slate-500 dark:text-white/50 text-base md:text-lg mb-10 md:mb-12 leading-relaxed max-w-xl mx-auto font-medium px-2 text-pretty"
           >
-            منصة تعليمية متكاملة مصممة خصيصاً للمتعلمين المصريين — مسارات تفاعلية، مشاريع عملية، ومتابعة شخصية مستمرة.
+            {subtitle || DEFAULT_SUBTITLE}
           </motion.p>
 
           {/* CTAs */}

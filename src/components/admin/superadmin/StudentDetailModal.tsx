@@ -233,7 +233,12 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
             <div className="text-center py-10 text-red-400">{error}</div>
           )}
 
-          {data && (
+          {data && (() => {
+            // Defensive: the detail endpoint should always send these, but never
+            // let a missing field hard-crash the whole modal.
+            const devices = data.devices ?? [];
+            const maxDevices = data.maxDevices ?? 0;
+            return (
             <>
               {/* Profile card */}
               <div className="bg-gray-900/60 rounded-xl p-5 border border-gray-700">
@@ -320,9 +325,9 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-white font-semibold text-sm">
-                    الأجهزة المسجّلة ({data.devices.length}/{data.maxDevices})
+                    الأجهزة المسجّلة ({devices.length}/{maxDevices})
                   </h4>
-                  {canResetDevices && data.devices.length > 0 && !confirmingReset && (
+                  {canResetDevices && devices.length > 0 && !confirmingReset && (
                     <button
                       onClick={() => setConfirmingReset(true)}
                       className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
@@ -356,11 +361,11 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                   </div>
                 )}
 
-                {data.devices.length === 0 ? (
+                {devices.length === 0 ? (
                   <p className="text-gray-500 text-sm">لا توجد أجهزة مسجّلة</p>
                 ) : (
                   <div className="space-y-2">
-                    {data.devices.map((d) => (
+                    {devices.map((d) => (
                       <div
                         key={d.id}
                         className="flex items-center justify-between bg-gray-900/50 rounded-lg px-4 py-3 border border-gray-700"
@@ -469,7 +474,8 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
                 )}
               </div>
             </>
-          )}
+            );
+          })()}
         </div>
       </div>
 

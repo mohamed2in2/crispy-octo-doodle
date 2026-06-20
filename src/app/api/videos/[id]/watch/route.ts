@@ -3,6 +3,7 @@ import { getSession, getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveEmbedUrl } from "@/lib/video-provider";
 import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
+import { getConfigNumberClamped } from "@/lib/config";
 
 // Verify an existing watch session (used when loading the watch page on refresh)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -77,12 +78,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 }
 
-const WATCH_DURATION_HOURS = 4;
-
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Session may be null for anonymous viewers of a free/demo video. Use the
   // role-agnostic session so admins/superadmins can preview too.
   const session = await getSession();
+
+  // Watch-session length is superadmin-configurable (was 4h); ≥0.25h so a bad
+  // value can't create instantly-expired sessions.
+  const WATCH_DURATION_HOURS = await getConfigNumberClamped("watch_session_hours", 0.25, 720);
 
   const { id: videoId } = await params;
   const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
@@ -216,52 +219,67 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
   }
 
-  // Per-video watch quota
-  const usedWatchCount = await prisma.videoWatchSession.count({
-    where: { studentId: session.id, videoId, usedWatchSlot: true },
-  });
-  if (usedWatchCount >= video.maxWatchesPerUser) {
-    return NextResponse.json(
-      {
-        error: `لقد استنفدت جميع محاولات المشاهدة لهذا الفيديو (${video.maxWatchesPerUser} مشاهدة)`,
-        code: "NO_WATCHES_REMAINING",
-      },
-      { status: 403 }
-    );
-  }
-
-  // Expire stale sessions
-  await prisma.videoWatchSession.updateMany({
-    where: { studentId: session.id, videoId, endedAt: null, expiresAt: { lt: now } },
-    data: { endedAt: now },
-  });
-
   const sessionToken = crypto.randomUUID();
   const expiresAt = new Date(now.getTime() + WATCH_DURATION_HOURS * 60 * 60 * 1000);
+  const userAgent = req.headers.get("user-agent") ?? null;
 
-  const watchSession = await prisma.videoWatchSession.create({
-    data: {
+  // ── Atomic quota check + slot consumption ──────────────────────────────────
+  // The per-video watch limit is the guardrail protecting paid content. Reading
+  // the count and creating the session in separate statements lets two tabs both
+  // grab the last slot. Doing it in one transaction closes that: Serializable
+  // isolation (Postgres/prod) aborts the conflicting tx; SQLite (local) serializes
+  // writers, so the race can't occur there either.
+  const QUOTA_EXCEEDED = "QUOTA_EXCEEDED";
+  const isPg = (process.env.DATABASE_URL ?? "").startsWith("postgres");
+  try {
+    const { used, ws } = await prisma.$transaction(
+      async (tx) => {
+        const usedCount = await tx.videoWatchSession.count({
+          where: { studentId: session.id, videoId, usedWatchSlot: true },
+        });
+        if (usedCount >= video.maxWatchesPerUser) throw new Error(QUOTA_EXCEEDED);
+        await tx.videoWatchSession.updateMany({
+          where: { studentId: session.id, videoId, endedAt: null, expiresAt: { lt: now } },
+          data: { endedAt: now },
+        });
+        const created = await tx.videoWatchSession.create({
+          data: { sessionToken, videoId, studentId: session.id, expiresAt, usedWatchSlot: true, ipAddress, userAgent },
+        });
+        return { used: usedCount, ws: created };
+      },
+      isPg ? { isolationLevel: "Serializable" } : undefined
+    );
+
+    const embedResult = await resolveEmbedUrl(video);
+    return NextResponse.json({
       sessionToken,
-      videoId,
-      studentId: session.id,
-      expiresAt,
-      usedWatchSlot: true,
-      ipAddress,
-      userAgent: req.headers.get("user-agent") ?? null,
-    },
-  });
-
-  const embedResult = await resolveEmbedUrl(video);
-
-  return NextResponse.json({
-    sessionToken,
-    sessionId: watchSession.id,
-    expiresAt: expiresAt.toISOString(),
-    watchDurationHours: WATCH_DURATION_HOURS,
-    remainingWatches: video.maxWatchesPerUser - usedWatchCount - 1,
-    totalWatches: video.maxWatchesPerUser,
-    usedWatches: usedWatchCount + 1,
-    embedUrl: embedResult.embedUrl,
-    provider: embedResult.provider,
-  });
+      sessionId: ws.id,
+      expiresAt: expiresAt.toISOString(),
+      watchDurationHours: WATCH_DURATION_HOURS,
+      remainingWatches: video.maxWatchesPerUser - used - 1,
+      totalWatches: video.maxWatchesPerUser,
+      usedWatches: used + 1,
+      embedUrl: embedResult.embedUrl,
+      provider: embedResult.provider,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === QUOTA_EXCEEDED) {
+      return NextResponse.json(
+        {
+          error: `لقد استنفدت جميع محاولات المشاهدة لهذا الفيديو (${video.maxWatchesPerUser} مشاهدة)`,
+          code: "NO_WATCHES_REMAINING",
+        },
+        { status: 403 }
+      );
+    }
+    // Write conflict (a concurrent tab won the slot) → ask to retry.
+    if ((e as { code?: string }).code === "P2034") {
+      return NextResponse.json(
+        { error: "حدث تزامن في الطلب، حاول مرة أخرى", code: "CONCURRENT_RETRY" },
+        { status: 409 }
+      );
+    }
+    console.error("Watch-session transaction error:", e);
+    return NextResponse.json({ error: "تعذر بدء جلسة المشاهدة" }, { status: 500 });
+  }
 }

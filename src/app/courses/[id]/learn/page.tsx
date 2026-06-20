@@ -199,6 +199,7 @@ export default function CourseLearningPage() {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [navOpen, setNavOpen] = useState(false); // mobile lesson drawer
+  const [markThreshold, setMarkThreshold] = useState(80); // % watched; superadmin-configurable
 
   // Player
   const [player, setPlayer] = useState<PlayerState | null>(null);
@@ -290,6 +291,9 @@ export default function CourseLearningPage() {
         throw new Error(courseJson.error || "فشل تحميل الكورس");
       }
       const c = courseJson.course as CourseData;
+      if (typeof courseJson.markCompleteThreshold === "number") {
+        setMarkThreshold(courseJson.markCompleteThreshold);
+      }
       setCourse(c);
       const firstVideo = c.folders.flatMap((f) => f.videos)[0];
       if (firstVideo) setActiveVideoId((prev) => prev ?? firstVideo.id);
@@ -720,7 +724,7 @@ export default function CourseLearningPage() {
                       {(() => {
                         const dur = player!.durationMinutes * 60;
                         const watchPct = dur > 0 ? Math.min(100, Math.round((elapsedSeconds / dur) * 100)) : null;
-                        const canComplete = dur === 0 || elapsedSeconds >= dur * 0.8;
+                        const canComplete = dur === 0 || elapsedSeconds >= dur * (markThreshold / 100);
                         return (
                           <div className="px-5 py-3 border-t border-[var(--border)] flex items-center gap-4 shrink-0">
                             {/* Time progress bar */}

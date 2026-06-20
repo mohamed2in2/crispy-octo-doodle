@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateProviderId, type VideoProvider } from "@/lib/video-provider";
 import { parsePublishAt } from "@/lib/publish";
+import { getConfigNumber, getConfigNumberClamped } from "@/lib/config";
 
 const MAX_TITLE_LENGTH = 100;
 const VALID_PROVIDERS: VideoProvider[] = ["vdocipher", "bunny", "youtube"];
@@ -31,10 +32,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? Math.floor(body.durationMinutes)
         : 0;
 
+    // Default watch quota for new videos is superadmin-configurable (was 3).
     const maxWatchesPerUser =
       typeof body.maxWatchesPerUser === "number" && body.maxWatchesPerUser >= 1
         ? Math.floor(body.maxWatchesPerUser)
-        : 3;
+        : await getConfigNumberClamped("default_max_watches", 1, 99);
 
     const { title } = body;
 
@@ -75,6 +77,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const count = await prisma.video.count({ where: { folderId } });
+
+    // Enforce the superadmin-configurable max videos per folder.
+    const maxPerFolder = await getConfigNumber("max_videos_per_folder");
+    if (maxPerFolder > 0 && count >= maxPerFolder) {
+      return NextResponse.json(
+        { error: `لا يمكن إضافة أكثر من ${maxPerFolder} فيديو في المحاضرة الواحدة` },
+        { status: 400 }
+      );
+    }
+
     const publishAt = parsePublishAt(body.publishAt) ?? null;
 
     const video = await prisma.video.create({

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyRoleActionPassword, logAdminAction, LOG_ACTIONS } from "@/lib/admin-auth";
 import { hasPermission } from "@/lib/rbac";
+import { getStudentMaxDevices } from "@/lib/settings";
 
 export async function GET(
   _req: NextRequest,
@@ -55,7 +56,7 @@ export async function GET(
       return NextResponse.json({ error: "المتعلم غير موجود" }, { status: 404 });
     }
 
-    const [quizResults, watchedCount] = await Promise.all([
+    const [quizResults, watchedCount, devices, maxDevices] = await Promise.all([
       prisma.quizResult.findMany({
         where: { studentId: id },
         select: {
@@ -78,9 +79,15 @@ export async function GET(
         orderBy: { completedAt: "desc" },
       }),
       prisma.progress.count({ where: { studentId: id, watched: true } }),
+      prisma.device.findMany({
+        where: { userId: id },
+        select: { id: true, label: true, lastSeenAt: true, ipAddress: true },
+        orderBy: { lastSeenAt: "desc" },
+      }),
+      getStudentMaxDevices(),
     ]);
 
-    return NextResponse.json({ student, quizResults, watchedCount });
+    return NextResponse.json({ student, quizResults, watchedCount, devices, maxDevices });
   } catch (error) {
     console.error("Superadmin student detail error:", error);
     return NextResponse.json({ error: "تعذر جلب بيانات المتعلم" }, { status: 500 });

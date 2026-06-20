@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getConfigNumberClamped } from "@/lib/config";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -112,7 +113,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       })),
     };
 
-    return NextResponse.json({ course: safeCourse });
+    // Mark-complete gate (% watched) is superadmin-configurable (was 80).
+    const markCompleteThreshold = await getConfigNumberClamped("mark_complete_threshold", 1, 100);
+    return NextResponse.json({ course: safeCourse, markCompleteThreshold });
   } catch (error) {
     console.error("[courses/[id]] error:", error);
     return NextResponse.json({ error: "حدث خطأ داخلي" }, { status: 500 });

@@ -14,6 +14,8 @@ interface AdminSidebarProps {
   activeSection: string;
   setActiveSection: (s: string) => void;
   onLogout: () => void;
+  /** Owner superadmin (Ahmed) — unlocks the owner-only "Instance" section. */
+  isOwner?: boolean;
   /** Controlled mobile drawer state. If omitted, the sidebar manages its own
    *  state and renders a built-in floating trigger (keeps legacy pages working). */
   mobileOpen?: boolean;
@@ -30,7 +32,10 @@ const superadminSections = [
   { id: "daily-exams", label: "امتحانات لوحة الشرف" },
   { id: "logs", label: "سجلات النشاط" },
   { id: "staff-accounts", label: "المشرفون والموظفون" },
+  { id: "site-text", label: "نصوص الموقع" },
+  { id: "advanced-settings", label: "الإعدادات المتقدمة" },
   { id: "errors", label: "مراقبة الأخطاء" },
+  { id: "danger-zone", label: "منطقة الخطر" },
 ];
 
 const adminSections = [
@@ -79,11 +84,15 @@ export function AdminSidebar({
   activeSection,
   setActiveSection,
   onLogout,
+  isOwner,
   mobileOpen,
   onMobileOpenChange,
 }: AdminSidebarProps) {
   const sections =
-    role === "superadmin" ? superadminSections
+    role === "superadmin"
+      ? isOwner
+        ? [...superadminSections, { id: "instance", label: "Instance (المالك)" }]
+        : superadminSections
     : role === "admin"   ? adminSections
     : role === "staff"   ? staffSections
     : teacherSections;

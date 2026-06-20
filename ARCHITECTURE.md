@@ -470,7 +470,70 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - **Teacher analytics dashboard** — `/api/admin/analytics` + `TeacherOverview.tsx` with KPIs/deltas, SVG charts, period & course filters, and an issues feed.
 - **Mobile-responsive admin** — `AdminSidebar` drawer + hamburger; design-token light/dark fixes across teacher & superadmin panels.
 - **Folder delete** — `DELETE /api/admin/courses/[id]/folders` with content cascade.
+- Enrollment/code activation now redirects to `/library`. 
 - Enrollment/code activation now redirects to `/library`.
+
+## Platform Control, Settings & Security (latest)
+
+A large superadmin-control layer was added. All of it lives under
+`/adminpanel/superadmin` (sidebar sections) with matching API routes under
+`/api/admin/superadmin/*`. Everything degrades gracefully if its DB table/column
+isn't migrated yet (reads fall back to defaults/empty; writes surface the real error).
+
+### Superadmin accounts, roles & passwords
+- **Four named superadmins** seeded via `scripts/seed-superadmins.mjs`: **Ahmed (owner)**, Mohamed, Adham, Yassen. `User.isOwner` marks the single owner.
+- **DB-backed superadmin login**: the `/adminpanel` superadmin login is password-only and matches the entered password (bcrypt) against each active superadmin, OR the env master password (break-glass owner). `getJwtSession` re-validates named superadmins against the row; the `id:"superadmin"` break-glass session needs no DB.
+- **Three passwords, one job each** (env-only, no in-panel master change):
+  - `SUPERADMIN_MASTER_PASSWORD` — break-glass owner login.
+  - `SUPERADMIN_ACTION_PASSWORD` — confirms sensitive actions inside panels (`verifyRoleActionPassword`).
+  - `BULK_DELETE_PASSWORD` — **access key** that gates the Danger Zone + Instance sections (`<AccessGate>` + `/api/admin/superadmin/access-gate`) AND authorizes instant bulk deletion.
+- **Owner-only "Instance" section** (`InstanceControlSection.tsx`): manage the other superadmins (rename / set password / suspend / delete / create), toggle maintenance, generate/clear virtual data. Gated by `BULK_DELETE_PASSWORD`, then individual actions need the action password.
+
+### Maintenance mode
+- Toggle + editable message stored in `AppSetting` (`lib/settings.ts`). Public visitors get a friendly `MaintenanceScreen`; **superadmins bypass it** and `/adminpanel` is always reachable.
+- Gating is done in the **root `layout.tsx`** (reads the flag + JWT role + the `x-pathname` header set by `proxy.ts`); fails open so a DB hiccup can't take down every page. `/maintenance` route renders the same screen.
+
+### Bulk account deletion — "Danger Zone"
+- `DangerZoneSection.tsx` + `BulkDeletionRequest` model. Three scopes (all / students / teachers); **scheduled** (7-day, cancellable) or **instant** (env-password). Targets only student/teacher roles — superadmins/admins/staff/own account never deletable.
+- Execution **soft-deletes** into the existing trash (recoverable), then permanently purges after `trash_purge_days` (default 30, clamped ≥1). Runs lazily on panel load (no cron).
+
+### Virtual / demo data
+- Owner tool generates demo teachers/students + courses with YouTube videos (all flagged `isVirtual` / `User.isVirtual` / `Course.isVirtual`) and a one-click "clear all virtual data".
+
+### Editable site text
+- `lib/site-text.ts` + `SiteTextSection.tsx`: hero subtitle, contact heading/subtitle/email/phone, CTA copy — editable from the panel, stored in `AppSetting` (`site_text:` prefix), defaults always render. Public read at `/api/site-text`; the **homepage is server-rendered** (`(clerk)/page.tsx` → `HomeContent.tsx`) so edits apply with no flash.
+
+### Advanced Settings (PlatformConfig)
+- `lib/config.ts`: a catalog of editable platform constants in the `PlatformConfig` table, with `getConfig` / `getConfigNumber` / `getConfigBool` / `getConfigNumberClamped` / `setConfig`, a **60-second in-memory cache** invalidated on save, and `getGroupedConfig` for the panel.
+- **Hardcoded values removed → now config-driven & clamped:** JWT expiry, watch-session hours, default `maxWatchesPerUser`, mark-complete % (passed to the learn page via the course API), max videos/folder, AI max-tokens, trash-purge days. Remaining keys (login lockout, rate limits, password rules, code rules, session timeouts, thumbnail size) exist and are editable but are **badged "غير مُفعّل بعد"** in the panel until wired.
+
+### AI providers (encrypted) + study-plan rewire
+- `lib/ai-provider.ts` + `AIProvider` model: superadmins add/edit/delete providers (name, slug, base URL, models, key) and mark **one primary / one backup** (mutually exclusive; a backup equal to the primary is ignored).
+- **API keys are AES-256-GCM encrypted** (`CONFIG_ENCRYPTION_KEY`, ≥32 chars enforced) and **never returned** — the client only gets `hasKey`. Decryption happens server-side only inside the AI call.
+- `/api/ai/study-plan` now reads provider/model/baseURL/decrypted-key **from the DB** (primary → backup → static default) supporting Anthropic / Gemini / OpenAI-compatible shapes. The old retired `claude-3-5-sonnet-20241022` default is gone.
+
+### Reliability
+- Watch-quota check + slot consumption are now in a **transaction** (Serializable on Postgres; SQLite serializes) so two tabs can't both grab the last slot.
+- Critical config reads are clamped to safe ranges (e.g. purge-days never 0) so a bad value can't break login/playback or trigger an instant purge.
+- Learn-page mobile RTL drawer + wrapper-fullscreen fixes.
+
+### New models (Postgres/SQLite)
+`PlatformConfig`, `AIProvider`, `BulkDeletionRequest`; `User.isOwner`, `User.isVirtual`, `Course.isVirtual`.
+
+### New superadmin API routes
+- `GET/PATCH /api/admin/config`
+- `GET/POST /api/admin/ai-providers`, `PATCH/DELETE /api/admin/ai-providers/[id]`
+- `GET/POST /api/admin/superadmin/maintenance`
+- `GET/POST /api/admin/superadmin/site-text`, public `GET /api/site-text`
+- `GET/POST /api/admin/superadmin/superadmins`, `PATCH/DELETE /api/admin/superadmin/superadmins/[id]`
+- `GET/POST/DELETE /api/admin/superadmin/bulk-deletion[/[id]]`
+- `GET/POST /api/admin/superadmin/virtual-data`
+- `POST /api/admin/superadmin/access-gate`
+
+### Deploy notes
+- New tables/columns are **additive** — apply with `npx prisma db push` from an allow-listed host (the EC2 server's `update.sh`, or your laptop if its IP is in DigitalOcean → Database → Trusted Sources). `P1001` = your IP isn't allow-listed.
+- New env vars: `BULK_DELETE_PASSWORD`, `CONFIG_ENCRYPTION_KEY` (≥32 chars, **stable** — changing it makes saved AI keys undecryptable). Optional `AI_PRIMARY_API_KEY` only if not using the DB providers. See `docs/SECRETS-RUNBOOK.md`.
+- After push: `node --import dotenv/config scripts/seed-superadmins.mjs`, then set real (non-`ChangeMe-*`) passwords for the four superadmins.
 
 ## Implementation Checklist
 

@@ -13,6 +13,11 @@ import { DeletedTeachersSection } from "@/components/admin/superadmin/DeletedTea
 import { StaffAccountsSection } from "@/components/admin/superadmin/StaffAccountsSection";
 import { ErrorMonitorSection } from "@/components/admin/superadmin/ErrorMonitorSection";
 import { DailyExamsSection } from "@/components/admin/superadmin/DailyExamsSection";
+import { DangerZoneSection } from "@/components/admin/superadmin/DangerZoneSection";
+import { InstanceControlSection } from "@/components/admin/superadmin/InstanceControlSection";
+import { SiteTextSection } from "@/components/admin/superadmin/SiteTextSection";
+import { AdvancedSettingsSection } from "@/components/admin/superadmin/AdvancedSettingsSection";
+import { AccessGate } from "@/components/admin/superadmin/AccessGate";
 import { IconMenu, IconTrash } from "@/components/admin/AdminIcons";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -47,7 +52,11 @@ const SECTION_TITLES: Record<string, string> = {
   create: "إنشاء حساب مدرس",
   "daily-exams": "امتحانات لوحة الشرف",
   "staff-accounts": "المشرفون والموظفون",
+  "site-text": "نصوص الموقع",
+  "advanced-settings": "الإعدادات المتقدمة",
   errors: "مراقبة الأخطاء والتحذيرات",
+  "danger-zone": "منطقة الخطر — حذف جماعي",
+  instance: "Instance — لوحة المالك",
 };
 
 export default function SuperadminPage() {
@@ -61,6 +70,7 @@ export default function SuperadminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteTargetTeacher, setDeleteTargetTeacher] = useState<Teacher | null>(null);
   const [userRole, setUserRole] = useState<"superadmin" | "admin" | "staff">("superadmin");
+  const [isOwner, setIsOwner] = useState(false);
 
   const fetchTeachers = async () => {
     const res = await fetch("/api/admin/teachers", { credentials: "include" });
@@ -78,9 +88,10 @@ export default function SuperadminPage() {
   useEffect(() => {
     const init = async () => {
       const meRes = await fetch("/api/auth/me", { credentials: "include" });
-      const meData = await meRes.json() as { user?: { role?: string } };
+      const meData = await meRes.json() as { user?: { role?: string; isOwner?: boolean } };
       const role = meData?.user?.role;
       if (role === "admin" || role === "staff") setUserRole(role);
+      setIsOwner(!!meData?.user?.isOwner);
       await fetchTeachers();
     };
     void init();
@@ -135,6 +146,7 @@ export default function SuperadminPage() {
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         onLogout={handleLogout}
+        isOwner={isOwner}
         mobileOpen={sidebarOpen}
         onMobileOpenChange={setSidebarOpen}
       />
@@ -240,7 +252,23 @@ export default function SuperadminPage() {
 
           {activeSection === "staff-accounts" && <StaffAccountsSection userRole={userRole} />}
 
+          {activeSection === "site-text" && <SiteTextSection />}
+
+          {activeSection === "advanced-settings" && <AdvancedSettingsSection />}
+
           {activeSection === "errors" && <ErrorMonitorSection />}
+
+          {activeSection === "danger-zone" && (
+            <AccessGate id="danger-zone" title="منطقة الخطر">
+              <DangerZoneSection />
+            </AccessGate>
+          )}
+
+          {activeSection === "instance" && isOwner && (
+            <AccessGate id="instance" title="Instance — لوحة المالك">
+              <InstanceControlSection />
+            </AccessGate>
+          )}
 
           {deleteTargetTeacher && (
             <ConfirmActionModal

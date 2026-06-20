@@ -249,6 +249,10 @@ export const SECTION_ICONS: Record<string, (p: IconProps) => React.ReactElement>
   "daily-exams": IconChart,
   logs: IconFile,
   errors: IconShield,
+  instance: IconKey,
+  "site-text": IconFile,
+  "advanced-settings": IconShield,
+  "danger-zone": IconTrash,
   requests: IconTicket,
   feedback: IconChat,
 };

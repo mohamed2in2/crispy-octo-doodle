@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { signToken, setAuthCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { verifyMasterPassword } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,23 +17,47 @@ export async function POST(req: NextRequest) {
     const name = body.name?.trim() ?? "";
     const email = body.email?.trim().toLowerCase() ?? "";
 
-    // ── Superadmin: master-password from env, no DB record needed ────────────
+    // ── Superadmin ────────────────────────────────────────────────────────────
+    // Two ways in (password-only form, so we match by password):
+    //   1. Break-glass: the env master password → owner-level session (no DB row).
+    //   2. A named DB-backed superadmin whose bcrypt password matches.
     if (role === "superadmin") {
-      const master = process.env.SUPERADMIN_MASTER_PASSWORD;
-      if (!master) {
-        return NextResponse.json({ error: "الخادم غير مهيأ بشكل صحيح" }, { status: 500 });
+      if (!password) {
+        return NextResponse.json({ error: "كلمة المرور مطلوبة" }, { status: 400 });
       }
-      if (password !== master) {
-        return NextResponse.json({ error: "كلمة المرور الرئيسية غير صحيحة" }, { status: 401 });
+
+      // 1) Break-glass owner login — DB-set master password (or env fallback).
+      if (await verifyMasterPassword(password)) {
+        const token = await signToken({
+          id: "superadmin",
+          email: "superadmin@system",
+          name: "المشرف العام",
+          role: "superadmin",
+          isOwner: true,
+        });
+        await setAuthCookie(token);
+        return NextResponse.json({ user: { id: "superadmin", name: "المشرف العام", role: "superadmin", isOwner: true } });
       }
-      const token = await signToken({
-        id: "superadmin",
-        email: "superadmin@system",
-        name: "المشرف العام",
-        role: "superadmin",
+
+      // 2) Named superadmin — match the password against each active account.
+      const superadmins = await prisma.user.findMany({
+        where: { role: "superadmin", isActive: true, isDeleted: false },
       });
-      await setAuthCookie(token);
-      return NextResponse.json({ user: { id: "superadmin", name: "المشرف العام", role: "superadmin" } });
+      for (const sa of superadmins) {
+        if (sa.password && (await bcrypt.compare(password, sa.password))) {
+          const token = await signToken({
+            id: sa.id,
+            email: sa.email,
+            name: sa.name,
+            role: "superadmin",
+            isOwner: sa.isOwner,
+          });
+          await setAuthCookie(token);
+          return NextResponse.json({ user: { id: sa.id, name: sa.name, role: "superadmin", isOwner: sa.isOwner } });
+        }
+      }
+
+      return NextResponse.json({ error: "كلمة المرور الرئيسية غير صحيحة" }, { status: 401 });
     }
 
     // ── Teacher: lookup by name, bcrypt verify ────────────────────────────────

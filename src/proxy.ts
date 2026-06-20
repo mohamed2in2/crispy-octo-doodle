@@ -67,10 +67,16 @@ async function hasValidSession(req: NextRequest) {
 export default async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  if (pathname === "/") return NextResponse.next();
+  // Forward the current path to server components (root layout reads this to
+  // decide maintenance gating — middleware runs on Edge and can't touch the DB).
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
+  const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
+
+  if (pathname === "/") return pass();
 
   // Admin panel login page — always public
-  if (isAdminLoginPage(pathname)) return NextResponse.next();
+  if (isAdminLoginPage(pathname)) return pass();
 
   const authed = await hasValidSession(req);
 
@@ -103,7 +109,7 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  return NextResponse.next();
+  return pass();
 }
 
 export const config = {

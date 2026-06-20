@@ -1,10 +1,44 @@
 import type { Metadata } from "next";
+import { cookies, headers } from "next/headers";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { AIAssistant } from "@/components/ai/AIAssistant";
+import { MaintenanceScreen } from "@/components/MaintenanceScreen";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { verifyToken } from "@/lib/auth";
+import { getMaintenanceMode, getMaintenanceMessage } from "@/lib/settings";
 import "./globals.css";
+
+/**
+ * Decide whether the public maintenance screen should replace the page.
+ * Superadmins bypass it entirely (they see the live site), and /adminpanel +
+ * /maintenance are always reachable so admins can still log in.
+ */
+async function resolveMaintenance(): Promise<{ gated: boolean; message: string }> {
+  try {
+    const on = await getMaintenanceMode();
+    if (!on) return { gated: false, message: "" };
+
+    const hdrs = await headers();
+    const pathname = hdrs.get("x-pathname") ?? "";
+    if (pathname.startsWith("/adminpanel") || pathname === "/maintenance") {
+      return { gated: false, message: "" };
+    }
+
+    // Superadmins (named or break-glass) bypass — role is in the JWT, no DB hit.
+    const token = (await cookies()).get("auth_token")?.value;
+    if (token) {
+      const payload = await verifyToken(token);
+      if (payload?.role === "superadmin") return { gated: false, message: "" };
+    }
+
+    return { gated: true, message: await getMaintenanceMessage() };
+  } catch {
+    // Fail open: never let the maintenance check take down every page.
+    return { gated: false, message: "" };
+  }
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://code-up.tech"),
@@ -55,11 +89,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { gated, message } = await resolveMaintenance();
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -73,11 +109,17 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
-          <ErrorReporter />
-          <ToastProvider>
-            {children}
-            <AIAssistant />
-          </ToastProvider>
+          {gated ? (
+            <MaintenanceScreen message={message} />
+          ) : (
+            <>
+              <ErrorReporter />
+              <ToastProvider>
+                {children}
+                <AIAssistant />
+              </ToastProvider>
+            </>
+          )}
         </ThemeProvider>
       </body>
     </html>

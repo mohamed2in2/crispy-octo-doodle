@@ -117,6 +117,18 @@ button, input, select, textarea, a {
 .text-balance { text-wrap: balance; }
 .text-pretty  { text-wrap: pretty; }
 
+/* ─── Maintenance screen shimmer ───────────────────────────────────────────── */
+@keyframes maintenance-shimmer {
+  0%   { transform: translateX(-130%); }
+  100% { transform: translateX(430%); }
+}
+.maintenance-shimmer {
+  animation: maintenance-shimmer 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .maintenance-shimmer { animation: none; }
+}
+
 /* ─── Skeleton loader ──────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }

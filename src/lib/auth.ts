@@ -4,6 +4,7 @@ import { isPhoneVerificationBypassed, verifyCode as twilioVerifyCode } from "@/l
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { normalizeEgyptPhone } from "@/lib/phone";
+import { getConfigNumberClamped } from "./config";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is not set. Please configure it in your .env file.");
@@ -18,6 +19,8 @@ export interface JWTPayload {
   email: string;
   name: string;
   role: string;
+  /** True for the owner superadmin (Ahmed) and the break-glass master login. */
+  isOwner?: boolean;
   deviceId?: string;
   iat?: number;
   exp?: number;
@@ -29,6 +32,7 @@ export interface SessionUser {
   email: string;
   name: string;
   role: string;
+  isOwner?: boolean;
   profileCompleted: boolean;
   phone?: string | null;
   parentPhone?: string | null;
@@ -47,10 +51,11 @@ type PhoneChallengePayload = {
 };
 
 export async function signToken(payload: Omit<JWTPayload, "iat" | "exp">) {
+  const days = await getConfigNumberClamped("jwt_expiry_days", 1, 365); // was 7d; never 0/NaN
   return new SignJWT(payload as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${days}d`)
     .sign(JWT_SECRET);
 }
 
@@ -65,11 +70,12 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
+  const days = await getConfigNumberClamped("jwt_expiry_days", 1, 365); // matches the JWT expiry
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * days,
     path: "/",
   });
 }
@@ -161,11 +167,30 @@ async function getJwtSession(): Promise<SessionUser | null> {
   }
 
   if (payload.role === "superadmin") {
+    // Break-glass: env master-password login carries id "superadmin", no DB row.
+    if (payload.id === "superadmin") {
+      return {
+        id: payload.id,
+        email: payload.email,
+        name: payload.name,
+        role: payload.role,
+        isOwner: true,
+        profileCompleted: true,
+        deviceId: payload.deviceId,
+      };
+    }
+    // Named DB-backed superadmin — re-validate against the row so a
+    // renamed/suspended/deleted account reflects immediately.
+    const sa = await prisma.user.findFirst({
+      where: { id: payload.id, role: "superadmin", isDeleted: false },
+    });
+    if (!sa || !sa.isActive) return null;
     return {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name,
-      role: payload.role,
+      id: sa.id,
+      email: sa.email,
+      name: sa.name,
+      role: "superadmin",
+      isOwner: sa.isOwner,
       profileCompleted: true,
       deviceId: payload.deviceId,
     };

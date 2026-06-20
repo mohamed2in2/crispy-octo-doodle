@@ -1,20 +1,34 @@
-export function ContactSection() {
+interface ContactSectionProps {
+  heading?: string;
+  subtitle?: string;
+  email?: string;
+  phone?: string;
+}
+
+export function ContactSection({
+  heading = "تواصل معنا",
+  subtitle = "نحن هنا للإجابة على أسئلتك في أي وقت",
+  email = "contact@code-up.tech",
+  phone = "01285353604",
+}: ContactSectionProps = {}) {
+  // tel: wants the international form; display keeps the local number as entered.
+  const telHref = `+2${phone.startsWith("0") ? phone.slice(1) : phone}`;
   return (
     <section className="py-20 bg-slate-50 dark:bg-[#0b0f19] border-t border-slate-200/60 dark:border-white/5" id="contact">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <div className="mb-10">
           <h2 className="text-balance text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
-            تواصل معنا
+            {heading}
           </h2>
           <p className="text-slate-500 dark:text-white/45 text-sm md:text-base">
-            نحن هنا للإجابة على أسئلتك في أي وقت
+            {subtitle}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
           <a
-            href="mailto:contact@code-up.tech"
+            href={`mailto:${email}`}
             className="group flex items-center gap-4 px-6 py-5 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-white/8 dark:bg-white/3 dark:hover:border-sky-400/30 dark:hover:bg-sky-400/5 transition-all shadow-sm dark:shadow-none"
           >
             <span className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 dark:bg-white/5 dark:border-white/8 flex items-center justify-center shrink-0 group-hover:border-indigo-300 dark:group-hover:border-sky-400/30 transition-colors">
@@ -25,13 +39,13 @@ export function ContactSection() {
             <div>
               <p className="text-xs text-slate-400 dark:text-white/35 font-medium mb-0.5">البريد الإلكتروني</p>
               <p className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 dark:text-white/70 dark:group-hover:text-white transition-colors break-all" dir="ltr">
-                contact@code-up.tech
+                {email}
               </p>
             </div>
           </a>
 
           <a
-            href="tel:+201285353604"
+            href={`tel:${telHref}`}
             className="group flex items-center gap-4 px-6 py-5 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-white/8 dark:bg-white/3 dark:hover:border-sky-400/30 dark:hover:bg-sky-400/5 transition-all shadow-sm dark:shadow-none"
             dir="rtl"
           >
@@ -43,7 +57,7 @@ export function ContactSection() {
             <div>
               <p className="text-xs text-slate-400 dark:text-white/35 font-medium mb-0.5">الهاتف</p>
               <p className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 dark:text-white/70 dark:group-hover:text-white transition-colors" dir="ltr">
-                01285353604
+                {phone}
               </p>
             </div>
           </a>
