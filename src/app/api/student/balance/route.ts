@@ -20,7 +20,7 @@ export async function GET() {
 
   return NextResponse.json(
     { balance: user?.balance ?? 0, transactions },
-    { headers: { "Cache-Control": "private, max-age=30" } }
+    { headers: { "Cache-Control": "no-store" } }
   );
 }
 
@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Mark used + credit balance in a transaction
+  // NULL-safe balance fetch before transaction
+  const userRow = await prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } });
+  const newBalance = +((userRow?.balance ?? 0) + moneyCode.amount).toFixed(2);
+
   await prisma.$transaction([
     prisma.moneyCode.update({
       where: { id: moneyCode.id },
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
     }),
     prisma.user.update({
       where: { id: session.id },
-      data: { balance: { increment: moneyCode.amount } },
+      data: { balance: newBalance },
     }),
     prisma.balanceTransaction.create({
       data: {

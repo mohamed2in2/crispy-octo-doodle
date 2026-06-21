@@ -44,22 +44,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   });
   if (existing) return NextResponse.json({ error: "أنت مسجّل بالفعل في هذا الكورس" }, { status: 400 });
 
-  // Check balance
-  const user = await prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } });
-  if (!user) return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
-  if (user.balance < effectivePrice) {
+  // Check balance — treat NULL as 0 (new column on existing rows may be NULL in SQLite)
+  const userRow = await prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } });
+  if (!userRow) return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
+
+  const currentBalance = userRow.balance ?? 0;  // NULL-safe
+  if (currentBalance < effectivePrice) {
     return NextResponse.json({
-      error: `رصيدك غير كافٍ (${user.balance} جنيه). تحتاج ${effectivePrice} جنيه. أضف رصيداً باستخدام كود الشحن.`,
+      error: `رصيدك غير كافٍ (${currentBalance} جنيه). تحتاج ${effectivePrice} جنيه. أضف رصيداً باستخدام كود الشحن.`,
     }, { status: 400 });
   }
 
-  // Atomic: deduct balance + create enrollment + log transaction
+  const newBalance = +(currentBalance - effectivePrice).toFixed(2);
   const code = `PAY-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
 
+  // Atomic: set explicit new balance (not decrement — avoids NULL arithmetic in SQLite)
   await prisma.$transaction([
     prisma.user.update({
       where: { id: session.id },
-      data: { balance: { decrement: effectivePrice } },
+      data: { balance: newBalance },
     }),
     prisma.accessCode.create({
       data: { code, courseId, studentId: session.id, isActive: true, usedAt: now },
@@ -79,6 +82,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     courseId,
     courseTitle: course.title,
     charged: effectivePrice,
-    message: `تم شراء «${course.title}» بنجاح! خُصم ${effectivePrice} جنيه من رصيدك.`,
+    newBalance,
+    message: `تم شراء «${course.title}» بنجاح! خُصم ${effectivePrice} جنيه — رصيدك الآن ${newBalance} جنيه.`,
   });
 }

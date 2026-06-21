@@ -20,14 +20,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!student) return NextResponse.json({ error: "الطالب غير موجود" }, { status: 404 });
 
-  if (amount < 0 && student.balance + amount < 0) {
+  const currentBalance = student.balance ?? 0;
+  if (amount < 0 && currentBalance + amount < 0) {
     return NextResponse.json({ error: "الرصيد غير كافٍ للخصم" }, { status: 400 });
   }
+
+  const newBalance = +(currentBalance + amount).toFixed(2);
 
   await prisma.$transaction([
     prisma.user.update({
       where: { id: studentId },
-      data: { balance: { increment: amount } },
+      data: { balance: newBalance },
     }),
     prisma.balanceTransaction.create({
       data: {
@@ -45,6 +48,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({
     success: true,
     newBalance: updated?.balance ?? 0,
-    message: `${amount > 0 ? "تم إضافة" : "تم خصم"} ${Math.abs(amount)} جنيه ${amount > 0 ? "إلى" : "من"} رصيد ${student.name}`,
+    message: `${amount > 0 ? "تم إضافة" : "تم خصم"} ${Math.abs(amount)} جنيه ${amount > 0 ? "إلى" : "من"} رصيد ${student.name} — الرصيد الآن ${newBalance} جنيه`,
   });
 }
