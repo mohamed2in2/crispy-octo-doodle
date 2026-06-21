@@ -12,36 +12,406 @@ import {
   levelToDifficulty, difficultyToStartLevel, levelToTimer,
   type Difficulty, type IQData, type GameResult,
 } from "@/lib/iq-system";
+import { GameFeedback } from "@/components/ai/GameFeedback";
 
-/* ─── DNA Match Data ─────────────────────────────────────────────────────── */
-const PAIRS: Record<string, string> = { A: "T", T: "A", G: "C", C: "G" };
-const BASES = ["A", "T", "G", "C"] as const;
-const BASE_COLORS: Record<string, string> = { A: "#1D9E75", T: "#D4537E", G: "#534AB7", C: "#EF9F27" };
+/* ─── Genetics Game Data & Generator ───────────────────────────────────── */
+const GENETICS_TRAITS = [
+  { name: "الطول في نبات البازلاء", dominant: "طويل", recessive: "قصير", domAllele: "T", recAllele: "t" },
+  { name: "لون الأزهار في البازلاء", dominant: "أرجواني", recessive: "أبيض", domAllele: "P", recAllele: "p" },
+  { name: "شكل البذور في البازلاء", dominant: "أملس", recessive: "مجعد", domAllele: "S", recAllele: "s" },
+  { name: "لون البذور في البازلاء", dominant: "أصفر", recessive: "أخضر", domAllele: "Y", recAllele: "y" },
+  { name: "لون العيون عند الإنسان", dominant: "بني", recessive: "أزرق", domAllele: "B", recAllele: "b" },
+  { name: "شكل الشعر عند الإنسان", dominant: "مجعد", recessive: "مستقيم", domAllele: "C", recAllele: "c" }
+];
 
-// DNA generator based on level (1-10) with duplicate prevention
-function genDNAQ(level: number, usedStrands: Set<string>) {
-  const len = level <= 3 ? 5 : level <= 6 ? 7 : level <= 9 ? 9 : 11;
-  let strand1: string[] = [];
-  let key = "";
-  
-  // Keep generating until unique
-  let attempts = 0;
-  do {
-    strand1 = Array.from({ length: len }, () => BASES[Math.floor(Math.random() * 4)]);
-    key = strand1.join("");
-    attempts++;
-  } while (usedStrands.has(key) && attempts < 100);
-  
-  usedStrands.add(key);
-
-  const strand2 = strand1.map(b => PAIRS[b]);
-  const blankPos = Math.floor(Math.random() * len);
-  const answer = strand2[blankPos];
-  
-  return { strand1, strand2, blankPos, answer };
+interface GeneticsQuestion {
+  type: "fill_blank" | "ratio" | "blood_blank" | "blood_ratio" | "sex_linked" | "dihybrid";
+  question: string;
+  hint: string;
+  p1Alleles: string[];
+  p2Alleles: string[];
+  grid: string[][];
+  blankPos?: { r: number; c: number };
+  choices: string[];
+  answer: string;
+  explanation: string;
+  crossText: string;
 }
 
-type DNAQuestion = ReturnType<typeof genDNAQ>;
+function genGeneticsQ(level: number, usedQuestions: Set<string>): GeneticsQuestion {
+  const isEasy = level <= 3;
+  const isMedium = level > 3 && level <= 7;
+  
+  let attempts = 0;
+  while (attempts < 100) {
+    attempts++;
+    
+    if (isEasy) {
+      const trait = GENETICS_TRAITS[Math.floor(Math.random() * GENETICS_TRAITS.length)];
+      const gens = [trait.domAllele + trait.domAllele, trait.domAllele + trait.recAllele, trait.recAllele + trait.recAllele];
+      const p1 = gens[Math.floor(Math.random() * 3)];
+      const p2 = gens[Math.floor(Math.random() * 3)];
+      
+      const p1Alleles = [p1[0], p1[1]];
+      const p2Alleles = [p2[0], p2[1]];
+      
+      const grid = [
+        [p2Alleles[0] + p1Alleles[0], p2Alleles[1] + p1Alleles[0]],
+        [p2Alleles[0] + p1Alleles[1], p2Alleles[1] + p1Alleles[1]]
+      ].map(row => row.map(allele => {
+        if (allele === trait.recAllele + trait.domAllele) return trait.domAllele + trait.recAllele;
+        return allele;
+      }));
+      
+      const crossText = `${p1} × ${p2}`;
+      const qType = Math.random() < 0.5 ? "fill_blank" : "ratio";
+      const key = `monohybrid-${qType}-${crossText}-${trait.domAllele}`;
+      if (usedQuestions.has(key)) continue;
+      usedQuestions.add(key);
+      
+      if (qType === "fill_blank") {
+        const r = Math.floor(Math.random() * 2);
+        const c = Math.floor(Math.random() * 2);
+        const answer = grid[r][c];
+        
+        const choices = Array.from(new Set([
+          trait.domAllele + trait.domAllele,
+          trait.domAllele + trait.recAllele,
+          trait.recAllele + trait.recAllele,
+          trait.domAllele + "X"
+        ])).slice(0, 4);
+        while (choices.length < 4) choices.push(trait.recAllele + "Y");
+        
+        return {
+          type: "fill_blank",
+          question: `أكمل مربع بانيت التالي لتهجين (${crossText}): ما هو الطراز الجيني المناسب للمربع الفارغ (؟)؟`,
+          hint: `الأليل السائد هو ${trait.domAllele} (${trait.dominant}) والأليل المتنحي هو ${trait.recAllele} (${trait.recessive}). ادمج أليل الصف من اليسار مع أليل العمود من الأعلى.`,
+          p1Alleles,
+          p2Alleles,
+          grid,
+          blankPos: { r, c },
+          choices: choices.sort(() => Math.random() - 0.5),
+          answer,
+          explanation: `خلال التهجين، يرث الأبناء أليلاً واحداً من كل أب، مما ينتج الطراز ${answer} في هذا المربع.`,
+          crossText
+        };
+      } else {
+        const ratioType = Math.random() < 0.5 ? "pheno" : "geno";
+        let targetLabel = "";
+        let count = 0;
+        let explanation = "";
+        
+        if (ratioType === "pheno") {
+          const showDominant = Math.random() < 0.5;
+          targetLabel = showDominant ? trait.dominant : trait.recessive;
+          
+          grid.forEach(row => row.forEach(cell => {
+            const hasDom = cell.includes(trait.domAllele);
+            if (showDominant && hasDom) count++;
+            if (!showDominant && !hasDom) count++;
+          }));
+          explanation = showDominant 
+            ? `الصفة السائدة (${trait.dominant}) تظهر إذا كان الطراز يحتوي على أليل سائد واحد على الأقل (${trait.domAllele}).`
+            : `الصفة المتنحية (${trait.recessive}) لا تظهر إلا إذا كان الطراز نقياً متنحياً (${trait.recAllele}${trait.recAllele}).`;
+        } else {
+          const targetGeno = gens[Math.floor(Math.random() * 3)];
+          const labels: Record<string, string> = {
+            [trait.domAllele + trait.domAllele]: `نقي سائد (${trait.domAllele}${trait.domAllele})`,
+            [trait.domAllele + trait.recAllele]: `هجين (${trait.domAllele}${trait.recAllele})`,
+            [trait.recAllele + trait.recAllele]: `نقي متنحي (${trait.recAllele}${trait.recAllele})`
+          };
+          targetLabel = labels[targetGeno];
+          grid.forEach(row => row.forEach(cell => {
+            if (cell === targetGeno) count++;
+          }));
+          explanation = `عدّ المربعات في جدول بانيت التي تحتوي على التركيب ${targetGeno}.`;
+        }
+        
+        const pct = (count / 4) * 100;
+        const answer = `${pct}%`;
+        const choices = ["0%", "25%", "50%", "75%", "100%"];
+        
+        return {
+          type: "ratio",
+          question: `في تهجين (${crossText}) لصفة (${trait.name})، ما هي النسبة المئوية المتوقعة للأبناء ذوي المظهر/التركيب: ${targetLabel}؟`,
+          hint: `احسب عدد المربعات التي تمثل هذه الصفة في مربع بانيت وقسمها على 4 لتعرف النسبة المئوية.`,
+          p1Alleles,
+          p2Alleles,
+          grid,
+          choices,
+          answer,
+          explanation: `${explanation} النسبة هي ${count} من أصل 4، أي ${answer}.`,
+          crossText
+        };
+      }
+    } else if (isMedium) {
+      const isBlood = Math.random() < 0.5;
+      
+      if (isBlood) {
+        const parentPool = ["IA_IA", "IA_IO", "IB_IB", "IB_IO", "IA_IB", "IO_IO"];
+        const p1 = parentPool[Math.floor(Math.random() * parentPool.length)];
+        const p2 = parentPool[Math.floor(Math.random() * parentPool.length)];
+        
+        const mapAlleles = (p: string) => p.split("_");
+        const a1 = mapAlleles(p1);
+        const a2 = mapAlleles(p2);
+        
+        const formatBloodGeno = (g1: string, g2: string) => {
+          if (g1 === "IO" && g2 !== "IO") return g2 + g1;
+          if (g2 === "IA" && g1 === "IB") return g2 + g1;
+          return g1 + g2;
+        };
+        
+        const grid = [
+          [formatBloodGeno(a2[0], a1[0]), formatBloodGeno(a2[1], a1[0])],
+          [formatBloodGeno(a2[0], a1[1]), formatBloodGeno(a2[1], a1[1])]
+        ];
+        
+        const getPheno = (geno: string) => {
+          if (geno.includes("IA") && geno.includes("IB")) return "AB";
+          if (geno.includes("IA")) return "A";
+          if (geno.includes("IB")) return "B";
+          return "O";
+        };
+        
+        const parseDisplay = (s: string) => s.replace("IA", "Iᴬ").replace("IB", "Iᴮ").replace("IO", "i");
+        const crossText = `${parseDisplay(a1[0])}${parseDisplay(a1[1])} × ${parseDisplay(a2[0])}${parseDisplay(a2[1])}`;
+        const key = `blood-${crossText}`;
+        if (usedQuestions.has(key)) continue;
+        usedQuestions.add(key);
+        
+        const qType = Math.random() < 0.5 ? "blood_blank" : "blood_ratio";
+        const gridDisplay = grid.map(r => r.map(parseDisplay));
+        
+        if (qType === "blood_blank") {
+          const r = Math.floor(Math.random() * 2);
+          const c = Math.floor(Math.random() * 2);
+          const answer = gridDisplay[r][c];
+          
+          const choices = Array.from(new Set([
+            answer,
+            parseDisplay("IAIA"),
+            parseDisplay("IAIB"),
+            parseDisplay("IBIO"),
+            parseDisplay("IOIO")
+          ])).slice(0, 4);
+          while (choices.length < 4) choices.push(parseDisplay("IAIO"));
+          
+          return {
+            type: "blood_blank",
+            question: `أكمل مربع بانيت التالي لفصائل الدم للمزاوجة (${crossText}): ما هو الطراز الجيني للمربع الفارغ (؟)؟`,
+            hint: `الأليلات Iᴬ و Iᴮ سائدة سيادة مشتركة، بينما i متحي. ادمج الأليل من اليسار مع الأعلى.`,
+            p1Alleles: a1.map(parseDisplay),
+            p2Alleles: a2.map(parseDisplay),
+            grid: gridDisplay,
+            blankPos: { r, c },
+            choices: choices.sort(() => Math.random() - 0.5),
+            answer,
+            explanation: `دمج الأليلات ينتج الطراز الجيني ${answer}.`,
+            crossText
+          };
+        } else {
+          const targetPheno = ["A", "B", "AB", "O"][Math.floor(Math.random() * 4)];
+          let count = 0;
+          grid.forEach(row => row.forEach(cell => {
+            if (getPheno(cell) === targetPheno) count++;
+          }));
+          
+          const pct = (count / 4) * 100;
+          const answer = `${pct}%`;
+          const choices = ["0%", "25%", "50%", "75%", "100%"];
+          
+          return {
+            type: "blood_ratio",
+            question: `عند تزاوج أبوين بطراز (${crossText})، ما هو احتمال (بالنسبة المئوية) ولادة طفل بفصيلة دم (${targetPheno})؟`,
+            hint: `ابحث عن الطرز الجينية التي تعطي فصيلة الدم ${targetPheno}: IᴬIᴬ أو Iᴬi يعطي A، و IᴮIᴮ أو Iᴮi يعطي B، و IᴬIᴮ يعطي AB، و ii يعطي O.`,
+            p1Alleles: a1.map(parseDisplay),
+            p2Alleles: a2.map(parseDisplay),
+            grid: gridDisplay,
+            choices,
+            answer,
+            explanation: `الفصيلة ${targetPheno} تظهر في ${count} مربعات من أصل 4، والنسبة هي ${answer}.`,
+            crossText
+          };
+        }
+      } else {
+        const gens = ["RR", "RW", "WW"];
+        const p1 = gens[Math.floor(Math.random() * gens.length)];
+        const p2 = gens[Math.floor(Math.random() * gens.length)];
+        
+        const a1 = p1.split("");
+        const a2 = p2.split("");
+        
+        const grid = [
+          [a2[0] + a1[0], a2[1] + a1[0]],
+          [a2[0] + a1[1], a2[1] + a1[1]]
+        ].map(row => row.map(cell => cell === "WR" ? "RW" : cell));
+        
+        const crossText = `${p1} × ${p2}`;
+        const key = `snapdragon-${crossText}`;
+        if (usedQuestions.has(key)) continue;
+        usedQuestions.add(key);
+        
+        const targetColor = ["الأحمر (RR)", "الوردي (RW)", "الأبيض (WW)"][Math.floor(Math.random() * 3)];
+        const targetGeno = targetColor.includes("RR") ? "RR" : targetColor.includes("RW") ? "RW" : "WW";
+        
+        let count = 0;
+        grid.forEach(row => row.forEach(cell => {
+          if (cell === targetGeno) count++;
+        }));
+        
+        const pct = (count / 4) * 100;
+        const answer = `${pct}%`;
+        const choices = ["0%", "25%", "50%", "75%", "100%"];
+        
+        return {
+          type: "ratio",
+          question: `في نبات حنك السبع (سيادة غير تامة)، عند تزاوج نباتين (${crossText})، ما هي نسبة الأزهار ذات اللون ${targetColor}؟`,
+          hint: `اللون الوردي هو صفة وسطية ناتجة عن الطراز الهجين RW. الأحمر هو RR والأبيض هو WW.`,
+          p1Alleles: a1,
+          p2Alleles: a2,
+          grid,
+          choices,
+          answer,
+          explanation: `الطراز ${targetGeno} يمثل اللون ${targetColor} ويظهر بنسبة ${count}/4 وهي ${answer}.`,
+          crossText
+        };
+      }
+    } else {
+      const isSexLinked = Math.random() < 0.5;
+      
+      if (isSexLinked) {
+        const mothers = ["XCXC", "XCXc", "XcXc"];
+        const fathers = ["XCY", "XcY"];
+        
+        const p1 = mothers[Math.floor(Math.random() * 3)];
+        const p2 = fathers[Math.floor(Math.random() * 2)];
+        
+        const a1 = p1.match(/X./g) || ["XC", "XC"];
+        const a2 = [p2.substring(0, 2), p2.substring(2)];
+        
+        const grid = [
+          [a2[0] + a1[0], a2[1] + a1[0]],
+          [a2[0] + a1[1], a2[1] + a1[1]]
+        ].map(row => row.map(cell => {
+          let alleles = cell.match(/X.|Y/g) || [];
+          alleles.sort((x, y) => {
+            if (x === "Y") return 1;
+            if (y === "Y") return -1;
+            return x < y ? 1 : -1;
+          });
+          return alleles.join("");
+        }));
+        
+        const parseHtml = (s: string) => s.replace(/XC/g, "Xᴮ").replace(/Xc/g, "Xᵇ");
+        
+        const crossText = `${parseHtml(p1)} × ${parseHtml(p2)}`;
+        const key = `sexlinked-${crossText}`;
+        if (usedQuestions.has(key)) continue;
+        usedQuestions.add(key);
+        
+        const qChoices = [
+          { q: "ما هي نسبة الذكور المصابين بعمى الألوان من بين كل الأبناء؟", f: (g: string[][]) => {
+              let hit = 0;
+              g.flat().forEach(cell => { if (cell.endsWith("Y") && cell.includes("Xc")) hit++; });
+              return (hit / 4) * 100;
+            }, expl: "الذكور المصابون هم الذين لديهم التركيب XᶜY."
+          },
+          { q: "ما هي نسبة الإناث الحاملات للمرض (ناقلات غير مصابات) من بين كل الأبناء؟", f: (g: string[][]) => {
+              let hit = 0;
+              g.flat().forEach(cell => { if (!cell.includes("Y") && cell.includes("XC") && cell.includes("Xc")) hit++; });
+              return (hit / 4) * 100;
+            }, expl: "الإناث الحاملات للمرض لديهن أليل سليم وأليل مصاب XᴮXᵇ."
+          },
+          { q: "ما نسبة الأبناء السليمين تماماً (ذكور وإناث غير حاملين للمرض)؟", f: (g: string[][]) => {
+              let hit = 0;
+              g.flat().forEach(cell => {
+                if (cell === "XCXCY" || cell === "XCXC" || cell === "XCY") hit++;
+              });
+              return (hit / 4) * 100;
+            }, expl: "السليمون تماماً هم الذكور XᴮY والإناث النقية XᴮXᴮ."
+          }
+        ];
+        
+        const chosenQ = qChoices[Math.floor(Math.random() * qChoices.length)];
+        const pct = chosenQ.f(grid);
+        const answer = `${pct}%`;
+        const choices = ["0%", "25%", "50%", "75%", "100%"];
+        
+        return {
+          type: "sex_linked",
+          question: `في وراثة مرض عمى الألوان (مرتبط بالجنس)، عند زواج أب وأم بطراز (${crossText})، ${chosenQ.q}`,
+          hint: `الكروموسوم Y لا يحمل جينات عمى الألوان. الذكور يرثون X من الأم و Y من الأب. الإناث يرثن X من كلا الأبوين.`,
+          p1Alleles: a1.map(parseHtml),
+          p2Alleles: a2.map(parseHtml),
+          grid: grid.map(r => r.map(parseHtml)),
+          choices,
+          answer,
+          explanation: `${chosenQ.expl} النسبة هي ${answer}.`,
+          crossText
+        };
+      } else {
+        const crosses = [
+          {
+            p1: "RrYy", p2: "rryy",
+            grid: [
+              ["RrYy", "Rryy", "rrYy", "rryy"]
+            ],
+            text: "RrYy × rryy (تهجين تجريبي)",
+            questions: [
+              { q: "ما احتمال الحصول على طراز جيني RrYy؟", a: "1/4", expl: "التهجين ينتج 4 طرز بنسب متساوية 1:1:1:1." },
+              { q: "ما احتمال الحصول على طراز مظهري متنحي للصفتين (rryy)؟", a: "1/4", expl: "ربع الأبناء يكون طرازهم rryy." }
+            ]
+          },
+          {
+            p1: "RrYy", p2: "RrYy",
+            grid: [],
+            text: "RrYy × RrYy (تهجين ثنائي خليط)",
+            questions: [
+              { q: "ما احتمال الحصول على بذور مجعدة خضراء (rryy)؟", a: "1/16", expl: "نسبة المتنحي النقي للصفتين في التهجين الثنائي هي 1/16." },
+              { q: "ما نسبة الطراز المظهري السائد للصفتين معاً؟", a: "9/16", expl: "الصفات السائدة للصفتين تظهر بنسبة 9/16." },
+              { q: "ما نسبة الطراز المظهري السائد لصفة واحدة فقط؟", a: "3/16", expl: "تظهر الصفة السائدة الأولى مع المتنحية الثانية بنسبة 3/16." }
+            ]
+          }
+        ];
+        
+        const chosenCross = crosses[Math.floor(Math.random() * crosses.length)];
+        const chosenQ = chosenCross.questions[Math.floor(Math.random() * chosenCross.questions.length)];
+        
+        const crossText = chosenCross.text;
+        const key = `dihybrid-${crossText}-${chosenQ.q}`;
+        if (usedQuestions.has(key)) continue;
+        usedQuestions.add(key);
+        
+        return {
+          type: "dihybrid",
+          question: `في تهجين صفتين معاً (شكل ولون البذور RrYy)، عند تزاوج نباتين (${crossText})، ${chosenQ.q}`,
+          hint: `تذكر التوزيع الحر للجينات. نسبة التهجين الثنائي لخليطين RrYy x RrYy هي 9:3:3:1.`,
+          p1Alleles: ["RY", "Ry", "rY", "ry"],
+          p2Alleles: chosenCross.p1 === chosenCross.p2 ? ["RY", "Ry", "rY", "ry"] : ["ry"],
+          grid: [],
+          choices: ["1/16", "3/16", "9/16", "1/4", "1/2"].sort(() => Math.random() - 0.5).slice(0, 4).concat(chosenQ.a).filter((v, i, a) => a.indexOf(v) === i).slice(0, 4),
+          answer: chosenQ.a,
+          explanation: chosenQ.expl,
+          crossText
+        };
+      }
+    }
+  }
+  
+  return {
+    type: "ratio",
+    question: "عند تهجين Tt x Tt، ما نسبة ظهور النباتات القصير (tt)؟",
+    hint: "قصر الساق صفة متنحية.",
+    p1Alleles: ["T", "t"],
+    p2Alleles: ["T", "t"],
+    grid: [["TT", "Tt"], ["Tt", "tt"]],
+    choices: ["0%", "25%", "50%", "75%", "100%"],
+    answer: "25%",
+    explanation: "tt يمثل 1 من 4 مربعات، أي 25%.",
+    crossText: "Tt × Tt"
+  };
+}
 
 /* ─── Cell Tap Data & Templating ────────────────────────────────────────── */
 interface CellFact {
@@ -130,18 +500,19 @@ function LevelBadge({ level, anim }: { level: number; anim: boolean }) {
 }
 
 /* ─── DNA Match Game ────────────────────────────────────────────────────── */
-function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdaptive: boolean }) {
+function PunnettSquareGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdaptive: boolean }) {
   const [diff, setDiff] = useState<Difficulty>(() => getRecommendedDifficulty("biology"));
   const startLevel = difficultyToStartLevel(diff);
   const [level, setLevel] = useState(startLevel);
   const [levelAnim, setLevelAnim] = useState(false);
   const [state, setState] = useState<"idle" | "playing" | "result">("idle");
   
-  const usedStrandsRef = useRef<Set<string>>(new Set());
-  const [q, setQ] = useState<DNAQuestion | null>(null);
+  const usedQuestionsRef = useRef<Set<string>>(new Set());
+  const [q, setQ] = useState<GeneticsQuestion | null>(null);
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [correct, setCorrect] = useState(0);
+  const [showHint, setShowHint] = useState(false);
   const [timerPct, setTimerPct] = useState(100);
   const [result, setResult] = useState<{ correct: number; sessionScore: number; newIQ: number } | null>(null);
   
@@ -183,8 +554,9 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
     levelsRef.current.push(cur);
     const secs = levelToTimer(cur, BASE_TIMERS);
     
-    setQ(genDNAQ(cur, usedStrandsRef.current));
+    setQ(genGeneticsQ(cur, usedQuestionsRef.current));
     setSelected(null);
+    setShowHint(false);
     setQIdx(idx);
     setTimerPct(100);
     
@@ -195,7 +567,6 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
       if (elapsed >= secs * 1000) {
         clearInterval(timerRef.current!);
         vibrate("wrong");
-        // Slow down or fail -> decrease level
         levelRef.current = Math.max(1, levelRef.current - 1);
         setLevel(levelRef.current);
         setSelected("__timeout__");
@@ -203,7 +574,7 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
         totalMsRef.current += now - tStartRef.current;
         tStartRef.current = now;
         streakRef.current = 0;
-        advRef.current = setTimeout(() => nextQ(idx + 1), 900);
+        advRef.current = setTimeout(() => nextQ(idx + 1), 1500);
       }
     }, 100);
     tStartRef.current = Date.now();
@@ -212,7 +583,7 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
 
   const start = () => {
     clear();
-    usedStrandsRef.current.clear();
+    usedQuestionsRef.current.clear();
     correctRef.current = 0;
     streakRef.current = 0;
     maxStreakRef.current = 0;
@@ -248,7 +619,6 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
     maxStreakRef.current = Math.max(maxStreakRef.current, newStr);
     vibrate(ok ? (newStr >= 3 ? "streak" : "correct") : "wrong");
 
-    // Adjust levels dynamically
     const prevLvl = levelRef.current;
     if (ok && timeUsedPct < 0.45 && levelRef.current < 10) {
       levelRef.current = Math.min(10, levelRef.current + 1);
@@ -263,7 +633,7 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
       setLevel(levelRef.current);
     }
     
-    advRef.current = setTimeout(() => nextQ(qIdx + 1), 900);
+    advRef.current = setTimeout(() => nextQ(qIdx + 1), 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, q, qIdx, nextQ]);
 
@@ -272,13 +642,14 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
   if (state === "idle") return (
     <div className="rounded-[20px] p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
       <div style={{ fontSize: 48, marginBottom: 8 }}>🧬</div>
-      <p className="text-sm mb-2" style={{ color: "var(--ink)" }}>أكمل تسلسل DNA بالضغط على القاعدة الصحيحة</p>
-      <p className="text-xs mb-4" style={{ color: "var(--ink-3)" }}>A↔T و G↔C · المستوى يزيد مع السرعة والدقة ⚡</p>
+      <h3 className="text-xl font-black mb-2" style={{ color: "var(--ink)" }}>تحدي علم الوراثة (مربع بانيت)</h3>
+      <p className="text-sm mb-2" style={{ color: "var(--ink)" }}>قم بحل المزاوجات الجينية وحساب الاحتمالات لمربع بانيت</p>
+      <p className="text-xs mb-4" style={{ color: "var(--ink-3)" }}>مستويات متنوعة (سيادة تامة، سيادة مشتركة، فصائل دم، صفات مرتبطة بالجنس) ⚡</p>
       
       {!isAdaptive && (
         <div className="flex gap-2 justify-center mb-6">
           {(["easy", "medium", "hard"] as Difficulty[]).map(d => (
-            <button key={d} onClick={() => setDiff(d)} className="px-4 py-2 rounded-xl text-sm font-black"
+            <button key={d} onClick={() => setDiff(d)} className="px-4 py-2 rounded-xl text-sm font-black transition-all"
               style={{ background: diff === d ? DIFF_COLOR[d] : "var(--surface-2)", color: diff === d ? "#fff" : "var(--ink-3)", border: `2px solid ${diff === d ? DIFF_COLOR[d] : "var(--border)"}` }}>
               {DIFF_LABEL[d]}
             </button>
@@ -291,7 +662,7 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
         </p>
       )}
       
-      <button onClick={start} className="w-full py-4 rounded-2xl font-black text-lg text-white" style={{ background: "linear-gradient(135deg,#1D9E75,#7F77DD)" }}>ابدأ</button>
+      <button onClick={start} className="w-full py-4 rounded-2xl font-black text-lg text-white" style={{ background: "linear-gradient(135deg,#1D9E75,#7F77DD)" }}>ابدأ اللعب</button>
     </div>
   );
 
@@ -305,12 +676,42 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
         <div className="text-3xl font-black" style={{ color: "var(--brand)" }}>{result.sessionScore.toLocaleString("ar-EG")}</div>
         <div className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>IQ الكلي: <strong>{result.newIQ}</strong></div>
       </div>
-      <div className="flex gap-3">
+      <GameFeedback
+        subject="biology"
+        correctAnswers={result.correct}
+        totalQuestions={TOTAL_Q}
+        totalTimeMs={totalMsRef.current}
+        maxLevel={levelsRef.current.length > 0 ? Math.max(...levelsRef.current) : 1}
+        maxStreak={maxStreakRef.current}
+        difficulty={levelToDifficulty(levelRef.current)}
+        autoLoad
+      />
+      <div className="flex gap-3 mt-3">
         <button onClick={start} className="flex-1 py-3 rounded-xl font-black text-white" style={{ background: "linear-gradient(135deg,#1D9E75,#7F77DD)" }}>مرة أخرى</button>
         <Link href="/environments" className="flex-1 py-3 rounded-xl font-black text-center" style={{ background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)" }}>البيئات</Link>
       </div>
     </div>
   );
+
+  const renderGridCell = (r: number, c: number) => {
+    if (!q) return null;
+    const cellVal = q.grid[r][c];
+    const isBlank = q.blankPos && q.blankPos.r === r && q.blankPos.c === c;
+    
+    if (isBlank) {
+      return (
+        <div className="flex items-center justify-center font-black text-base bg-amber-50 dark:bg-amber-950/20 text-amber-600 border-2 border-dashed border-amber-300 rounded-lg p-2 min-h-[44px]">
+          {selected && selected !== "__timeout__" ? selected : "؟"}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center justify-center font-black text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg p-2 min-h-[44px]">
+        {cellVal}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -320,53 +721,79 @@ function DNAMatchGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
       <div className="flex justify-between items-center mb-3">
         <LevelBadge level={level} anim={levelAnim} />
         <span className="text-xs font-bold" style={{ color: "var(--ink-3)" }}>{qIdx + 1}/{TOTAL_Q}</span>
-        <span className="text-xs font-bold" style={{ color: "#D4537E" }}>🔥 {streakRef.current}</span>
+        <span className="text-xs font-bold" style={{ color: "#1D9E75" }}>✅ {correct}</span>
       </div>
 
       {q && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <p className="text-xs font-bold mb-3 text-center" style={{ color: "var(--ink-3)" }}>الشريط الأول (المعطى):</p>
-          <div className="flex justify-center gap-1.5 mb-3 flex-wrap">
-            {q.strand1.map((b, i) => (
-              <div key={i} className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm text-white"
-                style={{ background: BASE_COLORS[b] }}>{b}</div>
-            ))}
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-bold text-indigo-500">🧬 علم الوراثة</span>
+            <button onClick={() => setShowHint(!showHint)} className="px-2 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg text-[10px] font-bold">
+              💡 مساعدة
+            </button>
           </div>
-          <p className="text-xs font-bold mb-3 text-center" style={{ color: "var(--ink-3)" }}>الشريط المتمم — أكمل القاعدة المفقودة:</p>
-          <div className="flex justify-center gap-1.5 flex-wrap">
-            {q.strand2.map((b, i) => (
-              i === q.blankPos ? (
-                <div key={i} className="w-9 h-9 rounded-lg border-2 border-dashed flex items-center justify-center font-black text-sm"
-                  style={{
-                    borderColor: selected ? BASE_COLORS[selected] || "var(--border)" : "var(--border)",
-                    background: selected ? (selected === q.answer ? "#1D9E7522" : "#D4537E22") : "var(--surface-2)",
-                    color: selected ? BASE_COLORS[selected] || "var(--ink-3)" : "var(--ink-3)"
-                  }}>
-                  {selected && selected !== "__timeout__" ? selected : "؟"}
+          
+          <p className="text-sm font-bold leading-relaxed mb-4 text-center" style={{ color: "var(--ink)" }}>{q.question}</p>
+          
+          {showHint && (
+            <p className="text-xs p-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 mb-4 leading-relaxed">💡 {q.hint}</p>
+          )}
+
+          {q.grid && q.grid.length > 0 ? (
+            <div className="flex flex-col items-center my-4">
+              <div className="grid grid-cols-3 gap-1.5 w-full max-w-[240px] text-center font-mono" dir="ltr">
+                <div className="flex items-center justify-center font-bold text-[10px] bg-slate-100 dark:bg-slate-800 rounded-lg p-2 text-slate-400">
+                  ♂ \ ♀
                 </div>
-              ) : (
-                <div key={i} className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm text-white"
-                  style={{ background: BASE_COLORS[b], opacity: 0.7 }}>{b}</div>
-              )
-            ))}
-          </div>
+                <div className="flex items-center justify-center font-black text-sm text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg p-2 border border-indigo-200">
+                  {q.p1Alleles[0]}
+                </div>
+                <div className="flex items-center justify-center font-black text-sm text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg p-2 border border-indigo-200">
+                  {q.p1Alleles[1]}
+                </div>
+
+                <div className="flex items-center justify-center font-black text-sm text-pink-500 bg-pink-50 dark:bg-pink-950/30 rounded-lg p-2 border border-pink-200">
+                  {q.p2Alleles[0]}
+                </div>
+                {renderGridCell(0, 0)}
+                {renderGridCell(0, 1)}
+
+                <div className="flex items-center justify-center font-black text-sm text-pink-500 bg-pink-50 dark:bg-pink-950/30 rounded-lg p-2 border border-pink-200">
+                  {q.p2Alleles[1]}
+                </div>
+                {renderGridCell(1, 0)}
+                {renderGridCell(1, 1)}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl my-4 border border-dashed border-slate-200">
+              <span className="text-sm font-black text-indigo-600">{q.crossText}</span>
+            </div>
+          )}
+
+          {selected && q.explanation && (
+            <div className="text-xs mt-3 p-3 rounded-xl bg-green-50 text-green-700 border border-green-100 leading-relaxed">
+              <strong>التفسير العلمي:</strong> {q.explanation}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 4 colored base buttons */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {BASES.map(base => {
-          const isSel = selected === base, isAns = selected !== null && base === q?.answer, isWrong = isSel && base !== q?.answer;
+        {q?.choices.map(ch => {
+          const isSel = selected === ch;
+          const isAns = selected !== null && ch === q.answer;
+          const isWrong = isSel && ch !== q.answer;
           return (
-            <button key={base} onClick={() => answer(base)} disabled={!!selected}
-              className="py-5 rounded-2xl text-2xl font-black transition-all active:scale-95"
+            <button key={ch} onClick={() => answer(ch)} disabled={!!selected}
+              className="py-4 rounded-2xl text-sm font-black transition-all active:scale-95 leading-snug"
               style={{
-                background: isAns ? "#1D9E75" : isWrong ? "#D4537E" : BASE_COLORS[base] + "22",
-                color: isAns ? "#fff" : isWrong ? "#fff" : BASE_COLORS[base],
-                border: `3px solid ${isAns ? "#1D9E75" : isWrong ? "#D4537E" : BASE_COLORS[base]}`,
-                minHeight: 64
+                minHeight: 56,
+                background: isAns ? "#1D9E75" : isWrong ? "#D4537E" : "var(--surface)",
+                color: (isAns || isWrong) ? "#fff" : "var(--ink)",
+                border: `2px solid ${isAns ? "#1D9E75" : isWrong ? "#D4537E" : "var(--border)"}`
               }}>
-              {base}
+              {ch}
             </button>
           );
         })}
@@ -549,7 +976,17 @@ function CellTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdaptiv
         <div className="text-3xl font-black" style={{ color: "var(--brand)" }}>{result.sessionScore.toLocaleString("ar-EG")}</div>
         <div className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>IQ الكلي: <strong>{result.newIQ}</strong></div>
       </div>
-      <div className="flex gap-3">
+      <GameFeedback
+        subject="biology"
+        correctAnswers={result.correct}
+        totalQuestions={TOTAL_Q}
+        totalTimeMs={totalMsRef.current}
+        maxLevel={levelsRef.current.length > 0 ? Math.max(...levelsRef.current) : 1}
+        maxStreak={maxStreakRef.current}
+        difficulty={levelToDifficulty(levelRef.current)}
+        autoLoad
+      />
+      <div className="flex gap-3 mt-3">
         <button onClick={start} className="flex-1 py-3 rounded-xl font-black text-white" style={{ background: "linear-gradient(135deg,#1D9E75,#7F77DD)" }}>مرة أخرى</button>
         <Link href="/environments" className="flex-1 py-3 rounded-xl font-black text-center" style={{ background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)" }}>البيئات</Link>
       </div>
@@ -641,7 +1078,7 @@ export default function BiologyEnvironment() {
           </div>
 
           <div className="flex gap-2 mb-6 p-1 rounded-2xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-            {([["dna", "🧬 DNA Match"], ["cell", "🔬 Cell Tap"]] as const).map(([id, label]) => (
+            {([["dna", "🧬 علم الوراثة"], ["cell", "🔬 تركيبة الخلية"]] as const).map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)}
                 className="flex-1 py-3 text-sm font-black rounded-xl transition-all"
                 style={{ background: tab === id ? "var(--surface)" : "transparent", color: tab === id ? "var(--ink)" : "var(--ink-3)", boxShadow: tab === id ? "var(--shadow-sm)" : "none" }}>
@@ -650,7 +1087,7 @@ export default function BiologyEnvironment() {
             ))}
           </div>
 
-          {tab === "dna" && <DNAMatchGame key="dna" onFinish={refreshIQ} isAdaptive={isAdaptive} />}
+          {tab === "dna" && <PunnettSquareGame key="dna" onFinish={refreshIQ} isAdaptive={isAdaptive} />}
           {tab === "cell" && <CellTapGame key="cell" onFinish={refreshIQ} isAdaptive={isAdaptive} />}
         </main>
         <Footer />

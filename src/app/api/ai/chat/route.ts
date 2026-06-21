@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { getStudentSession, getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildStudentContext } from "@/lib/ai-context";
 import { chatWithAI, type ChatMessage, type AIAction } from "@/lib/ai-assistant";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getStudentSession();
+    // Accept students AND admins/owners (they need to test the chat too)
+    const session = await getStudentSession() ?? await getSession();
     if (!session) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
@@ -17,7 +18,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Build full student context
-    const context = await buildStudentContext(session.id);
+    let context;
+    try {
+      context = await buildStudentContext(session.id);
+    } catch (ctxErr) {
+      console.error("[chat/route] buildStudentContext failed:", ctxErr);
+      return NextResponse.json({ message: "يرجى المحاولة مرة أخرى لاحقاً.", actions: [], source: "error" });
+    }
 
     // Get conversation history (last 10 messages)
     const history = await prisma.aIConversation.findMany({
@@ -63,8 +70,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Get AI response
-    const result = await chatWithAI(message, chatHistory, context, notifications);
+    // Get AI response — isolated catch so DB errors below still get a response
+    let result;
+    try {
+      result = await chatWithAI(message, chatHistory, context!, notifications);
+    } catch (aiErr) {
+      console.error("[chat/route] chatWithAI threw unexpectedly:", aiErr);
+      result = {
+        message: "عذراً، حدث خطأ مؤقت. حاول مرة أخرى.\n\n[م:menu]",
+        actions: [] as AIAction[],
+        source: "fallback" as const,
+      };
+    }
 
     // Execute AI actions if any
     const executedActions: Array<{ type: string; status: string; id?: string; error?: string }> = [];
@@ -155,7 +172,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await getStudentSession();
+    const session = await getStudentSession() ?? await getSession();
     if (!session) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }

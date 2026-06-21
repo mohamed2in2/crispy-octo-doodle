@@ -12,6 +12,7 @@ import {
   levelToDifficulty, difficultyToStartLevel, levelToTimer,
   type Difficulty, type IQData, type GameResult,
 } from "@/lib/iq-system";
+import { GameFeedback } from "@/components/ai/GameFeedback";
 
 /* ─── Word Duel Data & Templates ────────────────────────────────────────── */
 interface WordPair {
@@ -356,7 +357,17 @@ function WordDuelGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
         <div className="text-3xl font-black" style={{ color: "var(--brand)" }}>{result.sessionScore.toLocaleString("ar-EG")}</div>
         <div className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>IQ الكلي: <strong>{result.newIQ}</strong></div>
       </div>
-      <div className="flex gap-3">
+      <GameFeedback
+        subject="languages"
+        correctAnswers={result.correct}
+        totalQuestions={TOTAL_Q}
+        totalTimeMs={totalMsRef.current}
+        maxLevel={levelsRef.current.length > 0 ? Math.max(...levelsRef.current) : 1}
+        maxStreak={maxStreakRef.current}
+        difficulty={levelToDifficulty(levelRef.current)}
+        autoLoad
+      />
+      <div className="flex gap-3 mt-3">
         <button onClick={start} className="flex-1 py-3 rounded-xl font-black text-white" style={{ background: "linear-gradient(135deg,#D85A30,#EF9F27)" }}>مرة أخرى</button>
         <Link href="/environments" className="flex-1 py-3 rounded-xl font-black text-center" style={{ background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)" }}>البيئات</Link>
       </div>
@@ -575,7 +586,17 @@ function ErrorSniperGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
         <div className="text-3xl font-black" style={{ color: "var(--brand)" }}>{result.sessionScore.toLocaleString("ar-EG")}</div>
         <div className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>IQ الكلي: <strong>{result.newIQ}</strong></div>
       </div>
-      <div className="flex gap-3">
+      <GameFeedback
+        subject="languages"
+        correctAnswers={result.correct}
+        totalQuestions={TOTAL_Q}
+        totalTimeMs={totalMsRef.current}
+        maxLevel={levelsRef.current.length > 0 ? Math.max(...levelsRef.current) : 1}
+        maxStreak={maxStreakRef.current}
+        difficulty={levelToDifficulty(levelRef.current)}
+        autoLoad
+      />
+      <div className="flex gap-3 mt-3">
         <button onClick={start} className="flex-1 py-3 rounded-xl font-black text-white" style={{ background: "linear-gradient(135deg,#D85A30,#EF9F27)" }}>مرة أخرى</button>
         <Link href="/environments" className="flex-1 py-3 rounded-xl font-black text-center" style={{ background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)" }}>البيئات</Link>
       </div>

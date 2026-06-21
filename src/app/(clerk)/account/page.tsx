@@ -384,6 +384,12 @@ export default function AccountPage() {
 
   const stageLabel = user ? (EDUCATIONAL_STAGES.find(s => s.value === user.educationalStage)?.label ?? user.educationalStage ?? "—") : "—";
   const isStudent  = user?.role === "student";
+  const filteredSections = SECTIONS.filter(s => {
+    if (!isStudent) {
+      return s.id === "profile" || s.id === "security";
+    }
+    return true;
+  });
 
   // Excel export helper
   const exportExcel = () => {
@@ -444,34 +450,7 @@ export default function AccountPage() {
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 md:py-10">
 
-        {/* ── Mobile section picker (visible only on small screens) ── */}
-        <div className="md:hidden mb-4">
-          {/* User info strip */}
-          <div className="flex items-center gap-3 mb-3" style={{ padding: "12px 16px", borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full shrink-0" style={{ background: "var(--brand)" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
-            </span>
-            <div className="flex-1 min-w-0">
-              <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
-              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700 }}>{isStudent ? "طالب" : user.role}</span>
-            </div>
-            <button onClick={handleSignOut} disabled={signingOut} className="shrink-0 cursor-pointer border-none rounded-[9px] transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={{ padding: "8px 12px", background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 700, fontSize: 12, fontFamily: "var(--font-body)" }}>
-              {signingOut ? "..." : "خروج"}
-            </button>
-          </div>
-          {/* Section select dropdown */}
-          <select
-            value={section}
-            onChange={e => go(e.target.value)}
-            className="w-full cursor-pointer rounded-[12px] border-none outline-none"
-            style={{ padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink)", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14, appearance: "auto" }}
-          >
-            {SECTIONS.map(s => (
-              <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
-            ))}
-          </select>
-        </div>
+
 
         {/* ── Desktop layout: sidebar + content ── */}
         <div className="grid gap-4 sm:gap-6 md:grid-cols-[240px_1fr]">
@@ -494,7 +473,7 @@ export default function AccountPage() {
               )}
             </div>
             <nav style={{ padding: "8px 8px" }}>
-              {SECTIONS.map(s => (
+              {filteredSections.map(s => (
                 <button key={s.id} onClick={() => go(s.id)} className="w-full flex items-center gap-3 cursor-pointer border-none transition-colors rounded-[10px]"
                   style={{ padding: "10px 12px", marginBottom: 2, textAlign: "right", fontFamily: "var(--font-body)",
                     background: section === s.id ? "var(--brand-soft)" : "transparent",
@@ -532,7 +511,7 @@ export default function AccountPage() {
               </div>
               {/* Horizontal scrollable tabs */}
               <div className="flex overflow-x-auto gap-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
-                {SECTIONS.map(s => (
+                {filteredSections.map(s => (
                   <button key={s.id} onClick={() => go(s.id)}
                     className="shrink-0 flex flex-col items-center gap-1 cursor-pointer border-none rounded-[12px] transition-colors"
                     style={{
@@ -581,7 +560,7 @@ export default function AccountPage() {
                         { label: "المرحلة",         value: stageLabel || "—",       icon: "🎓" },
                         { label: "تاريخ الانضمام",  value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : "—", icon: "📅", full: true },
                       ].map(item => (
-                        <div key={item.label} className="flex items-center gap-3 justify-end" style={{ padding: "12px 14px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border)", gridColumn: item.full ? "1 / -1" : undefined }}>
+                        <div key={item.label} className="flex items-center gap-3 justify-between" style={{ padding: "12px 14px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border)", gridColumn: item.full ? "1 / -1" : undefined }}>
                           <div style={{ textAlign: "right", minWidth: 0 }}>
                             <div style={{ fontSize: 11, color: "var(--ink-3)", marginBottom: 2 }}>{item.label}</div>
                             <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", direction: item.ltr ? "ltr" : undefined, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.value}</div>
@@ -777,7 +756,7 @@ export default function AccountPage() {
                       </table>
                     </div>
                     {/* Pagination */}
-                    <div className="flex items-center justify-between" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4" style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
                       <div className="flex items-center gap-2">
                         {[
                           { label: "|◄", action: () => setResultPage(1), disabled: resultPage === 1 },
@@ -792,10 +771,12 @@ export default function AccountPage() {
                           </button>
                         ))}
                       </div>
-                      <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
-                        {(resultPage - 1) * PAGE_SIZE + 1}–{Math.min(resultPage * PAGE_SIZE, results.length)} من {results.length}
-                      </span>
-                      <span style={{ fontSize: 13, color: "var(--ink-2)", fontWeight: 600 }}>صفوف الصفحة: {PAGE_SIZE}</span>
+                      <div className="flex items-center gap-4 flex-wrap justify-center">
+                        <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
+                          {(resultPage - 1) * PAGE_SIZE + 1}–{Math.min(resultPage * PAGE_SIZE, results.length)} من {results.length}
+                        </span>
+                        <span className="hidden sm:inline" style={{ fontSize: 13, color: "var(--ink-2)", fontWeight: 600 }}>صفوف الصفحة: {PAGE_SIZE}</span>
+                      </div>
                     </div>
                   </>
                 )}
@@ -933,15 +914,15 @@ export default function AccountPage() {
                   <div>
                     <label style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>شحن كود رصيد</label>
                     <div className="flex gap-3">
+                      <input type="text" value={redeemCode} onChange={e => { setRedeemCode(e.target.value.toUpperCase()); setRedeemMsg(""); }}
+                        placeholder="أدخل كود الشحن" dir="ltr"
+                        className="flex-1 rounded-[10px] text-center font-mono tracking-widest focus:outline-none"
+                        style={{ padding: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 15 }} />
                       <button onClick={redeemBalance} disabled={redeeming || !redeemCode.trim()}
                         className="shrink-0 cursor-pointer border-none rounded-[10px] text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
                         style={{ padding: "12px 20px", background: "var(--brand)", fontWeight: 700, fontSize: 14 }}>
                         {redeeming ? "..." : "تفعيل"}
                       </button>
-                      <input type="text" value={redeemCode} onChange={e => { setRedeemCode(e.target.value.toUpperCase()); setRedeemMsg(""); }}
-                        placeholder="أدخل كود الشحن" dir="ltr"
-                        className="flex-1 rounded-[10px] text-center font-mono tracking-widest focus:outline-none"
-                        style={{ padding: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 15 }} />
                     </div>
                     {redeemMsg && <p style={{ fontSize: 13.5, marginTop: 10, color: redeemMsg.startsWith("✅") ? "var(--brand)" : "var(--danger)" }}>{redeemMsg}</p>}
                   </div>

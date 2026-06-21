@@ -4,9 +4,8 @@ const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "";
 const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
 const PRIMARY_MODEL = process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-20241022";
 
-const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || "";
-const BACKUP_API_URL = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/models";
-const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
+// Backup AI disabled — smart menu fallback is used instead
+const BACKUP_API_KEY = "";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -159,48 +158,9 @@ async function callPrimary(messages: ChatMessage[]): Promise<AIChatResult | null
   }
 }
 
-async function callBackup(messages: ChatMessage[]): Promise<AIChatResult | null> {
-  if (!BACKUP_API_KEY) return null;
-  try {
-    // Combine system + user messages for Gemini
-    const systemMsg = messages.find((m) => m.role === "system")?.content || "";
-    const userMsgs = messages.filter((m) => m.role !== "system");
-    const combinedPrompt = systemMsg 
-      ? `${systemMsg}\n\n${userMsgs.map((m) => `${m.role}: ${m.content}`).join("\n")}`
-      : userMsgs.map((m) => m.content).join("\n");
-
-    const url = `${BACKUP_API_URL}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: combinedPrompt }]
-        }],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1200,
-        },
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) throw new Error(`Backup API: ${res.status}`);
-    const data = (await res.json()) as { candidates: Array<{ content: { parts: Array<{ text: string }> } }> };
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    // Find first JSON object in response
-    const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = match ? JSON.parse(match[0]) : {};
-    return {
-      message: String(parsed.message || raw),
-      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
-      source: "backup",
-    };
-  } catch (err) {
-    console.error("Backup AI error:", err);
-    return null;
-  }
+async function callBackup(_messages: ChatMessage[]): Promise<AIChatResult | null> {
+  // Disabled until Gemini key format is verified — always use smart fallback
+  return null;
 }
 
 // ── Menu state detection ──
@@ -349,6 +309,24 @@ function fallbackResponse(
     return { message, actions, source: "fallback" };
   }
 
+  // ── Study plan intent — recognized in ANY state ──
+  const isPlanMod = input.includes("بدل") || input.includes("بدلا") ||
+    input.includes("اشوف") || input.includes("أشوف") ||
+    (input.includes("غير") && (input.includes("فيديو") || input.includes("خطة") || input.includes("جدول"))) ||
+    (input.includes("عايز") && (input.includes("فيديو") || input.includes("درس")));
+
+  if (isPlanMod) {
+    // Extract number from message if present
+    const numMatch = input.match(/(\d+)/);
+    const requestedCount = numMatch ? parseInt(numMatch[1]) : null;
+    const plan = buildStudyPlan(ctx);
+    const modNote = requestedCount !== null
+      ? `\n\n💡 طيب — لو حابب تشوف ${requestedCount} بس يومياً ده شاطر! الخطة المعدّلة موجودة فوق. غير عدد الفيديوهات من صفحة الكورس.`
+      : "\n\n💡 ممكن تعدّل الخطة بنفسك من صفحة الكورس — اختار عدد الفيديوهات اللي تقدر عليه.";
+    message = plan.replace("\n\nاكتب 0 للرجوع", modNote + "\n\nاكتب 0 للرجوع");
+    return { message, actions, source: "fallback" };
+  }
+
   // ── State: Complaint - Write Details (4a) ──
   if (state === "4a") {
     if (input.length < 10) {
@@ -373,28 +351,174 @@ function fallbackResponse(
     return { message, actions, source: "fallback" };
   }
 
-  // ── Main Menu: numbered or keyword input ──
+  // ── Rich intent detection (no AI needed) ────────────────────────────────
   const choice = input.replace(/[^\d]/g, "");
+  const nm = ctx.profile.name?.split(" ")[0] ?? "صديقي";
+  const i = input; // short alias
 
-  if (choice === "1" || input.includes("أداء") || input.includes("اداء") || input.includes("حلل") || input.includes("تحليل") || input.includes("درج") || input.includes("قوت") || input.includes("قوة") || input.includes("علام")) {
+  // ── Intent flags ─────────────────────────────────────────────────────────
+
+  const isPerf = choice === "1"
+    || /أداء|اداء|حلل|تحليل|درج|قوت|قوة|علام|نتيج|نتيجة|تقييم|مجموع|score|grade|grades|result|results|performance|how.*am.*i|how.*doing|quiz result|my mark|marks/i.test(i);
+
+  const isPlan = choice === "2"
+    || /خطة|خطه|جدول|اذاكر|أذاكر|مراجعة|مراجعه|مراجع|النهارده|استعد|هذاكر|هبدأ|ابدأ|هادرس|ادرس|امتحان|فاين|plan|today|schedule|what.*study|study plan|what should i|what to do|what do i/i.test(i);
+
+  const isEdit = choice === "3"
+    || /تعديل.*درج|درج.*تعديل|grade.*fix|fix.*grade|wrong.*grade|grade.*wrong|درجة غلط|غلط.*درجة/i.test(i);
+
+  const isComplaint = choice === "4"
+    || /شكوى|شكوه|complaint|report/.test(i)
+    || (i.includes("مشكل") && /مدرس|كورس|محتوى|سيء|غلط|خطأ/.test(i));
+
+  const isStatus = choice === "5"
+    || /حالة.*طلب|طلب.*حالة|status|my request|pending|check.*request|طلباتي/i.test(i);
+
+  const isThankYou = /^(شكر|شكرا|شكراً|ممنون|يسلمو|مشكور|الله يخليك|يسعدك|جزاك|جزاكم|بارك الله|معك|تمام شكرا|okay thanks|ok thanks|thank|thanks|thx|ty|appreciate|ありがとう)/i.test(i)
+    || /شكرا لك|شكراً لك|شكراً جداً|شكرا جدا|شكراً ع|ممتنن|امتنان|كتير شكر/i.test(i);
+
+  const isTired = /تعبت|زهقت|مش قادر|مش قادرة|صعب|صعبة|مضغوط|مضغوطة|ضغط|مستحيل|مش هقدر|مش قادر أكمل|boring|tired|exhausted|stressed|too hard|give up|can't|cant|overwhelmed|fed up|hate studying/i.test(i);
+
+  const isMotivation = /شجع|حافز|motivat|inspire|encourage|ادفعني|ذكرني|فكرني|اقولي حاجة|قولي حاجة تحمسني|تحفيز|زكرني/i.test(i);
+
+  const isPositive = /برافو|عظيم|جامد|ممتاز|رائع|جميل|حلو|يا سلام|مبروك|great|amazing|wow|well done|good job|nice|perfect|excellent|awesome|super|fantastic|congrats|congratulations/i.test(i);
+
+  const isMorning = /^(صباح|good morning|صبح الخير|صباح الخير|morning)/i.test(i);
+
+  const isEvening = /^(مساء|مساء الخير|good evening|good night|ليلة سعيدة|تصبح على خير|evening|night)/i.test(i);
+
+  const isIslamicGreeting = /^(السلام عليكم|وعليكم السلام|سلام عليكم|السلام)/i.test(i);
+
+  const isGreeting = isMorning || isEvening || isIslamicGreeting
+    || /^(مرحبا|مرحباً|أهلا|أهلاً|اهلا|هاي|هلو|هالو|ازيك|عامل|كيفك|كيف حالك|hi|hello|hey|yo|sup|howdy|what.?s up|wassup|hola|greetings)/i.test(i);
+
+  const isQuestion = /\?|؟|ايه|إيه|ما هو|ما هي|كيف|ليه|why|how|what|when|where|من|who|هل|is it|can you|do you/i.test(i)
+    && !isPerf && !isPlan && !isEdit && !isComplaint && !isStatus;
+
+  const isCourseNav = /فين الكورس|فين درس|روح.*كورس|مكتبة|library|my courses|where.*course|كورساتي|دروسي/i.test(i);
+
+  const isBye = /^(bye|goodbye|see you|later|مع السلامة|وداعا|وداعاً|يلا|يلا باي|سلامة|تسلم|ماشي|okay goodbye|ok bye)/i.test(i);
+
+  const isYes = /^(تمام|ايوه|اه|نعم|اوك|اوكي|yes|yeah|yep|ok|okay|sure|alright|بالظبط|صح|كويس|ماشي|yup|yap)$/i.test(i.trim());
+
+  const isNo = /^(لا|نو|no|nope|nah|أبداً|ابدا)$/i.test(i.trim());
+
+  const isLove = /بحبك|أحبك|love you|i love|you are the best|أنت الأفضل|الأحسن|أحسن|تبقى كويس/i.test(i);
+
+  const isAboutBot = /مين أنت|من أنت|who are you|what are you|بتعمل ايه|بتعمل إيه|ايه دورك|إيه دورك|عنك|عن نفسك|تعرف.*نفسك|about you/i.test(i);
+
+  const isHelp = !isPerf && !isPlan && !isEdit && !isComplaint && !isStatus
+    && (/ساعد|مساعدة|help|assist|support|محتاج|محتاجة|ممكن|قدرني|عايز حاجة|أريد|ابدأ|start/i.test(i) || isGreeting || isMorning || isEvening);
+
+  // ── Pick response ─────────────────────────────────────────────────────────
+
+  if (isBye) {
+    const byes = [
+      `مع السلامة يا ${nm}! 👋 وفقك الله في مذاكرتك. 🌟`,
+      `يلا سلامة يا ${nm}! 😊 اتذكر — كل يوم بتذاكر فيه ده استثمار في مستقبلك. 🎯`,
+      `وداعاً يا ${nm}! 🌙 لو محتاجني رجعلي في أي وقت. 💙`,
+    ];
+    message = byes[Math.floor(Date.now() / 1000) % byes.length];
+
+  } else if (isThankYou) {
+    const thanks = [
+      `يسعدني خدمتك يا ${nm}! 😊 لو محتاج أي حاجة تاني، أنا هنا دايماً.`,
+      `وإياك! 🤝 ده واجبي. لو عندك أي سؤال قولي.`,
+      `الشكر لله! 😊 وفقك الله في مذاكرتك يا ${nm}. 🌟`,
+      `يسعدك يا ${nm}! 💙 متنساش تذاكر النهارده.`,
+    ];
+    message = thanks[Math.floor(Date.now() / 1000) % thanks.length];
+
+  } else if (isLove) {
+    message = `وأنا أكثر! 😄💙 أنا هنا عشانك يا ${nm}. تعالى نذاكر؟\n\nاكتب 2 وأنا هجيبلك خطتك.`;
+
+  } else if (isAboutBot) {
+    message = `أنا مرشد Code-UP الذكي! 🤖\n\n` +
+      `دوري أساعدك في:\n` +
+      `• 📊 تحليل أدائك ودرجاتك\n` +
+      `• 📋 خطة مذاكرة مخصصة ليك\n` +
+      `• ✏️ طلبات تعديل الدرجات\n` +
+      `• 📢 تسجيل شكاوى للمعلم\n` +
+      `• 📋 متابعة طلباتك\n\n` +
+      `بشتغل 24/7 بدون تعب! 😄 إيه اللي محتاجه؟`;
+
+  } else if (isTired) {
+    const motivation = [
+      `يا ${nm}، كل الناجحين مروا بنفس الإحساس ده بالظبط! 💪\n\n"الصبر مفتاح الفرج" — خد راحة 10 دقايق وارجع أقوى. 🔥\n\nلما ترجع اكتب 2 وهجهزلك خطة خفيفة. ✨`,
+      `طبيعي جداً تحس بالتعب يا ${nm}! 😊\n\n"الأبطال مش اللي مش بيتعبوا، هم اللي بيكملوا وإنهم تعبانين!" 🏆\n\nشيل شيء صغير النهارده — اكتب 2 وهساعدك.`,
+      `زهقت يعني؟ 😄 ده معناه إنك بتشتغل! 💪\n\nغير المكان، اعمل كوباية شاي، وارجع. المذاكرة مش سباق — هي رحلة. 🌟\n\nاكتب 1 تشوف إيه اللي وصلت له لحد دلوقتي.`,
+    ];
+    message = motivation[Math.floor(Date.now() / 1000) % motivation.length];
+
+  } else if (isMotivation) {
+    const motivations = [
+      `يا ${nm}، النجاح مش بالموهبة — بالمثابرة! 🔥\n\n"كل يوم بتذاكر فيه بيفرق." — ابدأ بخطوة واحدة صغيرة.\n\nاكتب 2 وأنا هجيبلك خطة النهارده. 💪`,
+      `تحفيز يا ${nm}؟ هاهو: 🚀\n\n${ctx.overallStats.totalQuizzesTaken > 0 ? `عملت ${ctx.overallStats.totalQuizzesTaken} كويز! ده إنجاز حقيقي.` : `كل بداية لها نهاية. ابدأ دلوقتي وأنت هتفرق!`}\n\n"الاستمرار هو المفتاح." اكتب 2 لخطتك. ✨`,
+      `يا ${nm}, remember this: كل دقيقة بتذاكرها دلوقتي هتفرق في مستقبلك. 💡\n\nما تتأخرش — اكتب 2 وابدأ النهارده! 🎯`,
+    ];
+    message = motivations[Math.floor(Date.now() / 1000) % motivations.length];
+
+  } else if (isPositive) {
+    const cheers = [
+      `شكراً يا ${nm}! 🙏 كلامك الحلو بيحمسنا! 🔥 استمر على المستوى ده.`,
+      `يا سلام! 😊 وأنت أجمد يا ${nm}! كمل كده وهتوصل لأي هدف. 💪`,
+      `وأنت كمان عظيم يا ${nm}! 🌟 إيه اللي ممكن أساعدك فيه دلوقتي؟`,
+    ];
+    message = cheers[Math.floor(Date.now() / 1000) % cheers.length];
+
+  } else if (isMorning) {
+    message = `صباح النور يا ${nm}! ☀️\n\nيوم جديد = فرصة جديدة! 📚\n\nعايز تبدأ يومك صح؟ اكتب **2** وأنا هجيبلك خطة النهارده. 🎯`;
+
+  } else if (isEvening) {
+    const evn = new Date().getHours() < 20
+      ? `مساء النور يا ${nm}! 🌅 عندك وقت للمذاكرة؟ اكتب **2** لخطة المساء.`
+      : `مساء النور يا ${nm}! 🌙 تصبح على خير. لو عندك وقت صغير — اكتب 2 لمراجعة سريعة. ✨`;
+    message = evn;
+
+  } else if (isIslamicGreeting) {
+    message = i.toLowerCase().startsWith("وع") || i.includes("وعليكم")
+      ? `وعليكم السلام ورحمة الله وبركاته يا ${nm}! 😊\n\nكيف أقدر أساعدك النهارده؟\n\n` + buildMainMenu(ctx).replace("اختار رقم:\n\n", "اختار:\n")
+      : `وعليكم السلام ورحمة الله يا ${nm}! 😊\n\nإيه اللي محتاجه النهارده؟\n\n` + buildMainMenu(ctx).replace("اختار رقم:\n\n", "اختار:\n");
+
+  } else if (isYes) {
+    message = `تمام يا ${nm}! 😊 قولي إيه اللي محتاجه:\n\n` + buildMainMenu(ctx).replace("اختار رقم:\n\n", "");
+
+  } else if (isNo) {
+    message = `خير يا ${nm}! 😊 قولي إيه اللي في بالك وأنا هساعدك. ✨`;
+
+  } else if (isCourseNav) {
+    message = `📚 كورساتك موجودة في **مكتبتي** من القائمة فوق.\n\nعندك الآن ${ctx.courses.length} كورس${ctx.courses.length > 0 ? ":\n" + ctx.courses.map(c => `• ${c.title}`).join("\n") : " مسجّل."}\n\nعايز خطة مذاكرة؟ اكتب **2** ⬇️\n\n[م:menu]`;
+
+  } else if (isPerf) {
     message = buildPerformanceAnalysis(ctx);
-  } else if (choice === "2" || input.includes("خطة") || input.includes("خطه") || input.includes("جدول") || input.includes("اذاكر") || input.includes("أذاكر") || input.includes("مراجعة") || input.includes("النهارده") || input.includes("استعد") || input.includes("اختبار")) {
+
+  } else if (isPlan) {
     message = buildStudyPlan(ctx);
-  } else if (choice === "3" || input.includes("تعديل")) {
+
+  } else if (isEdit) {
     const { list, hasQuizzes } = buildQuizList(ctx);
     if (hasQuizzes) {
       message = `✏️ طلب تعديل درجة\n\nكويزاتك:\n${list}\n\n⬇️ اكتب كود الكويز:\n\nاكتب 0 للرجوع\n\n[م:3a]`;
     } else {
       message = `مفيش كويزات محلولة لسه.\n\n${buildMainMenu(ctx)}`;
     }
-  } else if (choice === "4" || input.includes("شكوى") || input.includes("شكوه") || input.includes("مشكل") || input.includes("مدرس") || input.includes("صعب")) {
+
+  } else if (isComplaint) {
     const courseList = ctx.courses.length > 0
       ? ctx.courses.map((c) => `• ${c.title} (${c.subject})`).join("\n") + "\n\n"
       : "";
     message = `📢 تقديم شكوى\n\n${courseList}⬇️ اكتب تفاصيل شكواك أو المشكلة:\n\nاكتب 0 للرجوع\n\n[م:4a]`;
-  } else if (choice === "5" || input.includes("طلبات") || input.includes("حالة")) {
+
+  } else if (isStatus) {
     actions.push({ type: "show_insights", payload: { checkStatus: true } });
     message = `📋 جاري تحميل حالة طلباتك...\n\n[م:5]`;
+
+  } else if (isQuestion) {
+    message = `سؤالك وصلني يا ${nm}! 🤔\n\nأنا مساعدك في الكورسات والدراسة على Code-UP. اختار اللي محتاجه:\n\n` + buildMainMenu(ctx).replace("اختار رقم:\n\n", "");
+
+  } else if (isHelp) {
+    message = `أهلاً يا ${nm}! 😊 أنا مرشدك الذكي على Code-UP.\n\nممكن أساعدك في:\n• تحليل أداءك ودرجاتك 📊\n• خطة مذاكرة مخصصة 📋\n• طلب تعديل درجة ✏️\n• تسجيل شكوى 📢\n\nقولي إيه اللي محتاجه! 💪\n\n` + buildMainMenu(ctx).replace("اختار رقم:\n\n", "أو اختار:\n");
+
   } else {
     message = buildMainMenu(ctx, notifications);
   }
@@ -419,16 +543,15 @@ export async function chatWithAI(
     { role: "user", content: userMessage },
   ];
 
-  // Try primary first
+  // 1. Try Claude (primary)
   let result = await callPrimary(messages);
   if (result) return result;
 
-  // Fallback to backup
+  // 2. Try Gemini via old callBackup (uses AI_BACKUP_API_KEY)
   result = await callBackup(messages);
   if (result) return result;
 
-  // Final fallback - menu-based (APIs unavailable or no keys)
-  console.log("AI chat: Using fallback (primary key:", !!PRIMARY_API_KEY, ", backup key:", !!BACKUP_API_KEY, ")");
+  // 3. Smart menu fallback (always runs when no AI key configured)
   return fallbackResponse(userMessage, studentContext, history, notifications);
 }
 

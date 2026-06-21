@@ -182,7 +182,7 @@ export default async function LeaderboardPage({
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)", fontFamily: "var(--font-body)" }}>
       <Navbar user={{ name: session.name, role }} />
 
-      <main className="flex-1 max-w-[1100px] mx-auto w-full px-6 py-16">
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-16">
 
         {/* Admin observer banner */}
         {isAdmin && (
@@ -205,7 +205,7 @@ export default async function LeaderboardPage({
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17a2 2 0 0 1-.7 1.5L8 20h8l-1.3-1.5a2 2 0 0 1-.7-1.5v-2.3M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
             </svg>
-            <h1 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 40, margin: 0, color: "var(--ink)" }}>
+            <h1 className="text-2xl sm:text-4xl" style={{ fontFamily: "var(--font-head)", fontWeight: 900, margin: 0, color: "var(--ink)" }}>
               لوحة الشرف والمنافسة
             </h1>
           </div>
@@ -239,11 +239,11 @@ export default async function LeaderboardPage({
         </div>
 
         {/* Two-column grid */}
-        <div className="grid gap-6" style={{ gridTemplateColumns: "1.6fr 1fr", alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
           {/* Leaderboard card */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
-            <div className="flex items-center justify-between" style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)" }}>
+          <div className="lg:col-span-2" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)" }}>
               {isStudent ? (
                 <span className="inline-flex items-center gap-1"
                   style={{ padding: "6px 13px", borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", fontSize: 13, fontWeight: 700 }}>
@@ -352,22 +352,22 @@ export default async function LeaderboardPage({
                   const badge = rankBadge(i);
                   const isMe  = isStudent && student.id === session.id;
                   return (
-                    <div key={student.id} className="flex items-center gap-4"
-                      style={{ padding: "16px 18px", borderRadius: 14,
+                    <div key={student.id} className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5"
+                      style={{ borderRadius: 14,
                         border: `1px solid ${isMe ? "var(--brand)" : "var(--border)"}`,
                         background: isMe ? "linear-gradient(110deg,var(--brand-soft),transparent)" : "var(--surface-2)" }}>
-                      <span className="flex items-center justify-center shrink-0 font-black text-[18px]"
+                      <span className="flex items-center justify-center shrink-0 font-black text-base sm:text-[18px]"
                         style={{ width: 40, height: 40, borderRadius: "50%", background: badge.bg, color: badge.color, fontFamily: "var(--font-head)" }}>
                         {["١","٢","٣"][i] ?? i + 1}
                       </span>
-                      <div className="flex-1">
-                        <div style={{ fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>
-                          {student.name} {isMe && <span style={{ color: "var(--brand)", fontSize: 13 }}>(أنت)</span>}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm sm:text-[17px] truncate" style={{ fontWeight: 700, color: "var(--ink)" }}>
+                          {student.name} {isMe && <span className="text-xs" style={{ color: "var(--brand)" }}>(أنت)</span>}
                         </div>
-                        <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
+                        <div className="text-xs sm:text-[12.5px] truncate" style={{ color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
                       </div>
-                      <span style={{ padding: "8px 16px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontWeight: 800, fontFamily: "var(--font-head)", fontSize: 16, color: "var(--ink)" }}>
-                        {(student as { points?: number }).points ?? 0} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink-3)" }}>نقطة</span>
+                      <span className="px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-base font-extrabold shrink-0" style={{ borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontFamily: "var(--font-head)", color: "var(--ink)" }}>
+                        {(student as { points?: number }).points ?? 0} <span className="text-[10px] sm:text-xs" style={{ fontWeight: 500, color: "var(--ink-3)" }}>نقطة</span>
                       </span>
                     </div>
                   );
@@ -377,23 +377,23 @@ export default async function LeaderboardPage({
                   const badge = rankBadge(i);
                   const isMe  = isStudent && student.id === session.id;
                   return (
-                    <div key={student.id} className="flex items-center gap-4"
-                      style={{ padding: "16px 18px", borderRadius: 14,
+                    <div key={student.id} className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5"
+                      style={{ borderRadius: 14,
                         border: `1px solid ${isMe ? "var(--gold-2)" : "var(--border)"}`,
                         background: isMe ? "linear-gradient(110deg,var(--gold-soft),transparent)" : "var(--surface-2)" }}>
-                      <span className="flex items-center justify-center shrink-0 font-black text-[18px]"
+                      <span className="flex items-center justify-center shrink-0 font-black text-base sm:text-[18px]"
                         style={{ width: 40, height: 40, borderRadius: "50%", background: badge.bg, color: badge.color, fontFamily: "var(--font-head)" }}>
                         {["١","٢","٣"][i] ?? i + 1}
                       </span>
-                      <div className="flex-1">
-                        <div style={{ fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>
-                          {student.name} {isMe && <span style={{ color: "var(--gold-2)", fontSize: 13 }}>(أنت)</span>}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm sm:text-[17px] truncate" style={{ fontWeight: 700, color: "var(--ink)" }}>
+                          {student.name} {isMe && <span className="text-xs" style={{ color: "var(--gold-2)" }}>(أنت)</span>}
                         </div>
-                        <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
+                        <div className="text-xs sm:text-[12.5px] truncate" style={{ color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
                       </div>
-                      <span style={{ padding: "8px 16px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontWeight: 800, fontFamily: "var(--font-head)", fontSize: 16, color: "var(--ink)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Flame className="w-4 h-4 text-orange-500" />
-                        {(student as { loginStreak?: number }).loginStreak ?? 0} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink-3)" }}>يوم</span>
+                      <span className="px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-base font-extrabold shrink-0 flex items-center gap-1 sm:gap-1.5" style={{ borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontFamily: "var(--font-head)", color: "var(--ink)" }}>
+                        <Flame className="w-4 h-4 text-orange-500 shrink-0" />
+                        {(student as { loginStreak?: number }).loginStreak ?? 0} <span className="text-[10px] sm:text-xs" style={{ fontWeight: 500, color: "var(--ink-3)" }}>يوم</span>
                       </span>
                     </div>
                   );

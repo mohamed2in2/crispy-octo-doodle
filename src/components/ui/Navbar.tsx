@@ -199,7 +199,7 @@ export function Navbar({ user }: NavbarProps) {
           )}
 
           {/* Search */}
-          <div ref={searchRef} className="relative">
+          <div ref={searchRef} className="md:relative">
             <button type="button" onClick={() => { setSearchOpen((o) => !o); setNotifOpen(false); }}
               aria-label="بحث"
               className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
@@ -209,8 +209,8 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {searchOpen && (
-              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: "auto", right: 0, width: "min(340px, calc(100vw - 24px))", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] md:right-0 md:left-auto right-3 left-3 md:w-[340px] w-auto"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
                   <input
                     autoFocus
@@ -219,7 +219,7 @@ export function Navbar({ user }: NavbarProps) {
                     value={searchQuery}
                     onChange={(e) => { setSearchQuery(e.target.value); doSearch(e.target.value); }}
                     className="w-full outline-none"
-                    style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--ink)", fontFamily: "var(--font-body)" }}
+                    style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--ink)", fontFamily: "var(--font-body)" }}
                     dir="rtl"
                   />
                 </div>
@@ -319,7 +319,7 @@ export function Navbar({ user }: NavbarProps) {
           </Link>
 
           {/* Notification bell */}
-          <div ref={notifRef} className="relative">
+          <div ref={notifRef} className="md:relative">
             <button type="button" onClick={() => { setNotifOpen((o) => !o); setSearchOpen(false); }}
               aria-label="الإشعارات" aria-expanded={notifOpen}
               className="relative w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
@@ -335,8 +335,8 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {notifOpen && (
-              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: "auto", right: 0, width: "min(320px, calc(100vw - 24px))", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] md:right-0 md:left-auto right-3 left-3 md:w-[320px] w-auto"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>

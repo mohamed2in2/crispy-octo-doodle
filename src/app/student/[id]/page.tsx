@@ -147,7 +147,7 @@ export default function StudentProfilePage() {
             </div>
 
             {/* Stats grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {stats.map(({ label, value, icon }) => (
                 <div
                   key={label}

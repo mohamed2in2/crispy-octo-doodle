@@ -71,7 +71,69 @@ const ELEMENTS = [
   { number: 53, mass: "126.9", symbol: "I", name: "Iodine", category: "halogen" },
   { number: 54, mass: "131.29", symbol: "Xe", name: "Xenon", category: "noble gas" },
   { number: 55, mass: "132.91", symbol: "Cs", name: "Cesium", category: "alkali metal" },
-  { number: 56, mass: "137.33", symbol: "Ba", name: "Barium", category: "alkaline earth metal" }
+  { number: 56, mass: "137.33", symbol: "Ba", name: "Barium", category: "alkaline earth metal" },
+  { number: 57, mass: "138.91", symbol: "La", name: "Lanthanum", category: "transition metal" },
+  { number: 58, mass: "140.12", symbol: "Ce", name: "Cerium", category: "transition metal" },
+  { number: 59, mass: "140.91", symbol: "Pr", name: "Praseodymium", category: "transition metal" },
+  { number: 60, mass: "144.24", symbol: "Nd", name: "Neodymium", category: "transition metal" },
+  { number: 61, mass: "145", symbol: "Pm", name: "Promethium", category: "transition metal" },
+  { number: 62, mass: "150.36", symbol: "Sm", name: "Samarium", category: "transition metal" },
+  { number: 63, mass: "151.96", symbol: "Eu", name: "Europium", category: "transition metal" },
+  { number: 64, mass: "157.25", symbol: "Gd", name: "Gadolinium", category: "transition metal" },
+  { number: 65, mass: "158.93", symbol: "Tb", name: "Terbium", category: "transition metal" },
+  { number: 66, mass: "162.5", symbol: "Dy", name: "Dysprosium", category: "transition metal" },
+  { number: 67, mass: "164.93", symbol: "Ho", name: "Holmium", category: "transition metal" },
+  { number: 68, mass: "167.26", symbol: "Er", name: "Erbium", category: "transition metal" },
+  { number: 69, mass: "168.93", symbol: "Tm", name: "Thulium", category: "transition metal" },
+  { number: 70, mass: "173.05", symbol: "Yb", name: "Ytterbium", category: "transition metal" },
+  { number: 71, mass: "174.97", symbol: "Lu", name: "Lutetium", category: "transition metal" },
+  { number: 72, mass: "178.49", symbol: "Hf", name: "Hafnium", category: "transition metal" },
+  { number: 73, mass: "180.95", symbol: "Ta", name: "Tantalum", category: "transition metal" },
+  { number: 74, mass: "183.84", symbol: "W", name: "Tungsten", category: "transition metal" },
+  { number: 75, mass: "186.21", symbol: "Re", name: "Rhenium", category: "transition metal" },
+  { number: 76, mass: "190.23", symbol: "Os", name: "Osmium", category: "transition metal" },
+  { number: 77, mass: "192.22", symbol: "Ir", name: "Iridium", category: "transition metal" },
+  { number: 78, mass: "195.08", symbol: "Pt", name: "Platinum", category: "transition metal" },
+  { number: 79, mass: "196.97", symbol: "Au", name: "Gold", category: "transition metal" },
+  { number: 80, mass: "200.59", symbol: "Hg", name: "Mercury", category: "transition metal" },
+  { number: 81, mass: "204.38", symbol: "Tl", name: "Thallium", category: "post-transition metal" },
+  { number: 82, mass: "207.2", symbol: "Pb", name: "Lead", category: "post-transition metal" },
+  { number: 83, mass: "208.98", symbol: "Bi", name: "Bismuth", category: "post-transition metal" },
+  { number: 84, mass: "209", symbol: "Po", name: "Polonium", category: "metalloid" },
+  { number: 85, mass: "210", symbol: "At", name: "Astatine", category: "halogen" },
+  { number: 86, mass: "222", symbol: "Rn", name: "Radon", category: "noble gas" },
+  { number: 87, mass: "223", symbol: "Fr", name: "Francium", category: "alkali metal" },
+  { number: 88, mass: "226", symbol: "Ra", name: "Radium", category: "alkaline earth metal" },
+  { number: 89, mass: "227", symbol: "Ac", name: "Actinium", category: "transition metal" },
+  { number: 90, mass: "232.04", symbol: "Th", name: "Thorium", category: "transition metal" },
+  { number: 91, mass: "231.04", symbol: "Pa", name: "Protactinium", category: "transition metal" },
+  { number: 92, mass: "238.03", symbol: "U", name: "Uranium", category: "transition metal" },
+  { number: 93, mass: "237", symbol: "Np", name: "Neptunium", category: "transition metal" },
+  { number: 94, mass: "244", symbol: "Pu", name: "Plutonium", category: "transition metal" },
+  { number: 95, mass: "243", symbol: "Am", name: "Americium", category: "transition metal" },
+  { number: 96, mass: "247", symbol: "Cm", name: "Curium", category: "transition metal" },
+  { number: 97, mass: "247", symbol: "Bk", name: "Berkelium", category: "transition metal" },
+  { number: 98, mass: "251", symbol: "Cf", name: "Californium", category: "transition metal" },
+  { number: 99, mass: "252", symbol: "Es", name: "Einsteinium", category: "transition metal" },
+  { number: 100, mass: "257", symbol: "Fm", name: "Fermium", category: "transition metal" },
+  { number: 101, mass: "258", symbol: "Md", name: "Mendelevium", category: "transition metal" },
+  { number: 102, mass: "259", symbol: "No", name: "Nobelium", category: "transition metal" },
+  { number: 103, mass: "262", symbol: "Lr", name: "Lawrencium", category: "transition metal" },
+  { number: 104, mass: "267", symbol: "Rf", name: "Rutherfordium", category: "transition metal" },
+  { number: 105, mass: "268", symbol: "Db", name: "Dubnium", category: "transition metal" },
+  { number: 106, mass: "269", symbol: "Sg", name: "Seaborgium", category: "transition metal" },
+  { number: 107, mass: "270", symbol: "Bh", name: "Bohrium", category: "transition metal" },
+  { number: 108, mass: "269", symbol: "Hs", name: "Hassium", category: "transition metal" },
+  { number: 109, mass: "278", symbol: "Mt", name: "Meitnerium", category: "transition metal" },
+  { number: 110, mass: "281", symbol: "Ds", name: "Darmstadtium", category: "transition metal" },
+  { number: 111, mass: "282", symbol: "Rg", name: "Roentgenium", category: "transition metal" },
+  { number: 112, mass: "285", symbol: "Cn", name: "Copernicium", category: "transition metal" },
+  { number: 113, mass: "286", symbol: "Nh", name: "Nihonium", category: "post-transition metal" },
+  { number: 114, mass: "289", symbol: "Fl", name: "Flerovium", category: "post-transition metal" },
+  { number: 115, mass: "290", symbol: "Mc", name: "Moscovium", category: "post-transition metal" },
+  { number: 116, mass: "293", symbol: "Lv", name: "Livermorium", category: "post-transition metal" },
+  { number: 117, mass: "294", symbol: "Ts", name: "Tennessine", category: "halogen" },
+  { number: 118, mass: "294", symbol: "Og", name: "Oganesson", category: "noble gas" }
 ];
 
 // Element usage facts (clues for usage game mode)
@@ -88,14 +150,26 @@ const USAGE_QUESTIONS = [
   { element: "Helium", symbol: "He", question: "غاز خامل وخفيف جداً يستخدم في ملء بالونات الطيران والمناطيد؟", hint: "أول الغازات النبيلة في الجدول، عدده الذري 2" },
   { element: "Calcium", symbol: "Ca", question: "عنصر ضروري جداً لبناء عظام وأسنان قوية ويتواجد بكثرة في الحليب؟", hint: "فلز قلوي ترابي، عدده الذري 20" },
   { element: "Sodium", symbol: "Na", question: "عنصر يتفاعل بشدة مع الماء، وهو أحد مكونات ملح الطعام الكيميائية؟", hint: "فلز قلوي نشط جداً، عدده الذري 11" },
-  { element: "Chlorine", question: "غاز أصفر مخضر يستخدم لتعقيم مياه الشرب والمسابح؟", symbol: "Cl", hint: "من الهالوجينات السامة، عدده الذري 17" },
+  { element: "Chlorine", symbol: "Cl", question: "غاز أصفر مخضر يستخدم لتعقيم مياه الشرب والمسابح؟", hint: "من الهالوجينات السامة، عدده الذري 17" },
   { element: "Silver", symbol: "Ag", question: "فلز أبيض ثمين يعتبر أفضل موصل للكهرباء والحرارة على الإطلاق؟", hint: "عدده الذري 47، ويستخدم في صناعة المرايا والمجوهرات" },
   { element: "Tungsten", symbol: "W", question: "عنصر يتميز بأعلى درجة انصهار بين الفلزات، ويستخدم في فتايل المصابيح الكهربائية؟", hint: "يسمى أيضاً وولفرام، عدده الذري 74" },
   { element: "Lithium", symbol: "Li", question: "أخف الفلزات وزناً، ويستخدم بشكل أساسي في صناعة بطاريات الهواتف والسيارات؟", hint: "أول الفلزات القلوية، عدده الذري 3" },
   { element: "Nitrogen", symbol: "N", question: "غاز يشكل الغالبية العظمى من غلاف الأرض الجوي بنسبة 78%؟", hint: "لافلز عديم اللون والرائحة، عدده الذري 7" },
   { element: "Fluorine", symbol: "F", question: "عنصر هالوجيني شديد التفاعل يضاف إلى معجون الأسنان لحمايتها من التسوس؟", hint: "أعلى العناصر كهروسالبية، عدده الذري 9" },
   { element: "Iodine", symbol: "I", question: "عنصر لافلي داكن من الهالوجينات يستخدم مطهراً للجروح والعمليات الجراحية؟", hint: "يتسامى متحولاً لبخار بنفسجي، عدده الذري 53" },
-  { element: "Argon", symbol: "Ar", question: "غاز خامل يستخدم لملء المصابيح الكهربائية لمنع تأكسد الفتيل؟", hint: "ثالث أكثر الغازات وفرة في الغلاف الجوي، عدده الذري 18" }
+  { element: "Argon", symbol: "Ar", question: "غاز خامل يستخدم لملء المصابيح الكهربائية لمنع تأكسد الفتيل؟", hint: "ثالث أكثر الغازات وفرة في الغلاف الجوي، عدده الذري 18" },
+  { element: "Zinc", symbol: "Zn", question: "عنصر يستخدم في حماية الحديد من الصدأ بعملية الجلفنة؟", hint: "فلز ذو لون رمادي، عدده الذري 30" },
+  { element: "Lead", symbol: "Pb", question: "فلز ثقيل استخدم قديماً في الطلاء والأنابيب، ويدخل في بطاريات السيارات؟", hint: "فلز سام وكتلته الذرية عالية، عدده الذري 82" },
+  { element: "Platinum", symbol: "Pt", question: "فلز ثمين جداً أبيض اللون يستخدم كمحفز في السيارات وتصنيع المجوهرات الراقية؟", hint: "أثمن من الذهب أحياناً، عدده الذري 78" },
+  { element: "Neon", symbol: "Ne", question: "غاز خامل يضيء بلون أحمر برتقالي ساطع عند مرور تيار كهربائي فيه ويستخدم في اللوحات الإعلانية؟", hint: "عدده الذري 10" },
+  { element: "Potassium", symbol: "K", question: "عنصر هام جداً لتوازن السوائل في الجسم، ويتواجد بكثرة في الموز؟", hint: "فلز قلوي سريع التفاعل، عدده الذري 19" },
+  { element: "Radium", symbol: "Ra", question: "عنصر مشع اكتشفته ماري كوري واستخدم في الطلاء المضيء للساعات قديماً؟", hint: "قلوي ترابي شديد النشاط الإشعاعي، عدده الذري 88" },
+  { element: "Uranium", symbol: "U", question: "عنصر ثقيل ومشع يستخدم كوقود للمفاعلات النووية وإنتاج الطاقة الذرية؟", hint: "عدده الذري 92" },
+  { element: "Magnesium", symbol: "Mg", question: "فلز خفيف يحترق بضوء أبيض ساطع جداً ويستخدم في صناعة الألعاب النارية وسبائك الطائرات؟", hint: "عدده الذري 12" },
+  { element: "Sulfur", symbol: "S", question: "عنصر لا فلزي أصفر اللون يستخدم في صناعة أعواد الثقاب وحمض الكبريتيك؟", hint: "له رائحة مميزة عند احتراقه، عدده الذري 16" },
+  { element: "Phosphorus", symbol: "P", question: "عنصر هام يدخل في تركيب العظام والـ DNA ويستخدم في صناعة الأسمدة وأعواد الثقاب؟", hint: "عدده الذري 15" },
+  { element: "Cobalt", symbol: "Co", question: "فلز انتقالي يستخدم في البطاريات الحديثة وتتميز مركباته بلونها الأزرق الجميل؟", hint: "عدده الذري 27" },
+  { element: "Nickel", symbol: "Ni", question: "فلز انتقالي فضي اللون يستخدم في طلاء المعادن وصناعة بطاريات الشحن وسبائك العملات المعدنية؟", hint: "عدده الذري 28" }
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -149,6 +223,7 @@ export default function ChemistryPage() {
   const [newIQ, setNewIQ] = useState(1000);
 
   const [draggedElement, setDraggedElement] = useState<any>(null);
+  const [options, setOptions] = useState<any[]>([]);
   const usedQuestionsRef = useRef<Set<string>>(new Set());
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,30 +249,82 @@ export default function ChemistryPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (currentQuestion) {
+      let correctEl = null;
+      if (currentQuestion.element && typeof currentQuestion.element === "object") {
+        correctEl = currentQuestion.element;
+      } else {
+        correctEl = ELEMENTS.find(e => e.name === currentQuestion.element || e.symbol === currentQuestion.symbol);
+      }
+      
+      if (correctEl) {
+        const sameCat = ELEMENTS.filter(e => e.category === correctEl.category && e.number !== correctEl.number);
+        const otherCats = ELEMENTS.filter(e => e.category !== correctEl.category);
+        
+        let distractors = sameCat.sort(() => Math.random() - 0.5).slice(0, 3);
+        const needed = 5 - distractors.length;
+        distractors = distractors.concat(otherCats.sort(() => Math.random() - 0.5).slice(0, needed));
+        
+        const allOpts = [correctEl, ...distractors].sort(() => Math.random() - 0.5);
+        setOptions(allOpts);
+      } else {
+        setOptions([]);
+      }
+    } else {
+      setOptions([]);
+    }
+  }, [currentQuestion]);
+
   const refreshIQ = () => setIqData(getIQData());
 
   const generateQuestionByLevel = useCallback((lvl: number): any => {
-    // Determine bounds based on level
-    const maxElementNum = lvl <= 3 ? 15 : lvl <= 6 ? 30 : lvl <= 9 ? 45 : 56;
+    const maxElementNum = lvl <= 3 ? 20 : lvl <= 6 ? 50 : lvl <= 9 ? 86 : 118;
     
     if (gameMode === "element") {
       let pool = ELEMENTS.filter(e => e.number <= maxElementNum);
       if (pool.length === 0) pool = ELEMENTS;
       
       let chosen = pool[Math.floor(Math.random() * pool.length)];
-      let key = `el-${chosen.number}`;
+      const qType = Math.floor(Math.random() * 6);
       
+      let queryText = "";
+      let hintText = "";
+      
+      if (qType === 0) {
+        queryText = `ابحث عن العنصر: ${chosen.name} (${chosen.symbol})`;
+        hintText = `العنصر كتلته الذرية ${chosen.mass} وعدده الذري ${chosen.number} وينتمي لمجموعة ${chosen.category}`;
+      } else if (qType === 1) {
+        queryText = `ابحث عن العنصر الذي عدده الذري هو: ${chosen.number}`;
+        hintText = `رمزه الكيميائي هو ${chosen.symbol} واسمه هو ${chosen.name}`;
+      } else if (qType === 2) {
+        queryText = `ابحث عن العنصر الذي رمزه الكيميائي هو: ${chosen.symbol}`;
+        hintText = `اسمه هو ${chosen.name} وعدده الذري هو ${chosen.number}`;
+      } else if (qType === 3) {
+        queryText = `ابحث عن عنصر ينتمي لمجموعة (${chosen.category}) وعدده الذري هو ${chosen.number}`;
+        hintText = `رمزه الكيميائي هو ${chosen.symbol} واسمه هو ${chosen.name}`;
+      } else if (qType === 4) {
+        queryText = `ابحث عن العنصر الذي يحتوي على ${chosen.number} بروتونات في نواته`;
+        hintText = `عدد البروتونات يساوي العدد الذري للعنصر. رمزه هو ${chosen.symbol}`;
+      } else {
+        queryText = `أي عنصر كتلته الذرية تساوي تقريباً ${Math.round(parseFloat(chosen.mass))}؟`;
+        hintText = `عدده الذري هو ${chosen.number} ورمزه الكيميائي هو ${chosen.symbol}`;
+      }
+      
+      let key = `el-${chosen.number}-${qType}`;
       let attempts = 0;
       while (usedQuestionsRef.current.has(key) && attempts < 100) {
         chosen = pool[Math.floor(Math.random() * pool.length)];
-        key = `el-${chosen.number}`;
+        const newQType = Math.floor(Math.random() * 6);
+        key = `el-${chosen.number}-${newQType}`;
         attempts++;
       }
       usedQuestionsRef.current.add(key);
 
       return {
         element: chosen,
-        hint: `العنصر هو لافلز أو فلز ينتمي لمجموعة ${chosen.category} كتلته الذرية ${chosen.mass} وعدده الذري ${chosen.number}`
+        question: queryText,
+        hint: hintText
       };
     } else {
       let pool = USAGE_QUESTIONS;
@@ -585,10 +712,10 @@ export default function ChemistryPage() {
               <motion.div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border border-gray-100 dark:border-gray-700" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
                   <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {gameMode === "element" 
+                    {currentQuestion?.question || (gameMode === "element" 
                       ? `ابحث عن العنصر: ${currentQuestion?.element.name} (${currentQuestion?.element.symbol})`
                       : currentQuestion?.question
-                    }
+                    )}
                   </h3>
                   <button onClick={() => setShowHint(!showHint)} className="px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-xl hover:bg-yellow-100 transition-colors text-xs font-bold shrink-0">
                     💡 مساعدة
@@ -610,6 +737,28 @@ export default function ChemistryPage() {
                 </div>
                 <p className="text-xs text-gray-400">أو اضغط مباشرة على العنصر بالجدول الدوري أدناه للإجابة السريعة!</p>
               </motion.div>
+
+              {/* Quick Tap Choices for Mobile */}
+              {options.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 border border-gray-100 dark:border-gray-700">
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 text-right">⚡ خيارات سريعة (للهاتف)</h4>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    {options.map((opt) => (
+                      <motion.button
+                        key={opt.number}
+                        onClick={() => handleDrop(opt)}
+                        className={`p-3 rounded-xl text-white font-black text-center shadow-md bg-gradient-to-br ${getCategoryColor(opt.category)} border border-white/10`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <span className="block text-xs opacity-75">{opt.number}</span>
+                        <span className="block text-lg font-black">{opt.symbol}</span>
+                        <span className="block text-[8px] truncate">{opt.name}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Periodic Table */}
               <motion.div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-100 dark:border-gray-700 overflow-x-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

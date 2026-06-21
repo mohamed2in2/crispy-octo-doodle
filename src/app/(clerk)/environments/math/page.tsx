@@ -12,6 +12,7 @@ import {
   levelToDifficulty, difficultyToStartLevel, levelToTimer,
   type Difficulty, type IQData, type GameResult,
 } from "@/lib/iq-system";
+import { GameFeedback } from "@/components/ai/GameFeedback";
 
 /* ─── Question generators per level 1–10 ─────────────────────────────────── */
 function rand(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -269,15 +270,28 @@ function DynamicGameEngine({ subject, genQuestion, renderQ, onFinish, accentGrad
           </span>
         ))}
       </div>
-      <Link href="/environments/iq" className="block w-full py-3 rounded-xl font-black text-center mb-2"
-        style={{ background: "var(--brand-soft)", color: "var(--brand)", border: "1px solid var(--brand)" }}>
-        🧠 شوف IQ الجديدة
-      </Link>
-      <button onClick={() => { clear(); correctRef.current=0; streakRef.current=0; maxStreakRef.current=0; levelsRef.current=[]; totalMsRef.current=0; levelRef.current=startLevel; setLevel(startLevel); setCorrect(0); setStreak(0); setMaxStreak(0); setLevels([]); setResult(null); setState("playing"); nextQ(0); }}
-        className="w-full py-3 rounded-xl font-black text-white"
-        style={{ background: accentGradient }}>
-        العب مرة أخرى
-      </button>
+      {/* AI Feedback */}
+      <GameFeedback
+        subject={subject}
+        correctAnswers={result.correct}
+        totalQuestions={TOTAL_Q}
+        totalTimeMs={totalMsRef.current}
+        maxLevel={Math.max(...levels, 1)}
+        maxStreak={maxStreak}
+        difficulty={levelToDifficulty(levelRef.current)}
+        autoLoad
+      />
+      <div className="flex gap-2 mt-3">
+        <Link href="/environments/iq" className="flex-1 py-3 rounded-xl font-black text-center text-sm"
+          style={{ background: "var(--brand-soft)", color: "var(--brand)", border: "1px solid var(--brand)" }}>
+          🧠 IQ
+        </Link>
+        <button onClick={() => { clear(); correctRef.current=0; streakRef.current=0; maxStreakRef.current=0; levelsRef.current=[]; totalMsRef.current=0; levelRef.current=startLevel; setLevel(startLevel); setCorrect(0); setStreak(0); setMaxStreak(0); setLevels([]); setResult(null); setState("playing"); nextQ(0); }}
+          className="flex-1 py-3 rounded-xl font-black text-white text-sm"
+          style={{ background: accentGradient }}>
+          العب مرة أخرى
+        </button>
+      </div>
     </div>
   );
 

@@ -248,12 +248,21 @@ export default function IQDashboardPage() {
                 </div>
               )}
 
-              {/* Comparison */}
+              {/* Comparison — uses real server average when available */}
               <div className="bg-white mt-2 px-5 pt-5 pb-4">
-                <h2 className="text-lg font-black text-right mb-4" style={{ color: "#1a1a2e" }}>مقارنة</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs" style={{ color: "#9E9E9E" }}>
+                    {stats
+                      ? `بناءً على ${stats.totalRanked} طالب`
+                      : "متوسط تقديري"}
+                  </span>
+                  <h2 className="text-lg font-black" style={{ color: "#1a1a2e" }}>مقارنة</h2>
+                </div>
                 {DASHBOARD_SKILLS.slice(0, 4).map(sk => (
                   <ComparisonBar key={sk} label={SKILL_LABELS[sk]}
-                    you={iq.skills[sk].score} avg={PLATFORM_AVG[sk]} color={SKILL_COLORS[sk]} />
+                    you={iq.skills[sk].score}
+                    avg={stats?.averageIQ ?? PLATFORM_AVG[sk]}
+                    color={SKILL_COLORS[sk]} />
                 ))}
               </div>
 
