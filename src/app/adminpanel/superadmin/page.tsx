@@ -36,6 +36,34 @@ async function readJson<T>(res: Response): Promise<T | null> {
   }
 }
 
+interface TeacherCourse {
+  id: string;
+  title: string;
+  subject: string;
+  educationalStage: string;
+  isPaid: boolean;
+  price: number;
+  enrolledStudents: number;
+  revenue: number;
+}
+
+interface OverviewTeacher {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  totalCourses: number;
+  courses: TeacherCourse[];
+}
+
+interface OverviewData {
+  totalStudents: number;
+  totalTeachers: number;
+  totalCourses: number;
+  totalRevenue: number;
+  teachers: OverviewTeacher[];
+}
+
 interface Teacher {
   id: string;
   name: string;
@@ -71,6 +99,9 @@ export default function SuperadminPage() {
   const [deleteTargetTeacher, setDeleteTargetTeacher] = useState<Teacher | null>(null);
   const [userRole, setUserRole] = useState<"superadmin" | "admin" | "staff">("superadmin");
   const [isOwner, setIsOwner] = useState(false);
+  const [overview, setOverview] = useState<OverviewData | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
 
   const fetchTeachers = async () => {
     const res = await fetch("/api/admin/teachers", { credentials: "include" });
@@ -85,6 +116,19 @@ export default function SuperadminPage() {
     setLoading(false);
   };
 
+  const fetchOverview = async () => {
+    setOverviewLoading(true);
+    try {
+      const res = await fetch("/api/admin/superadmin/overview", { credentials: "include" });
+      const data = await readJson<OverviewData>(res);
+      if (data) setOverview(data);
+    } catch {
+      /* non-critical */
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       const meRes = await fetch("/api/auth/me", { credentials: "include" });
@@ -92,7 +136,7 @@ export default function SuperadminPage() {
       const role = meData?.user?.role;
       if (role === "admin" || role === "staff") setUserRole(role);
       setIsOwner(!!meData?.user?.isOwner);
-      await fetchTeachers();
+      await Promise.all([fetchTeachers(), fetchOverview()]);
     };
     void init();
   }, []);
@@ -140,7 +184,7 @@ export default function SuperadminPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-gray-950 text-slate-900 dark:text-white">
+    <div className="flex min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
       <AdminSidebar
         role={userRole}
         activeSection={activeSection}
@@ -153,18 +197,28 @@ export default function SuperadminPage() {
 
       <div className="flex-1 min-w-0 overflow-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 lg:bg-white/85 lg:dark:bg-gray-900/85 lg:backdrop-blur-xl border-b border-slate-200 dark:border-gray-800 px-4 sm:px-6 py-3.5 flex items-center gap-3">
+        <div
+          className="sticky top-0 z-10 lg:backdrop-blur-xl px-4 sm:px-6 py-3.5 flex items-center gap-3"
+          style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
+        >
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="فتح القائمة"
-            className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+            className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[var(--border)] transition-colors shrink-0"
+            style={{ color: "var(--ink-2)" }}
           >
             <IconMenu className="w-5 h-5" />
           </button>
-          <h1 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate flex-1">
+          <h1
+            className="text-base sm:text-xl font-black truncate flex-1"
+            style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}
+          >
             {SECTION_TITLES[activeSection] ?? activeSection}
           </h1>
-          <span className="hidden sm:inline-flex text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-full font-bold">
+          <span
+            className="hidden sm:inline-flex text-xs px-3 py-1.5 rounded-full font-bold"
+            style={{ background: "var(--gold-soft)", color: "var(--gold-2)" }}
+          >
             {ROLE_LABEL[userRole]}
           </span>
           <DarkModeToggle />
@@ -172,75 +226,191 @@ export default function SuperadminPage() {
 
         <div className="p-6">
           {activeSection === "overview" && (
-            <>
-              {/* Stats */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
-                  <div className="text-3xl font-black text-blue-400">{teachers.length}</div>
-                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">مدرس مسجل</div>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
-                  <div className="text-3xl font-black text-green-400">
-                    {teachers.reduce((a: number, t: Teacher) => a + (t._count?.courses || 0), 0)}
+            <div dir="rtl" className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "إجمالي الطلاب",  value: overviewLoading ? "…" : (overview?.totalStudents ?? 0).toLocaleString("ar-EG"), icon: "🎓", accent: "var(--brand)"  },
+                  { label: "المعلمون",         value: overviewLoading ? "…" : (overview?.totalTeachers ?? 0).toLocaleString("ar-EG"), icon: "👨‍🏫", accent: "var(--brand)"  },
+                  { label: "إجمالي الكورسات", value: overviewLoading ? "…" : (overview?.totalCourses ?? 0).toLocaleString("ar-EG"),  icon: "📚", accent: "var(--gold-2)" },
+                  { label: "إجمالي الإيرادات", value: overviewLoading ? "…" : `${(overview?.totalRevenue ?? 0).toLocaleString("ar-EG")} ج.م`, icon: "💰", accent: "var(--gold-2)" },
+                ].map((card) => (
+                  <div
+                    key={card.label}
+                    className="rounded-2xl p-5"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
+                  >
+                    <div className="text-2xl mb-2">{card.icon}</div>
+                    <div className="text-3xl font-black leading-none" style={{ color: card.accent, fontFamily: "var(--font-head)" }}>{card.value}</div>
+                    <div className="text-sm mt-1.5" style={{ color: "var(--ink-2)" }}>{card.label}</div>
                   </div>
-                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">إجمالي الكورسات</div>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700">
-                  <div className="text-3xl font-black text-purple-400">✓</div>
-                  <div className="text-slate-500 dark:text-gray-400 text-sm mt-1">النظام يعمل بشكل جيد</div>
-                </div>
+                ))}
               </div>
 
-              {/* Teachers list */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="font-bold text-slate-900 dark:text-white">قائمة المعلمين</h2>
+              {/* Teachers + Courses Table */}
+              <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <h2 className="font-black text-base" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>
+                    المعلمون وكورساتهم
+                  </h2>
                   <button
                     onClick={() => setActiveSection("create")}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="px-4 py-2 text-white text-sm font-bold rounded-lg transition-opacity hover:opacity-90 cursor-pointer border-none"
+                    style={{ background: "var(--brand)" }}
                   >
                     + إضافة مدرس
                   </button>
                 </div>
-                {loading ? (
-                  <div className="p-8 text-center text-slate-500 dark:text-gray-500">جارٍ التحميل...</div>
-                ) : teachers.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 dark:text-gray-500">
+
+                {overviewLoading ? (
+                  <div className="p-10 text-center" style={{ color: "var(--ink-3)" }}>
+                    <div className="text-3xl mb-2 animate-pulse">⏳</div>
+                    جارٍ التحميل...
+                  </div>
+                ) : !overview || overview.teachers.length === 0 ? (
+                  <div className="p-10 text-center" style={{ color: "var(--ink-3)" }}>
                     <div className="text-4xl mb-2">👨‍🏫</div>
                     <p>لا يوجد مدرسون بعد</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-200 dark:divide-gray-700">
-                    {teachers.map((t) => (
-                      <div key={t.id} className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-bold shrink-0">
-                            {t.name[0]}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-slate-900 dark:text-white truncate">{t.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-gray-400">{t._count?.courses || 0} كورس</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-slate-500 dark:text-gray-500 hidden sm:inline">
-                            {t.createdAt ? new Date(t.createdAt).toLocaleDateString("ar-EG") : ""}
-                          </span>
+                  <div style={{ borderTop: "0" }}>
+                    {overview.teachers.map((t) => {
+                      const isExpanded = expandedTeacher === t.id;
+                      const teacherStudents = t.courses.reduce((s, c) => s + c.enrolledStudents, 0);
+                      const teacherRevenue = t.courses.reduce((s, c) => s + c.revenue, 0);
+                      return (
+                        <div key={t.id} style={{ borderTop: "1px solid var(--border)" }}>
+                          {/* Teacher row */}
                           <button
-                            onClick={() => setDeleteTargetTeacher(t)}
-                            className="w-9 h-9 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                            aria-label={`حذف ${t.name}`}
+                            onClick={() => setExpandedTeacher(isExpanded ? null : t.id)}
+                            className="w-full p-4 flex items-center gap-3 text-right transition-colors cursor-pointer border-none"
+                            style={{ background: "transparent" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                           >
-                            <IconTrash className="w-4 h-4" />
+                            <div
+                              className="w-10 h-10 text-white rounded-xl flex items-center justify-center font-bold text-lg shrink-0"
+                              style={{ background: "var(--brand)" }}
+                            >
+                              {t.name[0]}
+                            </div>
+                            <div className="flex-1 min-w-0 text-right">
+                              <p className="font-semibold truncate" style={{ color: "var(--ink)" }}>{t.name}</p>
+                              <p className="text-xs mt-0.5" style={{ color: "var(--ink-3)" }}>
+                                {t.totalCourses} كورس · {teacherStudents} طالب
+                              </p>
+                            </div>
+                            <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
+                              <span className="text-sm font-bold" style={{ color: "var(--brand)" }}>
+                                {teacherRevenue.toLocaleString("ar-EG")} ج.م
+                              </span>
+                              <span className="text-[11px]" style={{ color: "var(--ink-3)" }}>إجمالي الإيرادات</span>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDeleteTargetTeacher({ id: t.id, name: t.name }); }}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                style={{ color: "var(--danger)" }}
+                                aria-label={`حذف ${t.name}`}
+                              >
+                                <IconTrash className="w-4 h-4" />
+                              </button>
+                              <span
+                                className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                                style={{ color: "var(--ink-3)" }}
+                              >
+                                ▾
+                              </span>
+                            </div>
                           </button>
+
+                          {/* Courses sub-table */}
+                          {isExpanded && (
+                            <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+                              {t.courses.length === 0 ? (
+                                <p className="p-4 text-sm text-center" style={{ color: "var(--ink-3)" }}>لا توجد كورسات بعد</p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="text-xs" style={{ borderBottom: "1px solid var(--border)", color: "var(--ink-3)" }}>
+                                        <th className="px-4 py-2 text-right font-medium">الكورس</th>
+                                        <th className="px-4 py-2 text-right font-medium">المادة</th>
+                                        <th className="px-4 py-2 text-center font-medium">الطلاب</th>
+                                        <th className="px-4 py-2 text-center font-medium">السعر</th>
+                                        <th className="px-4 py-2 text-center font-medium">الإيرادات</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {t.courses.map((c) => (
+                                        <tr
+                                          key={c.id}
+                                          className="transition-colors"
+                                          style={{ borderTop: "1px solid var(--border)" }}
+                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface)"; }}
+                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                                        >
+                                          <td className="px-4 py-3 font-medium max-w-[200px] truncate" style={{ color: "var(--ink)" }}>
+                                            {c.title}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs" style={{ color: "var(--ink-2)" }}>
+                                            {c.subject}
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            <span
+                                              className="inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold min-w-[2rem]"
+                                              style={{ background: "var(--brand-soft)", color: "var(--brand)" }}
+                                            >
+                                              {c.enrolledStudents}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            {c.isPaid ? (
+                                              <span className="font-semibold" style={{ color: "var(--gold-2)" }}>
+                                                {c.price.toLocaleString("ar-EG")} ج.م
+                                              </span>
+                                            ) : (
+                                              <span className="text-xs" style={{ color: "var(--ink-3)" }}>مجاني</span>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            <span className="font-bold" style={{ color: c.revenue > 0 ? "var(--brand)" : "var(--ink-3)" }}>
+                                              {c.revenue > 0 ? `${c.revenue.toLocaleString("ar-EG")} ج.م` : "—"}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                    <tfoot>
+                                      <tr style={{ borderTop: "2px solid var(--border-strong)", background: "var(--surface-2)" }}>
+                                        <td colSpan={2} className="px-4 py-2.5 text-xs font-bold" style={{ color: "var(--ink-2)" }}>
+                                          الإجمالي
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                          <span className="font-black" style={{ color: "var(--brand)" }}>{teacherStudents}</span>
+                                        </td>
+                                        <td />
+                                        <td className="px-4 py-2.5 text-center">
+                                          <span className="font-black" style={{ color: "var(--brand)" }}>
+                                            {teacherRevenue.toLocaleString("ar-EG")} ج.م
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    </tfoot>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
+
 
           {activeSection === "students" && <StudentsSection userRole={userRole} />}
 
@@ -289,36 +459,47 @@ export default function SuperadminPage() {
 
           {activeSection === "create" && (
             <div className="max-w-md">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">إنشاء حساب مدرس جديد</h2>
-
-              <form onSubmit={createTeacher} className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-slate-200 dark:border-gray-700 space-y-4">
+              <h2
+                className="text-xl font-black mb-6"
+                style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}
+              >
+                إنشاء حساب مدرس جديد
+              </h2>
+              <form
+                onSubmit={createTeacher}
+                className="rounded-2xl p-6 space-y-4"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+              >
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">اسم المعلم</label>
+                  <label className="block text-sm font-semibold mb-1" style={{ color: "var(--ink-2)" }}>اسم المعلم</label>
                   <input
                     type="text"
                     required
                     value={newTeacher.name}
                     onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 rounded-xl outline-none"
+                    style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontFamily: "var(--font-body)" }}
                     placeholder="أ. محمد إبراهيم"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">كلمة المرور</label>
+                  <label className="block text-sm font-semibold mb-1" style={{ color: "var(--ink-2)" }}>كلمة المرور</label>
                   <input
                     type="password"
                     required
                     minLength={6}
                     value={newTeacher.password}
                     onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 rounded-xl outline-none"
+                    style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontFamily: "var(--font-body)" }}
                     placeholder="••••••••"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors"
+                  className="w-full py-3 text-white font-bold rounded-xl transition-opacity hover:opacity-90 disabled:opacity-60 cursor-pointer border-none"
+                  style={{ background: "var(--brand)", boxShadow: "0 6px 18px -6px var(--brand-shadow)", fontFamily: "var(--font-head)", fontSize: 16 }}
                 >
                   {creating ? "جارٍ الإنشاء..." : "إنشاء الحساب"}
                 </button>

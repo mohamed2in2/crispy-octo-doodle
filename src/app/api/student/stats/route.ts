@@ -7,10 +7,23 @@ import { prisma } from "@/lib/prisma";
  * the User row, watched/quiz/course counts, last-28-day activity, and a computed
  * achievements list. Replaces the library's client-side guesses.
  */
+const EMPTY_STATS = {
+  points: 0, streak: 0, watchedVideos: 0, quizzesPassed: 0,
+  coursesCount: 0, hours: 0, weekActive: Array(7).fill(false),
+  activity: Array(28).fill(0), achievements: [], achievementsUnlocked: 0, weaknesses: [],
+};
+
 export async function GET() {
   try {
-  const session = await getStudentSession();
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  // Non-students (admin, teacher, staff) have no gamification data
+  if (session.role !== "student") {
+    return NextResponse.json(EMPTY_STATS, {
+      headers: { "Cache-Control": "private, max-age=300" },
+    });
+  }
   const studentId = session.id;
 
   const user = await prisma.user.findUnique({
@@ -126,19 +139,29 @@ export async function GET() {
     { id: "expert", title: "خبير", description: "أكمل 20 درساً", icon: "trophy", unlocked: watchedVideos >= 20 },
   ];
 
-  return NextResponse.json({
-    points,
-    streak,
-    watchedVideos,
-    quizzesPassed,
-    coursesCount,
-    hours,
-    weekActive,
-    activity,
-    achievements,
-    achievementsUnlocked: achievements.filter((a) => a.unlocked).length,
-    weaknesses,
-  });
+  return NextResponse.json(
+    {
+      points,
+      streak,
+      watchedVideos,
+      quizzesPassed,
+      coursesCount,
+      hours,
+      weekActive,
+      activity,
+      achievements,
+      achievementsUnlocked: achievements.filter((a) => a.unlocked).length,
+      weaknesses,
+    },
+    {
+      headers: {
+        // Cache stats for 5 minutes in the browser. The 4 parallel DB queries in
+        // this route are now shared across all callers (library page, StreakFlame,
+        // notification panel) via a single browser cache entry.
+        "Cache-Control": "private, max-age=300, stale-while-revalidate=600",
+      },
+    }
+  );
 } catch (error) {
     console.error("[student/stats] error:", error);
     return NextResponse.json(

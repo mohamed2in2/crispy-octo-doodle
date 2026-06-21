@@ -29,13 +29,12 @@ const stagger: Variants = {
 };
 
 const rise: Variants = {
-  hidden:   { opacity: 0, y: 22 },
-  visible:  { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
+  hidden:  { opacity: 0, y: 22 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
 };
 
 interface HeroSectionProps {
   isLoggedIn: boolean;
-  /** Editable from the superadmin panel; falls back to the default copy. */
   subtitle?: string;
 }
 
@@ -46,11 +45,10 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
   const canHover = useCanHover();
   const reduced  = useReducedMotion();
 
-  /* Cursor spotlight */
   const spotX       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
   const spotY       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
   const spotOpacity = useSpring(0, { stiffness: 120, damping: 30 });
-  const spotlight   = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(99,102,241,0.14), transparent 70%)`;
+  const spotlight   = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(14,110,98,0.13), transparent 70%)`;
 
   const trackSpotlight = (e: React.PointerEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -88,17 +86,13 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
       >
         {/* Background layers */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          {/* Grid */}
           <div className="absolute inset-0 hero-grid bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_75%_65%_at_50%_38%,black_25%,transparent_78%)]" />
-          {/* Top radial */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-300/20 dark:from-indigo-900/20 via-transparent to-transparent opacity-60" />
-          {/* Grain */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[800px] h-[400px] md:h-[600px]"
+            style={{ background: "radial-gradient(ellipse at top, rgba(14,110,98,.15), transparent 70%)" }} />
           <div className="noise" />
-          {/* Bottom rule */}
-          <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-300/30 dark:via-white/8 to-transparent" />
+          <div className="absolute bottom-0 inset-x-0 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(14,110,98,.2), transparent)" }} />
         </div>
 
-        {/* Spotlight */}
         {spotlightEnabled && (
           <motion.div
             aria-hidden
@@ -107,7 +101,6 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
           />
         )}
 
-        {/* Content */}
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -117,11 +110,12 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
           {/* Status pill */}
           <motion.div
             variants={rise}
-            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-600 dark:bg-white/5 dark:border-white/10 dark:text-white/60 text-xs md:text-sm font-semibold mb-8 md:mb-10 backdrop-blur-md cursor-default select-none"
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs md:text-sm font-semibold mb-8 md:mb-10 backdrop-blur-md cursor-default select-none"
+            style={{ background: "var(--brand-soft)", border: "1px solid rgba(14,110,98,.3)", color: "var(--brand)" }}
           >
             <span className="relative flex w-2 h-2 shrink-0" aria-hidden>
-              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-50" />
-              <span className="relative inline-flex w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.7)]" />
+              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-40" />
+              <span className="relative inline-flex w-2 h-2 rounded-full bg-[var(--brand)]" />
             </span>
             أكثر من ١٬٠٠٠ طالب يثقون بنا
           </motion.div>
@@ -129,24 +123,20 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
           {/* Headline */}
           <motion.h1
             variants={rise}
-            className="text-balance text-4xl sm:text-5xl md:text-[4.5rem] lg:text-[5rem] font-black text-slate-900 dark:text-white tracking-tight leading-[1.2] md:leading-[1.15] mb-6 md:mb-7"
+            className="text-balance text-4xl sm:text-5xl md:text-[4.5rem] lg:text-[5rem] font-black tracking-tight leading-[1.2] md:leading-[1.15] mb-6 md:mb-7"
+            style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}
           >
             كل ما تحتاجه للتفوّق
             <br />
             <span>في </span>
-            {/* Accessible: screen readers get the static list; the rotating animation is aria-hidden */}
             <span className="sr-only">جميع المواد الدراسية</span>
             <span
               aria-hidden
               className="relative inline-grid overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]"
             >
-              {/* Ghost columns to keep width stable */}
               {ROTATING_SUBJECTS.map((s) => (
-                <span key={s} className="invisible col-start-1 row-start-1 whitespace-nowrap px-1">
-                  {s}
-                </span>
+                <span key={s} className="invisible col-start-1 row-start-1 whitespace-nowrap px-1">{s}</span>
               ))}
-
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={subject}
@@ -154,8 +144,8 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
                   animate={{ y: "0%",  opacity: 1 }}
                   exit={{   y: "-65%", opacity: 0 }}
                   transition={{ duration: 0.5, ease: EASE }}
-                  /* Solid sky-blue — no gradient text */
-                  className="col-start-1 row-start-1 whitespace-nowrap px-1 text-indigo-600 dark:text-sky-400"
+                  className="col-start-1 row-start-1 whitespace-nowrap px-1"
+                  style={{ color: "var(--brand)" }}
                 >
                   {subject}
                 </motion.span>
@@ -163,10 +153,11 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             </span>
           </motion.h1>
 
-          {/* Subheading */}
+          {/* Subtitle */}
           <motion.p
             variants={rise}
-            className="text-slate-500 dark:text-white/50 text-base md:text-lg mb-10 md:mb-12 leading-relaxed max-w-xl mx-auto font-medium px-2 text-pretty"
+            className="text-base md:text-lg mb-10 md:mb-12 leading-relaxed max-w-xl mx-auto font-medium px-2 text-pretty"
+            style={{ color: "var(--ink-2)" }}
           >
             {subtitle || DEFAULT_SUBTITLE}
           </motion.p>
@@ -179,22 +170,15 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             <MagneticArea className="w-full sm:w-auto">
               <Link
                 href={isLoggedIn ? "/library" : "/signup"}
-                className="group relative px-8 py-3.5 md:py-4 bg-indigo-600 text-white dark:bg-white dark:text-[#0b0f19] font-bold rounded-full hover:shadow-[0_0_36px_rgba(99,102,241,0.3)] dark:hover:shadow-[0_0_36px_rgba(255,255,255,0.22)] transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px]"
+                className="group relative px-8 py-3.5 md:py-4 font-bold rounded-full transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px] text-white hover:opacity-90"
+                style={{ background: "var(--brand)", boxShadow: "0 0 0 0 var(--brand-shadow)" }}
               >
                 <span className="relative z-10">{isLoggedIn ? "متابعة التعلم" : "ابدأ الآن مجاناً"}</span>
-                <svg
-                  className="relative z-10 w-4 h-4 transition-transform group-hover:-translate-x-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                  aria-hidden
-                >
+                <svg className="relative z-10 w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-                {/* Shimmer sweep */}
                 <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
-                  <span className="absolute inset-y-0 left-[-45%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 dark:via-indigo-200/50 to-transparent blur-sm transition-[left] duration-700 ease-out group-hover:left-[115%]" />
+                  <span className="absolute inset-y-0 left-[-45%] w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent blur-sm transition-[left] duration-700 ease-out group-hover:left-[115%]" />
                 </span>
               </Link>
             </MagneticArea>
@@ -202,7 +186,8 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             {!isLoggedIn && (
               <Link
                 href="/courses"
-                className="px-8 py-3.5 md:py-4 bg-white border border-slate-200 text-slate-700 dark:bg-white/5 dark:border-white/10 dark:text-white/80 font-bold rounded-full hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 dark:hover:bg-white/8 dark:hover:border-white/18 dark:hover:text-white transition-all text-base flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm shadow-sm dark:shadow-none"
+                className="px-8 py-3.5 md:py-4 font-bold rounded-full transition-all text-base flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
               >
                 استكشف الكورسات
               </Link>
@@ -214,15 +199,26 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             variants={rise}
             className="flex flex-wrap items-center justify-center gap-2 mt-10 md:mt-12"
           >
-            <span className="text-xs md:text-sm text-slate-400 dark:text-white/35 font-medium ml-1">اختر صفك:</span>
+            <span className="text-xs md:text-sm font-medium ml-1" style={{ color: "var(--ink-3)" }}>اختر صفك:</span>
             {GRADE_SHORTCUTS.map((g) => (
               <Link
                 key={g.stage}
                 href={`/courses?stage=${g.stage}`}
-                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/8 dark:text-white/60 text-xs md:text-sm font-bold hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 dark:hover:bg-sky-500/10 dark:hover:border-sky-400/30 dark:hover:text-white transition-all backdrop-blur-sm shadow-sm dark:shadow-none"
+                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all backdrop-blur-sm"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--brand-soft)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--brand)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--surface)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--ink-2)";
+                }}
               >
                 {g.label}
-                <span aria-hidden className="text-indigo-500 dark:text-sky-400 transition-transform group-hover/chip:-translate-x-0.5">←</span>
+                <span aria-hidden className="transition-transform group-hover/chip:-translate-x-0.5" style={{ color: "var(--brand)" }}>←</span>
               </Link>
             ))}
           </motion.div>
@@ -230,8 +226,8 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
 
         {/* Scroll indicator */}
         <div aria-hidden className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block animate-float-slow">
-          <div className="w-6 h-10 rounded-full border-2 border-slate-300 dark:border-white/12 flex justify-center pt-2">
-            <div className="w-1 h-2.5 rounded-full bg-slate-400 dark:bg-white/25" />
+          <div className="w-6 h-10 rounded-full border-2 flex justify-center pt-2" style={{ borderColor: "var(--border-strong)" }}>
+            <div className="w-1 h-2.5 rounded-full" style={{ background: "var(--ink-3)" }} />
           </div>
         </div>
       </section>

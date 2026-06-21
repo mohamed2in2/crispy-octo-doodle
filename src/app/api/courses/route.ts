@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
       where,
       include: { teacher: { select: { id: true, name: true } }, _count: { select: { accessCodes: true } } },
       orderBy: { createdAt: "desc" },
+      // allowDirectInstall is needed so CourseCard can show the install button
     });
 
     if (!session) {

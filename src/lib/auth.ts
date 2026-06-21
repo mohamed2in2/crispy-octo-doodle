@@ -40,6 +40,8 @@ export interface SessionUser {
   educationalStage?: string | null;
   createdAt?: Date;
   deviceId?: string;
+  referralCode?: string | null;
+  streakFreezes?: number;
 }
 
 type PhoneChallengePayload = {
@@ -216,6 +218,8 @@ async function getJwtSession(): Promise<SessionUser | null> {
     educationalStage: user.educationalStage,
     createdAt: user.createdAt,
     deviceId: payload.deviceId,
+    referralCode: user.referralCode,
+    streakFreezes: user.streakFreezes,
   };
 }
 
@@ -262,7 +266,7 @@ export async function getSessionWithRetry(
   return null;
 }
 
-export async function getStudentSessionWithRetry(maxRetries = 5, delayMs = 150): Promise<SessionUser | null> {
+export async function getStudentSessionWithRetry(maxRetries = 3, delayMs = 80): Promise<SessionUser | null> {
   return getSessionWithRetry(maxRetries, delayMs, { preferStudent: true });
 }
 

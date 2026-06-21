@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
-import { formatEgp, useCanHover, useCountdown } from "@/lib/motion";
+import { formatEgp, useCountdown } from "@/lib/motion";
 
 interface CourseCardProps {
   course: {
     id: string;
     title: string;
     subject?: string;
+    description?: string | null;
     thumbnailUrl?: string | null;
     educationalStage?: string;
     teacher: { id: string; name: string };
@@ -20,80 +20,39 @@ interface CourseCardProps {
     price?: number | null;
     discountPercent?: number | null;
     discountExpiresAt?: string | null;
+    allowDirectInstall?: boolean;
   };
   onCodeApplied: () => void;
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  primary_4: "الرابع الابتدائي",
-  primary_5: "الخامس الابتدائي",
-  primary_6: "السادس الابتدائي",
-  prep_1: "الأول الإعدادي",
-  prep_2: "الثاني الإعدادي",
-  prep_3: "الثالث الإعدادي",
-  sec_1: "الأول الثانوي",
-  sec_2: "الثاني الثانوي",
-  sec_3: "الثالث الثانوي",
+  primary_4: "الرابع الابتدائي", primary_5: "الخامس الابتدائي", primary_6: "السادس الابتدائي",
+  prep_1: "الأول الإعدادي",    prep_2: "الثاني الإعدادي",    prep_3: "الثالث الإعدادي",
+  sec_1:  "الأول الثانوي",     sec_2:  "الثاني الثانوي",     sec_3:  "الثالث الثانوي",
 };
 
-const SUBJECT_THEMES: Record<string, { chip: string; glow: string }> = {
-  رياضيات: { chip: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", glow: "rgba(59, 130, 246, 0.35)" },
-  فيزياء: { chip: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", glow: "rgba(168, 85, 247, 0.35)" },
-  كيمياء: { chip: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20", glow: "rgba(34, 197, 94, 0.35)" },
-  أحياء: { chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", glow: "rgba(16, 185, 129, 0.35)" },
-  "لغة عربية": { chip: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", glow: "rgba(239, 68, 68, 0.35)" },
-  "لغة إنجليزية": { chip: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20", glow: "rgba(249, 115, 22, 0.35)" },
+const SUBJECT_COLORS: Record<string, { bg: string; text: string }> = {
+  رياضيات:        { bg: "#1d4ed8", text: "#fff" },
+  فيزياء:         { bg: "#7c3aed", text: "#fff" },
+  كيمياء:         { bg: "#059669", text: "#fff" },
+  أحياء:          { bg: "#0891b2", text: "#fff" },
+  "لغة عربية":    { bg: "#b45309", text: "#fff" },
+  "لغة إنجليزية": { bg: "#dc2626", text: "#fff" },
 };
+const DEFAULT_COLOR = { bg: "var(--brand)", text: "#fff" };
 
-const FALLBACK_THEME = {
-  chip: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-  glow: "rgba(99, 102, 241, 0.35)",
-};
-
-// Thumbnails come from teacher input — only render http(s) or same-origin paths.
 const isSafeSrc = (src: string) => /^https?:\/\//i.test(src) || (src.startsWith("/") && !src.startsWith("//"));
 
-const TILT_SPRING = { stiffness: 260, damping: 20, mass: 0.8 };
-const MAX_TILT_DEG = 7;
-
 export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
-  const router = useRouter();
+  const router  = useRouter();
   const { success: toastSuccess, error: toastError } = useToast();
-  const [code, setCode] = useState("");
-  const [applying, setApplying] = useState(false);
+  const [code,      setCode]      = useState("");
+  const [applying,  setApplying]  = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installed,  setInstalled]  = useState(false);
 
-  const canHover = useCanHover();
-  const reduced = useReducedMotion();
-  const tiltEnabled = canHover && !reduced;
-
-  const rotateX = useSpring(0, TILT_SPRING);
-  const rotateY = useSpring(0, TILT_SPRING);
-  const glareX = useMotionValue(50);
-  const glareY = useMotionValue(35);
-  const glareOpacity = useSpring(0, { stiffness: 180, damping: 28 });
-  const glare = useMotionTemplate`radial-gradient(460px circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.09), transparent 65%)`;
-
-  const tilt = (e: React.PointerEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-    rotateY.set((px - 0.5) * MAX_TILT_DEG);
-    rotateX.set((0.5 - py) * MAX_TILT_DEG);
-    glareX.set(px * 100);
-    glareY.set(py * 100);
-    glareOpacity.set(1);
-  };
-
-  const untilt = () => {
-    rotateX.set(0);
-    rotateY.set(0);
-    glareOpacity.set(0);
-  };
-
-  // The shared clock in useCountdown is the only time source here; until it
-  // hydrates we trust the server's discount data as-is.
-  const countdown = useCountdown(course.discountExpiresAt);
-  const hasDiscount = (course.discountPercent ?? 0) > 0;
+  const countdown      = useCountdown(course.discountExpiresAt ?? null);
+  const hasDiscount    = (course.discountPercent ?? 0) > 0;
   const discountActive = hasDiscount && !(countdown?.expired ?? false);
   const effectivelyFree = !course.isPaid || (discountActive && course.discountPercent === 100);
   const finalPrice =
@@ -101,199 +60,254 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
       ? Math.round(course.price * (1 - (course.discountPercent ?? 0) / 100))
       : course.price;
 
-  const theme = SUBJECT_THEMES[course.subject ?? ""] ?? FALLBACK_THEME;
-  const stageLabel = STAGE_LABELS[course.educationalStage ?? ""] || course.educationalStage || "عام";
-  const thumbnail = course.thumbnailUrl && isSafeSrc(course.thumbnailUrl) ? course.thumbnailUrl : null;
-  const teacherInitial = course.teacher.name.trim().charAt(0) || "م";
+  const thumbnail    = course.thumbnailUrl && isSafeSrc(course.thumbnailUrl) ? course.thumbnailUrl : null;
+  const stageLabel   = STAGE_LABELS[course.educationalStage ?? ""] || course.educationalStage || "";
+  const subjectColor = SUBJECT_COLORS[course.subject ?? ""] ?? DEFAULT_COLOR;
+  const tagText      = [course.subject, stageLabel].filter(Boolean).join(" · ");
+
+  const installCourse = async () => {
+    if (installing) return;
+    setInstalling(true);
+    try {
+      const res = await fetch(`/api/courses/${course.id}/enroll`, { method: "POST", credentials: "include" });
+      const data: { message?: string; error?: string } = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setInstalled(true);
+        toastSuccess(data.message || `تم تثبيت «${course.title}» في مكتبتك! 📲`);
+        onCodeApplied();
+        setTimeout(() => router.push("/library"), 800);
+      } else if (res.status === 401) {
+        router.push("/login");
+      } else {
+        toastError(data.error || "تعذر تثبيت الكورس");
+      }
+    } catch {
+      toastError("تعذر الاتصال بالخادم");
+    } finally {
+      setInstalling(false);
+    }
+  };
 
   const applyCode = async () => {
     const normalized = code.trim().toUpperCase();
     if (!normalized || applying) return;
-
     setApplying(true);
     try {
-      const res = await fetch("/api/codes", {
-        method: "POST",
-        credentials: "include",
+      const res  = await fetch("/api/codes", {
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: normalized }),
       });
-      const data: { message?: string; courseTitle?: string; error?: string } = await res
-        .json()
-        .catch(() => ({}));
-
+      const data: { message?: string; courseTitle?: string; error?: string } = await res.json().catch(() => ({}));
       if (res.ok) {
-        toastSuccess(data.message || `تم إضافة «${data.courseTitle || course.title}» إلى مكتبتك بنجاح`);
+        toastSuccess(data.message || `تم إضافة «${data.courseTitle || course.title}» إلى مكتبتك!`);
         setCode("");
         onCodeApplied();
-        sessionStorage.setItem("library-refresh", String(Date.now()));
         router.push("/library");
       } else if (res.status === 401) {
-        toastError("يجب تسجيل الدخول أولاً لاستخدام الكود");
+        toastError("يجب تسجيل الدخول أولاً");
       } else {
-        toastError(data.error || "فشل تفعيل الكود");
+        toastError(data.error || "كود غير صحيح");
       }
     } catch {
-      toastError("تعذر الاتصال بالخادم، تأكد من اتصالك بالإنترنت وحاول مجدداً");
+      toastError("تعذر الاتصال بالخادم");
     } finally {
       setApplying(false);
     }
   };
 
   return (
-    <div className="group relative h-full" style={{ perspective: 1100 }}>
-      <div
-        aria-hidden
-        className="absolute inset-2 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none"
-        style={{ background: theme.glow }}
-      />
-
-      <motion.article
-        style={tiltEnabled ? { rotateX, rotateY, transformStyle: "preserve-3d" } : undefined}
-        onPointerMove={tiltEnabled ? tilt : undefined}
-        onPointerLeave={tiltEnabled ? untilt : undefined}
-        className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-shadow duration-300 hover:shadow-2xl dark:border-white/5 dark:bg-[#151B2B] dark:shadow-black/30 dark:hover:border-white/10"
-      >
-        <motion.div
-          aria-hidden
-          className="absolute inset-0 z-20 pointer-events-none rounded-3xl"
-          style={{ background: glare, opacity: glareOpacity }}
-        />
-
-        {/* Thumbnail */}
-        <div className="relative m-2 h-44 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500">
-          {thumbnail ? (
-            <img
-              src={thumbnail}
-              alt={`صورة مصغرة لكورس ${course.title}`}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-white/40">
-              <svg className="h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-            </div>
-          )}
-
-          <span className="absolute right-3 top-3 rounded-full border border-white/20 bg-black/45 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-md">
-            {stageLabel}
-          </span>
-
-          <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-            {effectivelyFree && (
-              <span className="rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
-                مجاني
-              </span>
-            )}
-            {discountActive && !effectivelyFree && (
-              <span className="rounded-full bg-pink-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
-                خصم {(course.discountPercent ?? 0).toLocaleString("ar-EG")}٪
-              </span>
-            )}
+    <article
+      className="group flex flex-col overflow-hidden rounded-[20px] transition-all duration-300 hover:-translate-y-1"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-lg)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)"; }}
+    >
+      {/* ── Thumbnail ── */}
+      <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={course.title}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${subjectColor.bg}, ${subjectColor.bg}99)` }}
+          >
+            <svg className="w-16 h-16 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
           </div>
+        )}
 
-          {discountActive && countdown && !countdown.expired && (
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/75 to-black/0 px-3 pb-2 pt-6 text-xs font-bold text-amber-300">
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              ينتهي العرض خلال {countdown.label}
-            </div>
+        {/* Enrolled ribbon */}
+        {course.hasAccess && (
+          <div
+            className="absolute top-4 right-0 flex items-center gap-1.5 font-bold text-xs text-white"
+            style={{ padding: "6px 14px 6px 10px", background: "var(--brand)", borderRadius: "0 0 0 12px", boxShadow: "-3px 3px 12px rgba(14,110,98,.4)" }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            أنت مشترك
+          </div>
+        )}
+
+        {/* Free / Discount badge */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {effectivelyFree && (
+            <span className="text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "#10b981" }}>مجاني</span>
+          )}
+          {discountActive && !effectivelyFree && (
+            <span className="text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ background: "#ec4899" }}>
+              خصم {(course.discountPercent ?? 0)}٪
+            </span>
           )}
         </div>
 
-        {/* Body */}
-        <div className="flex flex-1 flex-col px-5 pb-5 pt-2">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            {course.subject ? (
-              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${theme.chip}`}>
-                {course.subject}
-              </span>
-            ) : (
-              <span />
-            )}
+        {/* Countdown bar */}
+        {discountActive && countdown && !countdown.expired && (
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-amber-300"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,.75), transparent)" }}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            ينتهي العرض خلال {countdown.label}
+          </div>
+        )}
+      </div>
 
-            {course.isPaid && !effectivelyFree && finalPrice != null && (
+      {/* ── Body ── */}
+      <div className="flex flex-1 flex-col p-5 gap-3">
+
+        {/* Subject + Grade tag */}
+        {tagText && (
+          <span
+            className="self-start text-xs font-bold rounded-full px-3 py-1"
+            style={{ background: subjectColor.bg + "18", color: subjectColor.bg, border: `1px solid ${subjectColor.bg}30` }}
+          >
+            {tagText}
+          </span>
+        )}
+
+        {/* Title */}
+        <h2
+          className="font-black leading-snug line-clamp-2 transition-colors"
+          style={{ fontSize: 17, color: "var(--ink)", fontFamily: "var(--font-head)" }}
+        >
+          {course.title}
+        </h2>
+
+        {/* Description */}
+        {course.description && (
+          <p className="text-sm line-clamp-2 leading-relaxed" style={{ color: "var(--ink-2)" }}>
+            {course.description}
+          </p>
+        )}
+
+        {/* Teacher + Price row */}
+        <div className="flex items-center justify-between gap-2 mt-auto pt-1">
+          <div className="flex items-center gap-2">
+            {course.isPaid && !effectivelyFree && finalPrice != null ? (
               <div className="flex items-baseline gap-1.5" dir="rtl">
-                <span className="text-base font-black text-gray-900 dark:text-white">{formatEgp(finalPrice)}</span>
+                <span className="font-black text-lg" style={{ color: "var(--gold-2)", fontFamily: "var(--font-head)" }}>{formatEgp(finalPrice)}</span>
                 {discountActive && course.price != null && (
-                  <span className="text-xs text-gray-400 line-through">{formatEgp(course.price)}</span>
+                  <span className="text-xs line-through" style={{ color: "var(--ink-3)" }}>{formatEgp(course.price)}</span>
                 )}
               </div>
-            )}
+            ) : effectivelyFree && !course.hasAccess ? (
+              <span className="text-sm font-bold" style={{ color: "#10b981" }}>مجاني</span>
+            ) : null}
           </div>
-
-          <h2 className="mb-3 line-clamp-2 text-lg font-bold leading-snug text-gray-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
-            {course.title}
-          </h2>
-
-          <p className="mb-5 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 text-[11px] font-black text-white shadow-sm">
-              {teacherInitial}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className="flex items-center justify-center w-7 h-7 rounded-full text-white text-xs font-black"
+              style={{ background: "var(--brand)" }}
+            >
+              {course.teacher.name.trim().charAt(0)}
             </span>
-            أ/ {course.teacher.name}
-          </p>
+            <span className="text-sm font-medium" style={{ color: "var(--ink-2)" }}>أ/ {course.teacher.name}</span>
+          </div>
+        </div>
 
-          <div className="mt-auto space-y-2.5">
-            {course.hasAccess ? (
-              <>
-                <button
-                  onClick={() => router.push(`/courses/${course.id}/learn`)}
-                  className="w-full rounded-xl bg-gradient-to-l from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-500/20 transition-all hover:shadow-lg hover:shadow-emerald-500/30 hover:brightness-105 active:scale-[0.98]"
-                  aria-label={`الدخول إلى كورس ${course.title}`}
-                >
-                  متابعة التعلم
-                </button>
-                <button
-                  onClick={() => router.push(`/courses/${course.id}`)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
-                  aria-label={`عرض تفاصيل كورس ${course.title}`}
-                >
-                  عرض التفاصيل
-                </button>
-              </>
-            ) : (
+        {/* ── CTAs ── */}
+        <div className="flex flex-col gap-2 pt-1" style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>
+          {course.hasAccess ? (
+            <>
+              <button
+                onClick={() => router.push(`/courses/${course.id}/learn`)}
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white transition-all active:scale-[0.98] hover:opacity-90"
+                style={{ background: "linear-gradient(135deg,var(--brand),var(--brand-strong))", boxShadow: "0 4px 14px -4px var(--brand-shadow)" }}
+              >
+                الدخول للكورس ←
+              </button>
               <button
                 onClick={() => router.push(`/courses/${course.id}`)}
-                className="w-full rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-500/25 transition-all hover:shadow-lg hover:shadow-indigo-500/35 hover:brightness-110 active:scale-[0.98]"
-                aria-label={`عرض تفاصيل كورس ${course.title}`}
+                className="w-full py-2 rounded-xl text-sm font-semibold transition-colors"
+                style={{ background: "var(--surface-2)", color: "var(--ink-2)", border: "1px solid var(--border)" }}
               >
-                عرض التفاصيل
+                تفاصيل الكورس
               </button>
-            )}
-
-            {!effectivelyFree && !course.hasAccess && (
+            </>
+          ) : effectivelyFree ? (
+            <button
+              onClick={installCourse}
+              disabled={installing || installed}
+              className="w-full py-2.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70"
+              style={{
+                background: installed
+                  ? "linear-gradient(135deg,#10b981,#059669)"
+                  : "linear-gradient(135deg,var(--brand),var(--brand-strong))",
+                boxShadow: "0 4px 14px -4px var(--brand-shadow)",
+              }}
+            >
+              {installed ? (
+                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>تم التسجيل!</>
+              ) : installing ? (
+                <><div className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />جارٍ التثبيت...</>
+              ) : (
+                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>سجّل الآن — مجاناً</>
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push(`/courses/${course.id}`)}
+                className="w-full py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg,var(--brand),var(--brand-strong))", boxShadow: "0 4px 14px -4px var(--brand-shadow)" }}
+              >
+                عرض تفاصيل الكورس
+              </button>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && applyCode()}
-                  placeholder="أدخل كود الوصول"
-                  maxLength={8}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center font-mono text-sm tracking-widest text-gray-900 transition-all placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-white/10 dark:bg-[#0F141F] dark:text-white"
-                  dir="ltr"
-                  aria-label={`كود الوصول لكورس ${course.title}`}
-                />
                 <button
                   onClick={applyCode}
                   disabled={applying || !code.trim()}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-indigo-700 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="تفعيل كود الوصول"
+                  className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                  style={{ background: "var(--brand)" }}
                 >
                   {applying ? "…" : "تفعيل"}
                 </button>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                  onKeyDown={e => e.key === "Enter" && applyCode()}
+                  placeholder="كود الوصول"
+                  maxLength={12}
+                  dir="ltr"
+                  className="flex-1 rounded-xl px-3 py-2 text-center font-mono text-sm tracking-widest focus:outline-none transition-colors"
+                  style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)" }}
+                />
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
-      </motion.article>
-    </div>
+      </div>
+    </article>
   );
 }

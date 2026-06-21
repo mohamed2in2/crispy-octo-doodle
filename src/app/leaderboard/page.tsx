@@ -4,276 +4,493 @@ import { Footer } from "@/components/ui/Footer";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Trophy, Medal, Star, Gift, Clock, Target } from "lucide-react";
+import { Clock, Flame } from "lucide-react";
 
-/**
- * Group students into a competition tier by the REAL educational-stage values
- * used across the app (primary_* / prep_* / sec_*). The old version checked for
- * `grade_1`…`grade_12`, which never matched any student, so the leaderboard
- * always came back empty. An unknown/empty stage returns [] → no stage filter
- * (show everyone) rather than excluding all.
- */
 function getCompetitionTier(stage: string | null): string[] {
   if (!stage) return [];
   if (stage.startsWith("primary")) return ["primary_4", "primary_5", "primary_6"];
-  if (stage.startsWith("prep")) return ["prep_1", "prep_2", "prep_3"];
-  if (stage.startsWith("sec")) return ["sec_1", "sec_2", "sec_3"];
+  if (stage.startsWith("prep"))    return ["prep_1", "prep_2", "prep_3"];
+  if (stage.startsWith("sec"))     return ["sec_1", "sec_2", "sec_3"];
   return [];
 }
 
-export default async function LeaderboardPage() {
-  const session = await getSession({ preferStudent: true });
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  // Allow ALL roles — each gets a different view
+  const session = await getSession();
+  if (!session) redirect("/login?callbackUrl=/leaderboard");
 
-  if (!session) {
-    redirect("/login?callbackUrl=/leaderboard");
+  const role = session.role;
+  const isStudent    = role === "student";
+  const isAdmin      = role === "admin" || role === "superadmin";
+  const isRestricted = role === "teacher" || role === "staff";
+
+  /* ── Restricted: teacher / staff ─────────────────────────────────────── */
+  if (isRestricted) {
+    const roleLabel = role === "teacher" ? "المعلم" : "الموظف";
+    return (
+      <div className="flex flex-col min-h-screen" style={{ background: "var(--bg)", fontFamily: "var(--font-body)" }}>
+        <Navbar user={{ name: session.name, role }} />
+        <main className="flex-1 flex items-center justify-center px-6 py-20">
+          <div
+            className="max-w-md w-full text-center rounded-[22px] p-10"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}
+          >
+            <span className="inline-flex items-center justify-center w-16 h-16 rounded-[18px] mb-6"
+              style={{ background: "var(--gold-soft)", border: "1px solid var(--gold-2)" }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              </svg>
+            </span>
+            <h1 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 26, color: "var(--ink)", margin: "0 0 12px" }}>
+              هذا القسم للمتعلمين فقط
+            </h1>
+            <p style={{ fontSize: 15, color: "var(--ink-2)", lineHeight: 1.7, margin: "0 0 24px" }}>
+              لوحة الشرف والمنافسة مخصصة للمتعلمين المسجلين.
+              حساب {roleLabel} لا يشارك في التصنيف ولا يمكنه الاطلاع على المنافسة.
+            </p>
+            <Link
+              href="/"
+              className="inline-block no-underline rounded-[12px] font-bold transition-opacity hover:opacity-80"
+              style={{ padding: "13px 32px", background: "var(--brand)", color: "#fff", fontSize: 15 }}
+            >
+              العودة للرئيسية
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
-  // Fetch current user first to get educationalStage
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.id },
-    select: { id: true, points: true, pointsUpdatedAt: true, educationalStage: true }
-  });
+  const resolvedParams = await searchParams;
+  const activeTab = resolvedParams.tab === "streak" ? "streak" : "points";
+
+  /* ── Student: tier-based rank ─────────────────────────────────────────── */
+  let currentUser: { id: string; points: number; pointsUpdatedAt: Date | null; educationalStage: string | null; loginStreak: number } | null = null;
+  let currentRank      = 0;
+  let currentStreakRank = 0;
+
+  if (isStudent) {
+    currentUser = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { id: true, points: true, pointsUpdatedAt: true, educationalStage: true, loginStreak: true },
+    });
+  }
 
   const competitionTier = getCompetitionTier(currentUser?.educationalStage ?? null);
+  // Students filter to their tier; admins see all students (no tier filter)
+  const stageFilter = isStudent && competitionTier.length > 0
+    ? { educationalStage: { in: competitionTier } }
+    : {};
 
-  // Get Top 10 students for the same educational stage tier
-  const topStudents = await prisma.user.findMany({
-    where: { 
-      role: "student",
-      points: { gt: 0 },
-      ...(competitionTier.length > 0 ? { educationalStage: { in: competitionTier } } : {})
-    },
-    orderBy: [
-      { points: "desc" },
-      { pointsUpdatedAt: "asc" } // Tie-breaker: earliest achievement time
-    ],
-    take: 10,
-    select: {
-      id: true,
-      name: true,
-      points: true,
-      educationalStage: true,
+  // Admin select includes contact details needed for prize delivery
+  const adminSelect = { id: true, name: true, points: true, loginStreak: true, educationalStage: true, phone: true, email: true, parentPhone: true, age: true } as const;
+  const studentSelect = { id: true, name: true, points: true, educationalStage: true } as const;
+  const streakStudentSelect = { id: true, name: true, loginStreak: true, educationalStage: true } as const;
+
+  type AdminRow   = { id: string; name: string; points: number; loginStreak: number; educationalStage: string | null; phone: string | null; email: string; parentPhone: string | null; age: number | null };
+  type StudentRow = { id: string; name: string; points: number; educationalStage: string | null };
+  type StreakRow  = { id: string; name: string; loginStreak: number; educationalStage: string | null };
+
+  let topStudents:  (StudentRow | AdminRow)[] = [];
+  let topStreakers: (StreakRow  | AdminRow)[] = [];
+
+  if (activeTab === "points") {
+    topStudents = isAdmin
+      ? await prisma.user.findMany({
+          where: { role: "student", points: { gt: 0 } },
+          orderBy: [{ points: "desc" }, { pointsUpdatedAt: "asc" }],
+          take: 10, select: adminSelect,
+        })
+      : await prisma.user.findMany({
+          where: { role: "student", points: { gt: 0 }, ...stageFilter },
+          orderBy: [{ points: "desc" }, { pointsUpdatedAt: "asc" }],
+          take: 10, select: studentSelect,
+        });
+
+    if (isStudent && currentUser) {
+      const ahead = await prisma.user.count({
+        where: {
+          role: "student", ...stageFilter,
+          OR: [
+            { points: { gt: currentUser.points } },
+            { points: currentUser.points, pointsUpdatedAt: { lt: currentUser.pointsUpdatedAt ?? undefined } },
+          ],
+        },
+      });
+      currentRank = ahead + 1;
     }
-  });
-
-  // Find the logged-in student's rank
-  let currentRank = 0;
-  if (currentUser) {
-    const studentsAhead = await prisma.user.count({
-      where: {
-        role: "student",
-        ...(competitionTier.length > 0 ? { educationalStage: { in: competitionTier } } : {}),
-        OR: [
-          { points: { gt: currentUser.points } },
-          { 
-            points: currentUser.points,
-            pointsUpdatedAt: { lt: currentUser.pointsUpdatedAt }
-          }
-        ]
-      }
-    });
-    currentRank = studentsAhead + 1;
   }
 
-  // Find today's daily exam for the student's grade
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (activeTab === "streak") {
+    topStreakers = isAdmin
+      ? await prisma.user.findMany({
+          where: { role: "student", loginStreak: { gt: 0 } },
+          orderBy: [{ loginStreak: "desc" }, { lastLoginDate: "desc" }],
+          take: 10, select: adminSelect,
+        })
+      : await prisma.user.findMany({
+          where: { role: "student", loginStreak: { gt: 0 }, ...stageFilter },
+          orderBy: [{ loginStreak: "desc" }, { lastLoginDate: "desc" }],
+          take: 10, select: streakStudentSelect,
+        });
 
-  const dailyExam = currentUser?.educationalStage ? await prisma.dailyExam.findFirst({
-    where: {
-      educationalStage: currentUser.educationalStage,
-      isActive: true,
-      date: {
-        gte: todayStart,
-        lt: todayEnd
-      }
-    },
-    include: {
-      results: {
-        where: { studentId: session.id }
-      }
+    if (isStudent && currentUser && currentUser.loginStreak > 0) {
+      const ahead = await prisma.user.count({
+        where: { role: "student", ...stageFilter, loginStreak: { gt: currentUser.loginStreak } },
+      });
+      currentStreakRank = ahead + 1;
     }
-  }) : null;
+  }
+
+  const now       = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  const dailyExam = isStudent && currentUser?.educationalStage
+    ? await prisma.dailyExam.findFirst({
+        where: {
+          educationalStage: currentUser.educationalStage,
+          isActive: true,
+          date: { gte: todayStart, lt: todayEnd },
+        },
+        include: { results: { where: { studentId: session.id } } },
+      })
+    : null;
+
+  const rankBadge = (i: number) => {
+    if (i === 0) return { bg: "var(--gold-2)",  color: "#3a2a06" };
+    if (i === 1) return { bg: "#C0C5CE",        color: "#3a3f48" };
+    if (i === 2) return { bg: "#C98A4B",        color: "#fff"    };
+    return       { bg: "var(--surface-2)", color: "var(--ink-3)" };
+  };
+
+  const prizes = [
+    { rank: "١",    label: "المركز الأول",    prize: "حقيبة ظهر + سماعات + تيشيرت المنصة", gold: true  },
+    { rank: "٢",    label: "المركز الثاني",   prize: "باور بانك + تيشيرت المنصة",          gold: false },
+    { rank: "٣",    label: "المركز الثالث",   prize: "مج حراري + تيشيرت المنصة",           gold: false },
+    { rank: "٤-١٠", label: "المركز ٤ إلى ١٠", prize: "تيشيرت المنصة",                       gold: false },
+  ];
+
+  const list = activeTab === "points" ? topStudents : topStreakers;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans transition-colors">
-      <Navbar user={{ name: session.name, role: session.role }} />
-      
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8">
-        
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-800 dark:text-white mb-4 flex items-center justify-center gap-3">
-            <Trophy className="w-10 h-10 text-yellow-500" />
-            لوحة الشرف والمنافسة
-            <Trophy className="w-10 h-10 text-yellow-500" />
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-300">تنافس مع زملائك، احصد النقاط، واربح جوائز قيمة!</p>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)", fontFamily: "var(--font-body)" }}>
+      <Navbar user={{ name: session.name, role }} />
+
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-6 py-16">
+
+        {/* Admin observer banner */}
+        {isAdmin && (
+          <div
+            className="flex items-center gap-3 mb-8 rounded-[14px]"
+            style={{ padding: "14px 20px", background: "var(--gold-soft)", border: "1px solid var(--gold-2)" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            <p style={{ fontSize: 14, color: "var(--gold-2)", fontWeight: 700, margin: 0 }}>
+              أنت تشاهد لوحة الشرف بصفة مراقب — حسابك لا يشارك في التصنيف ولا يظهر في القائمة.
+            </p>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-[14px] mb-4">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17a2 2 0 0 1-.7 1.5L8 20h8l-1.3-1.5a2 2 0 0 1-.7-1.5v-2.3M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+            <h1 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 40, margin: 0, color: "var(--ink)" }}>
+              لوحة الشرف والمنافسة
+            </h1>
+          </div>
+          <p style={{ fontSize: 17, color: "var(--ink-2)", margin: 0 }}>تنافس مع زملائك، احصد النقاط، واربح جوائز قيّمة!</p>
+
+          {/* Tab toggle */}
+          <div
+            className="inline-flex items-center mt-8 p-1 rounded-[12px] gap-1"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          >
+            {[
+              { tab: "points", label: "الأعلى نقاطًا",   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3 6.5 7 .6-5.3 4.6L18.3 21 12 17.3 5.7 21l1.6-7.3L2 9.1l7-.6L12 2z"/></svg> },
+              { tab: "streak", label: "الأكثر التزامًا",  icon: <Flame className="w-4 h-4" /> },
+            ].map(({ tab, label, icon }) => (
+              <Link
+                key={tab}
+                href={`/leaderboard?tab=${tab}`}
+                className="inline-flex items-center gap-2 no-underline transition-all"
+                style={{
+                  padding: "9px 20px", borderRadius: 9, fontSize: 13.5, fontWeight: 700,
+                  color: activeTab === tab ? "#fff" : "var(--ink-3)",
+                  background: activeTab === tab
+                    ? tab === "streak" ? "var(--gold-2)" : "var(--brand)"
+                    : "transparent",
+                }}
+              >
+                {icon}{label}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Leaderboard Column */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="bg-slate-800 dark:bg-slate-950 p-4 text-white flex justify-between items-center">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                  أفضل 10 طلاب
-                </h2>
-                {currentUser && (
-                  <div className="text-sm bg-slate-700 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-600 dark:border-slate-700">
-                    ترتيبك الحالي: <span className="font-bold text-yellow-400">{currentRank}</span>
+        {/* Two-column grid */}
+        <div className="grid gap-6" style={{ gridTemplateColumns: "1.6fr 1fr", alignItems: "start" }}>
+
+          {/* Leaderboard card */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+            <div className="flex items-center justify-between" style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)" }}>
+              {isStudent ? (
+                <span className="inline-flex items-center gap-1"
+                  style={{ padding: "6px 13px", borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", fontSize: 13, fontWeight: 700 }}>
+                  ترتيبك الحالي: #{activeTab === "streak" ? (currentStreakRank || "—") : currentRank}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1"
+                  style={{ padding: "6px 13px", borderRadius: 9, background: "var(--gold-soft)", color: "var(--gold-2)", fontSize: 13, fontWeight: 700 }}>
+                  وضع المراقبة
+                </span>
+              )}
+              <h2 className="flex items-center gap-2"
+                style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 20, margin: 0, color: "var(--ink)" }}>
+                {activeTab === "streak" ? "أكثر ١٠ طلاب التزامًا" : "أفضل ١٠ طلاب"}
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="var(--gold-2)" stroke="none">
+                  <path d="M12 2l3 6.5 7 .6-5.3 4.6L18.3 21 12 17.3 5.7 21l1.6-7.3L2 9.1l7-.6L12 2z"/>
+                </svg>
+              </h2>
+            </div>
+
+            {/* ── Admin prize table ── */}
+            {isAdmin && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--border)", background: "var(--bg)" }}>
+                      {["#", "الاسم", "المرحلة", "النقاط / السلسلة", "الهاتف", "ولي الأمر"].map((h) => (
+                        <th key={h} className="text-right" style={{ padding: "12px 14px", fontSize: 12, fontWeight: 700, color: "var(--ink-3)", letterSpacing: .5 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(activeTab === "points" ? topStudents : topStreakers).map((s, i) => {
+                      const badge  = rankBadge(i);
+                      const row    = s as { id: string; name: string; points?: number; loginStreak?: number; educationalStage: string | null; phone?: string | null; email?: string; parentPhone?: string | null; age?: number | null };
+                      const score  = activeTab === "points" ? `${row.points ?? 0} نقطة` : `${row.loginStreak ?? 0} يوم`;
+                      const rankAr = ["١","٢","٣"][i];
+                      return (
+                        <tr
+                          key={row.id}
+                          style={{ borderBottom: "1px solid var(--border)", background: i < 3 ? "var(--surface-2)" : "transparent" }}
+                        >
+                          <td style={{ padding: "14px 14px" }}>
+                            <span
+                              className="inline-flex items-center justify-center font-black"
+                              style={{ width: 32, height: 32, borderRadius: "50%", background: badge.bg, color: badge.color, fontSize: 15, fontFamily: "var(--font-head)" }}
+                            >
+                              {rankAr ?? i + 1}
+                            </span>
+                          </td>
+                          <td style={{ padding: "14px 14px", fontWeight: 700, color: "var(--ink)", fontSize: 14 }}>
+                            {row.name}
+                            {row.age && <span style={{ fontSize: 11.5, color: "var(--ink-3)", marginRight: 6 }}>({row.age} سنة)</span>}
+                          </td>
+                          <td style={{ padding: "14px 14px", color: "var(--ink-2)", fontSize: 13 }}>
+                            {row.educationalStage || "—"}
+                          </td>
+                          <td style={{ padding: "14px 14px" }}>
+                            <span
+                              className="inline-flex items-center gap-1"
+                              style={{ padding: "4px 10px", borderRadius: 8, background: activeTab === "streak" ? "var(--gold-soft)" : "var(--brand-soft)", color: activeTab === "streak" ? "var(--gold-2)" : "var(--brand)", fontWeight: 800, fontSize: 13, fontFamily: "var(--font-head)" }}
+                            >
+                              {activeTab === "streak" && <Flame className="w-3 h-3" />}
+                              {score}
+                            </span>
+                          </td>
+                          <td style={{ padding: "14px 14px" }}>
+                            {row.phone ? (
+                              <a href={`tel:${row.phone}`} dir="ltr" style={{ color: "var(--brand)", fontWeight: 600, fontSize: 13, textDecoration: "none" }}>
+                                {row.phone}
+                              </a>
+                            ) : <span style={{ color: "var(--ink-3)" }}>—</span>}
+                          </td>
+                          <td style={{ padding: "14px 14px" }}>
+                            {row.parentPhone ? (
+                              <a href={`tel:${row.parentPhone}`} dir="ltr" style={{ color: "var(--ink-2)", fontWeight: 600, fontSize: 13, textDecoration: "none" }}>
+                                {row.parentPhone}
+                              </a>
+                            ) : <span style={{ color: "var(--ink-3)" }}>—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {(activeTab === "points" ? topStudents : topStreakers).length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12" style={{ color: "var(--ink-3)", fontSize: 15 }}>
+                          لا يوجد طلاب في لوحة الشرف حتى الآن.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ── Student cards ── */}
+            {!isAdmin && (
+              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                {(activeTab === "points" ? topStudents : topStreakers).length === 0 && (
+                  <div className="py-12 text-center" style={{ color: "var(--ink-3)", fontSize: 15 }}>
+                    لا يوجد طلاب في لوحة الشرف حتى الآن.
                   </div>
                 )}
-              </div>
-              
-              <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {topStudents.length > 0 ? topStudents.map((student, index) => {
-                  const isTop3 = index < 3;
-                  const rankColors = [
-                    "bg-yellow-100 border-yellow-300 text-yellow-700", // Gold
-                    "bg-slate-100 border-slate-300 text-slate-700", // Silver
-                    "bg-orange-100 border-orange-300 text-orange-700", // Bronze
-                  ];
-                  
+
+                {activeTab === "points" && topStudents.map((student, i) => {
+                  const badge = rankBadge(i);
+                  const isMe  = isStudent && student.id === session.id;
                   return (
-                    <div 
-                      key={student.id} 
-                      className={`flex items-center p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${student.id === session.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2 mr-4 ${isTop3 ? rankColors[index] : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400'}`}>
-                        {index + 1}
-                      </div>
+                    <div key={student.id} className="flex items-center gap-4"
+                      style={{ padding: "16px 18px", borderRadius: 14,
+                        border: `1px solid ${isMe ? "var(--brand)" : "var(--border)"}`,
+                        background: isMe ? "linear-gradient(110deg,var(--brand-soft),transparent)" : "var(--surface-2)" }}>
+                      <span className="flex items-center justify-center shrink-0 font-black text-[18px]"
+                        style={{ width: 40, height: 40, borderRadius: "50%", background: badge.bg, color: badge.color, fontFamily: "var(--font-head)" }}>
+                        {["١","٢","٣"][i] ?? i + 1}
+                      </span>
                       <div className="flex-1">
-                        <h3 className={`font-bold text-lg ${student.id === session.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-800 dark:text-white'}`}>
-                          {student.name} {student.id === session.id && "(أنت)"}
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{student.educationalStage || 'غير محدد'}</p>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <div className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-600 flex items-center gap-1.5">
-                          <span className="font-black text-slate-700 dark:text-slate-200">{student.points}</span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400">نقطة</span>
+                        <div style={{ fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>
+                          {student.name} {isMe && <span style={{ color: "var(--brand)", fontSize: 13 }}>(أنت)</span>}
                         </div>
+                        <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
                       </div>
+                      <span style={{ padding: "8px 16px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontWeight: 800, fontFamily: "var(--font-head)", fontSize: 16, color: "var(--ink)" }}>
+                        {(student as { points?: number }).points ?? 0} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink-3)" }}>نقطة</span>
+                      </span>
                     </div>
                   );
-                }) : (
-                  <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-                    لا يوجد طلاب في لوحة الشرف حتى الآن. كن أول من يحصل على نقاط!
+                })}
+
+                {activeTab === "streak" && topStreakers.map((student, i) => {
+                  const badge = rankBadge(i);
+                  const isMe  = isStudent && student.id === session.id;
+                  return (
+                    <div key={student.id} className="flex items-center gap-4"
+                      style={{ padding: "16px 18px", borderRadius: 14,
+                        border: `1px solid ${isMe ? "var(--gold-2)" : "var(--border)"}`,
+                        background: isMe ? "linear-gradient(110deg,var(--gold-soft),transparent)" : "var(--surface-2)" }}>
+                      <span className="flex items-center justify-center shrink-0 font-black text-[18px]"
+                        style={{ width: 40, height: 40, borderRadius: "50%", background: badge.bg, color: badge.color, fontFamily: "var(--font-head)" }}>
+                        {["١","٢","٣"][i] ?? i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <div style={{ fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>
+                          {student.name} {isMe && <span style={{ color: "var(--gold-2)", fontSize: 13 }}>(أنت)</span>}
+                        </div>
+                        <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{student.educationalStage || "غير محدد"}</div>
+                      </div>
+                      <span style={{ padding: "8px 16px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", fontWeight: 800, fontFamily: "var(--font-head)", fontSize: 16, color: "var(--ink)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Flame className="w-4 h-4 text-orange-500" />
+                        {(student as { loginStreak?: number }).loginStreak ?? 0} <span style={{ fontSize: 12, fontWeight: 500, color: "var(--ink-3)" }}>يوم</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Right column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+            {/* Prizes */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+              <div className="flex items-center justify-between" style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
+                <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, margin: 0, color: "var(--ink)" }}>نظام الجوائز</h3>
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {prizes.map(({ rank, label, prize, gold }) => (
+                  <div key={rank} className="flex items-center gap-[13px]"
+                    style={{ padding: "13px 15px", borderRadius: 12, border: "1px solid var(--border)", background: gold ? "var(--gold-soft)" : "var(--surface-2)" }}>
+                    <span className="flex items-center justify-center shrink-0 font-black text-[13px]"
+                      style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        background: gold ? "var(--gold-2)" : rank === "٢" ? "#C0C5CE" : rank === "٣" ? "#C98A4B" : "var(--brand-soft)",
+                        color:      gold ? "#3a2a06"     : rank === "٢" ? "#3a3f48" : rank === "٣" ? "#fff"    : "var(--brand)",
+                        fontFamily: "var(--font-head)",
+                      }}>
+                      {rank}
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--ink)" }}>{label}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{prize}</div>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            
-            {/* Prizes System */}
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl shadow-md text-white overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Gift className="w-32 h-32" />
-              </div>
-              <div className="p-6 relative z-10">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-yellow-300" />
-                  نظام الجوائز
-                </h2>
-                
-                <div className="space-y-3">
-                  <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Medal className="w-5 h-5 text-yellow-400" />
-                      <span className="font-bold">المركز الأول</span>
+            {/* Daily challenge — students only */}
+            {isStudent && (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+                <div className="flex items-center justify-between"
+                  style={{ padding: "16px 22px", background: "linear-gradient(120deg,var(--gold-2),#9a6a1c)" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+                  </svg>
+                  <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, margin: 0, color: "#fff" }}>التحدي اليومي</h3>
+                </div>
+                <div style={{ padding: "24px 22px" }}>
+                  {dailyExam ? (
+                    dailyExam.results.length > 0 ? (
+                      <div className="text-center">
+                        <span className="inline-flex items-center justify-center mb-4" style={{ width: 54, height: 54, borderRadius: "50%", background: "var(--brand-soft)" }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        </span>
+                        <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)", marginBottom: 6 }}>أكملت التحدي بنجاح!</h3>
+                        <p style={{ fontSize: 13.5, color: "var(--ink-2)", marginBottom: 16 }}>
+                          حصلت على {dailyExam.results[0].score} من {dailyExam.results[0].totalQ} إجابة صحيحة
+                        </p>
+                        <button disabled style={{ width: "100%", padding: 13, borderRadius: 12, border: "none", background: "var(--surface-2)", color: "var(--ink-3)", fontWeight: 700, fontSize: 14, cursor: "not-allowed", fontFamily: "var(--font-body)" }}>
+                          عد غداً لتحدي جديد
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)", marginBottom: 8 }}>{dailyExam.title}</h3>
+                        <div className="flex items-center gap-4 mb-6" style={{ fontSize: 13.5, color: "var(--ink-3)" }}>
+                          <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {dailyExam.timeLimitMinutes} دقيقة</span>
+                        </div>
+                        <Link href={`/leaderboard/daily-exam/${dailyExam.id}`}
+                          className="flex items-center justify-center no-underline font-bold transition-opacity hover:opacity-90"
+                          style={{ padding: 13, borderRadius: 12, background: "var(--gold-2)", color: "#fff", fontSize: 15, fontFamily: "var(--font-head)", boxShadow: "0 6px 18px -6px rgba(200,146,47,.5)" }}>
+                          ابدأ التحدي الآن
+                        </Link>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-8">
+                      <span className="inline-flex items-center justify-center mb-3" style={{ width: 54, height: 54, borderRadius: "50%", background: "var(--surface-2)" }}>
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+                        </svg>
+                      </span>
+                      <p style={{ fontSize: 14.5, color: "var(--ink-2)", margin: 0 }}>لا يوجد تحدٍّ متاح لصفّك التدريبي اليوم.</p>
                     </div>
-                    <p className="text-sm text-blue-100 text-right pr-7">حقيبة ظهر + سماعات + تيشرت المنصة</p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Medal className="w-5 h-5 text-slate-300" />
-                      <span className="font-bold">المركز الثاني</span>
-                    </div>
-                    <p className="text-sm text-blue-100 text-right pr-7">باور بانك + تيشرت المنصة</p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Medal className="w-5 h-5 text-orange-400" />
-                      <span className="font-bold">المركز الثالث</span>
-                    </div>
-                    <p className="text-sm text-blue-100 text-right pr-7">مج حراري + تيشرت المنصة</p>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/20">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="w-5 h-5 flex items-center justify-center font-bold text-xs bg-white/20 rounded-full">4-10</span>
-                      <span className="font-bold">المركز 4 إلى 10</span>
-                    </div>
-                    <p className="text-sm text-blue-100 text-right pr-7">تيشرت المنصة</p>
-                  </div>
+                  )}
                 </div>
               </div>
-            </div>
-
-            {/* Daily Exam Section */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="bg-amber-500 dark:bg-amber-600 p-4 text-white flex justify-between items-center">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Target className="w-5 h-5" />
-                  التحدي اليومي
-                </h2>
-              </div>
-              <div className="p-6">
-                {dailyExam ? (
-                  dailyExam.results.length > 0 ? (
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Star className="w-8 h-8 fill-emerald-600 dark:fill-emerald-400" />
-                      </div>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">أكملت التحدي بنجاح!</h3>
-                      <p className="text-slate-600 dark:text-slate-300 mb-4">حصلت على {dailyExam.results[0].score} من {dailyExam.results[0].totalQ} إجابة صحيحة</p>
-                      <button disabled className="w-full py-3 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 font-bold rounded-xl cursor-not-allowed">
-                        عد غداً لتحدي جديد
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2">{dailyExam.title}</h3>
-                      <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-6">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" /> {dailyExam.timeLimitMinutes} دقيقة
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4" /> نقاط إضافية
-                        </span>
-                      </div>
-                      <Link 
-                        href={`/leaderboard/daily-exam/${dailyExam.id}`}
-                        className="w-full flex items-center justify-center py-3 bg-amber-500 dark:bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-600 dark:hover:bg-amber-500 transition shadow-md"
-                      >
-                        ابدأ التحدي الآن
-                      </Link>
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center py-6 text-slate-500 dark:text-slate-400">
-                    <Target className="w-12 h-12 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
-                    <p>لا يوجد تحدي متاح لصفك التدريبي اليوم.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
 
           </div>
-
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

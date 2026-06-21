@@ -14,9 +14,14 @@ function normalizeStage(value: string) {
   return value.trim();
 }
 
+function generateReferralCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { name, password, phone, parentPhone, age, educationalStage, firebaseToken } = await req.json();
+    const { name, password, phone, parentPhone, age, educationalStage, firebaseToken, referralCode } = await req.json();
 
     if (!name || !password || !phone || !parentPhone || !age || !educationalStage || (!firebaseToken && !isPhoneVerificationBypassed())) {
       return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
@@ -59,6 +64,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "العمر غير صالح" }, { status: 400 });
     }
 
+    // Resolve referrer if a valid referral code was supplied
+    let referredById: string | undefined;
+    if (referralCode) {
+      const referrer = await prisma.user.findUnique({
+        where: { referralCode: String(referralCode).trim().toUpperCase() },
+        select: { id: true },
+      });
+      if (referrer) referredById = referrer.id;
+    }
+
+    // Generate a unique referral code for the new user
+    let newReferralCode: string;
+    do {
+      newReferralCode = generateReferralCode();
+    } while (await prisma.user.findUnique({ where: { referralCode: newReferralCode }, select: { id: true } }));
+
     const user = await prisma.user.create({
       data: {
         name: String(name).trim(),
@@ -70,8 +91,18 @@ export async function POST(req: NextRequest) {
         educationalStage: normalizeStage(String(educationalStage)),
         role: "student",
         profileCompleted: true,
+        referralCode: newReferralCode,
+        referredById,
       },
     });
+
+    // Award referral bonus points: 50 to new user + 50 to referrer (fire-and-forget)
+    if (referredById) {
+      void Promise.all([
+        prisma.user.update({ where: { id: user.id }, data: { points: { increment: 50 } } }),
+        prisma.user.update({ where: { id: referredById }, data: { points: { increment: 50 } } }),
+      ]).catch(() => {});
+    }
 
     const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
     await setAuthCookie(token);

@@ -10,6 +10,11 @@ import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } fro
 
 export default function SignupPage() {
   const router = useRouter();
+  // Read referral code from ?ref= query param
+  const [refCode] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("ref") ?? "";
+  });
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -188,6 +193,7 @@ export default function SignupPage() {
           educationalStage: form.educationalStage,
           password: form.password,
           firebaseToken,
+          referralCode: refCode || undefined,
         }),
       });
 

@@ -3,27 +3,55 @@
 /* Class-based dark mode (html.dark) for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ─── Design Token Layer ───────────────────────────────────────────────────── */
+/* ─── Design Tokens ────────────────────────────────────────────────────────── */
 :root {
-  /* Surfaces */
-  --bg:        #f0f9ff;   /* sky-50 — light canvas */
-  --surface:   #ffffff;
-  --card:      rgba(240, 249, 255, 0.85);
-  --border:    rgba(148, 163, 184, 0.22);
+  /* Surfaces — warm sand palette */
+  --canvas:        #E8E4DC;
+  --bg:            #F7F5F0;
+  --bg-2:          #EFECE4;
+  --surface:       #FFFFFF;
+  --surface-2:     #F8F7F3;
+  --border:        #E6E1D7;
+  --border-strong: #D7D1C4;
 
   /* Text */
-  --ink:       #0f172a;
-  --ink-muted: #64748b;
+  --ink:           #13243A;
+  --ink-2:         #566576;
+  --ink-3:         #8B97A5;
 
-  /* Accent */
-  --accent:    #2563eb;
-  --accent-dk: #1d4ed8;
-  --accent-lt: #60a5fa;
+  /* Brand — teal */
+  --brand:         #0E6E62;
+  --brand-strong:  #0A574D;
+  --brand-soft:    #E2F0ED;
+  --brand-shadow:  rgba(14, 110, 98, .40);
 
-  /* Semantic */
-  --error:   #f43f5e;
-  --success: #10b981;
-  --warn:    #f59e0b;
+  /* Gold accent */
+  --gold:          #B07D26;
+  --gold-2:        #C8922F;
+  --gold-soft:     #F6ECD8;
+
+  /* Danger */
+  --danger:        #C2384A;
+  --danger-soft:   #FBE9EC;
+
+  /* Shadows */
+  --shadow-sm:     0 1px 2px rgba(19, 36, 58, .06);
+  --shadow:        0 10px 34px -16px rgba(19, 36, 58, .20);
+  --shadow-lg:     0 30px 70px -30px rgba(19, 36, 58, .30);
+
+  /* Fonts */
+  --font-body:     'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  --font-head:     'Tajawal', 'Cairo', sans-serif;
+
+  /* Semantic aliases — kept for backward compat */
+  --ink-muted:     var(--ink-2);
+  --error:         var(--danger);
+  --success:       #10b981;
+  --warn:          var(--gold);
+  --accent:        var(--brand);
+  --accent-dk:     var(--brand-strong);
+  --accent-lt:     var(--brand-soft);
+  --card:          var(--surface-2);
 
   /* Z-index scale */
   --z-dropdown: 40;
@@ -35,17 +63,42 @@
 }
 
 html.dark {
-  --bg:        #0f172a;   /* ink-surface */
-  --surface:   #0b0f19;   /* ink-deep */
-  --card:      rgba(15, 23, 42, 0.78);
-  --border:    rgba(148, 163, 184, 0.16);
+  /* Surfaces — deep navy palette */
+  --canvas:        #05090F;
+  --bg:            #0A1521;
+  --bg-2:          #0D1A28;
+  --surface:       #0F1E2E;
+  --surface-2:     #15273A;
+  --border:        #1E3346;
+  --border-strong: #2B4458;
 
-  --ink:       #e2e8f0;
-  --ink-muted: #94a3b8;
+  --ink:           #EAF1F8;
+  --ink-2:         #9DB1C5;
+  --ink-3:         #6B8094;
 
-  --accent:    #60a5fa;   /* sky-light on dark */
-  --accent-dk: #3b82f6;
-  --accent-lt: #93c5fd;
+  --brand:         #2FB6A4;
+  --brand-strong:  #4FD2C0;
+  --brand-soft:    #11302D;
+  --brand-shadow:  rgba(47, 182, 164, .35);
+
+  --gold:          #E0B354;
+  --gold-2:        #EBC36A;
+  --gold-soft:     #241D0E;
+
+  --danger:        #F0788A;
+  --danger-soft:   #2A141A;
+
+  --shadow-sm:     0 1px 2px rgba(0, 0, 0, .4);
+  --shadow:        0 10px 34px -16px rgba(0, 0, 0, .55);
+  --shadow-lg:     0 30px 70px -30px rgba(0, 0, 0, .7);
+
+  /* Backward compat */
+  --ink-muted:     var(--ink-2);
+  --error:         var(--danger);
+  --accent:        var(--brand);
+  --accent-dk:     var(--brand-strong);
+  --accent-lt:     var(--brand-soft);
+  --card:          var(--surface-2);
 
   color-scheme: dark;
 }
@@ -57,8 +110,6 @@ html:not(.dark) {
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--ink);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 /* ─── Reset & Base ─────────────────────────────────────────────────────────── */
@@ -71,14 +122,11 @@ html {
 }
 
 body {
-  background-color: var(--bg);
+  background-color: var(--canvas);
   color: var(--ink);
-  font-family: "Cairo", "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-body);
   direction: rtl;
   min-height: 100dvh;
-  /* Guard: an off-screen fixed drawer (e.g. the learn-page lesson rail) must
-     never create horizontal scroll → mobile browsers zoom out and the layout
-     "splits". This clips any such overflow (propagates to the viewport). */
   overflow-x: hidden;
   transition: background-color 0.2s ease, color 0.2s ease;
   text-rendering: optimizeLegibility;
@@ -86,20 +134,20 @@ body {
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.18);
-  color: inherit;
+  background: var(--brand);
+  color: #fff;
 }
 
 /* ─── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 
 /* ─── Focus ────────────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+  box-shadow: 0 0 0 3px var(--brand-shadow);
 }
 
 /* ─── Interactive base transitions ────────────────────────────────────────── */
@@ -138,9 +186,9 @@ button, input, select, textarea, a {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--card) 25%,
+    var(--surface-2) 25%,
     var(--border) 50%,
-    var(--card) 75%
+    var(--surface-2) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
@@ -150,11 +198,11 @@ button, input, select, textarea, a {
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
-    background: var(--card);
+    background: var(--surface-2);
   }
 }
 
-/* ─── Float animation (hero scroll indicator) ──────────────────────────────── */
+/* ─── Float animation ──────────────────────────────────────────────────────── */
 @keyframes float-slow {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-7px); }
@@ -184,26 +232,26 @@ button, input, select, textarea, a {
   }
 }
 
-/* ─── Hero light / dark backgrounds ────────────────────────────────────────── */
+/* ─── Hero backgrounds ──────────────────────────────────────────────────────── */
 .hero-bg {
-  background: linear-gradient(to bottom, #f8faff, #eef2ff 50%, #e0e7ff);
+  background: linear-gradient(to bottom, var(--bg), var(--bg-2) 50%, var(--canvas));
 }
 
 html.dark .hero-bg {
-  background: #0b0f19;
+  background: var(--bg);
 }
 
 .hero-grid {
-  background-image: linear-gradient(to left, rgba(99, 102, 241, 0.06) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-image: linear-gradient(to left, rgba(14, 110, 98, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(14, 110, 98, 0.05) 1px, transparent 1px);
 }
 
 html.dark .hero-grid {
-  background-image: linear-gradient(to left, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image: linear-gradient(to left, rgba(47, 182, 164, 0.04) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(47, 182, 164, 0.04) 1px, transparent 1px);
 }
 
-/* ─── Noise texture (hero only) ────────────────────────────────────────────── */
+/* ─── Noise texture ─────────────────────────────────────────────────────────── */
 .noise {
   position: absolute;
   inset: 0;

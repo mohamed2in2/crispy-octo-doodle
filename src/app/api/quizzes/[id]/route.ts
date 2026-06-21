@@ -44,21 +44,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const existingResult = await prisma.quizResult.findUnique({
           where: { studentId_quizId: { studentId: session.id, quizId } },
         });
-        if (existingResult && !existingResult.allowRetake) {
-          return NextResponse.json({
-            alreadyCompleted: true,
-            result: {
-              score: existingResult.score,
-              totalQ: existingResult.totalQ,
-              completedAt: existingResult.completedAt,
-            },
-            quiz: {
-              id: quiz.id,
-              title: quiz.title,
-              courseId: quiz.folder.courseId,
-              course: quiz.folder.course,
-            },
-          });
+        if (existingResult) {
+          if (!existingResult.allowRetake) {
+            return NextResponse.json({
+              alreadyCompleted: true,
+              result: {
+                score: existingResult.score,
+                totalQ: existingResult.totalQ,
+                completedAt: existingResult.completedAt,
+              },
+              quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder.courseId, course: quiz.folder.course },
+            });
+          }
+
+          // Retake is allowed — check cooldown
+          const cooldownHours = (quiz as any).retakeCooldownHours ?? 0;
+          if (cooldownHours > 0) {
+            const cooldownMs = cooldownHours * 3_600_000;
+            const elapsed    = Date.now() - new Date(existingResult.completedAt).getTime();
+            if (elapsed < cooldownMs) {
+              return NextResponse.json({
+                alreadyCompleted: true,
+                cooldownRemainingMs: cooldownMs - elapsed,
+                result: {
+                  score: existingResult.score,
+                  totalQ: existingResult.totalQ,
+                  completedAt: existingResult.completedAt,
+                },
+                quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder.courseId, course: quiz.folder.course },
+              });
+            }
+          }
         }
       }
 

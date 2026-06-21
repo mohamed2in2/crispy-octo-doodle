@@ -5,7 +5,9 @@ import { normalizeEgyptPhone } from '@/lib/phone'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getStudentSessionWithRetry()
+    // 2 retries × 100ms — enough for the post-signup JWT cookie to propagate,
+    // without the 1.5s penalty of the default 5-retry config.
+    const session = await getStudentSessionWithRetry(2, 100)
 
     if (!session) {
       console.error('Complete profile: No session found after retries')

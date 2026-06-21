@@ -67,7 +67,7 @@ const fmt = (s: number) => {
 };
 
 export function YouTubeSecurePlayer({
-  videoId, title, watermark, onEnded, startSeconds = 0, onProgress,
+  videoId, title, watermark, onEnded, startSeconds = 0, onProgress, onTimeUpdate, onPause, onPlay, paused = false,
 }: {
   videoId: string;
   title: string;
@@ -77,6 +77,13 @@ export function YouTubeSecurePlayer({
   startSeconds?: number;
   /** Reports the current position (throttled to ~5s) for saving. */
   onProgress?: (seconds: number) => void;
+  /** High-frequency time updates (~333ms) for watched-ranges tracking. */
+  onTimeUpdate?: (seconds: number) => void;
+  /** Fired when playback pauses. */
+  onPause?: () => void;
+  /** Fired when playback resumes. */
+  onPlay?: () => void;
+  paused?: boolean;
 }) {
   const { ref: wrapRef, isFs, cssFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -85,6 +92,12 @@ export function YouTubeSecurePlayer({
   onEndedRef.current = onEnded;
   const onProgressRef = useRef(onProgress);
   onProgressRef.current = onProgress;
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  onTimeUpdateRef.current = onTimeUpdate;
+  const onPauseRef = useRef(onPause);
+  onPauseRef.current = onPause;
+  const onPlayRef = useRef(onPlay);
+  onPlayRef.current = onPlay;
   const startRef = useRef(startSeconds);
   startRef.current = startSeconds;
   const seekedRef = useRef(false);
@@ -95,6 +108,21 @@ export function YouTubeSecurePlayer({
   const [muted, setMuted] = useState(false);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
+
+  // Play/pause programmatic control
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p || !ready) return;
+    try {
+      if (paused) {
+        p.pauseVideo();
+      } else {
+        p.playVideo();
+      }
+    } catch (e) {
+      console.error("Failed to play/pause YouTube player:", e);
+    }
+  }, [paused, ready]);
 
   useEffect(() => {
     let disposed = false;
@@ -128,8 +156,8 @@ export function YouTubeSecurePlayer({
           onStateChange: (e: { data: number }) => {
             const YTns = window.YT;
             if (!YTns) return;
-            if (e.data === YTns.PlayerState.PLAYING) setPlaying(true);
-            else if (e.data === YTns.PlayerState.PAUSED) setPlaying(false);
+            if (e.data === YTns.PlayerState.PLAYING) { setPlaying(true); onPlayRef.current?.(); }
+            else if (e.data === YTns.PlayerState.PAUSED) { setPlaying(false); onPauseRef.current?.(); }
             else if (e.data === YTns.PlayerState.ENDED) { setPlaying(false); onEndedRef.current?.(); }
           },
         },
@@ -143,6 +171,10 @@ export function YouTubeSecurePlayer({
         setCur(t);
         const d = p.getDuration() || 0;
         if (d) setDur(d);
+        // High-frequency update for watched-ranges tracking
+        if (onTimeUpdateRef.current && t > 0) {
+          onTimeUpdateRef.current(t);
+        }
         // Report position for resume, throttled to ~5s.
         if (onProgressRef.current && t > 0 && Date.now() - lastReportRef.current > 5000) {
           lastReportRef.current = Date.now();

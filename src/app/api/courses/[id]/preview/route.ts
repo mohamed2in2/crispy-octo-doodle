@@ -66,6 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       discountExpiresAt: discountActive ? course.discountExpiresAt : null,
       effectivePrice,
       contactPhone: course.isPaid ? (course.contactPhone ?? null) : null,
+      allowDirectInstall: course.allowDirectInstall,
       totalVideos,
       totalQuizzes,
       folders: course.folders.map((f) => ({

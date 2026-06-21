@@ -3,25 +3,35 @@ import { useEffect } from "react";
 
 const ENDPOINT = "/api/errors/report";
 
-/** Noise patterns we intentionally ignore */
 const IGNORE_PATTERNS = [
   /chrome-extension:\/\//i,
   /moz-extension:\/\//i,
   /safari-extension:\/\//i,
   /Script error/i,
   /ResizeObserver loop/i,
+  // React internal noise — not actionable
+  /Warning: /i,
+  /hydrat/i,
 ];
 
 function shouldIgnore(message: string): boolean {
   return IGNORE_PATTERNS.some((p) => p.test(message));
 }
 
+// Simple rate-limit: at most 1 report per 5 seconds per type.
+const lastSent: Record<string, number> = {};
+const RATE_MS = 5_000;
+
 async function report(
-  type: "error" | "warning" | "unhandled_promise" | "api_error",
+  type: "error" | "unhandled_promise",
   message: string,
   stack?: string
 ) {
   if (shouldIgnore(message)) return;
+  const now = Date.now();
+  const key = `${type}:${message.slice(0, 80)}`;
+  if (lastSent[key] && now - lastSent[key] < RATE_MS) return; // deduplicate rapid duplicates
+  lastSent[key] = now;
   try {
     await fetch(ENDPOINT, {
       method: "POST",
@@ -33,13 +43,15 @@ async function report(
         url: typeof window !== "undefined" ? window.location.href : undefined,
       }),
     });
-  } catch {
-    // reporting must never throw
-  }
+  } catch { /* reporting must never throw */ }
 }
 
 export function ErrorReporter() {
   useEffect(() => {
+    // Skip all error collection in development — it floods the API with React
+    // hydration warnings and dev-only noise, masking real production errors.
+    if (process.env.NODE_ENV !== "production") return;
+
     // ── window.onerror ──────────────────────────────────────────────────────
     const prevOnError = window.onerror;
     window.onerror = (message, source, _line, _col, error) => {
@@ -57,28 +69,19 @@ export function ErrorReporter() {
     };
     window.addEventListener("unhandledrejection", onUnhandled);
 
-    // ── console.error / console.warn override ───────────────────────────────
+    // ── console.error only (no warn — warns are dev noise, not prod errors) ──
     const origError = console.error.bind(console);
-    const origWarn = console.warn.bind(console);
-
     console.error = (...args: unknown[]) => {
       origError(...args);
       const message = args.map((a) => (a instanceof Error ? a.message : String(a))).join(" ");
-      const stack = args.find((a) => a instanceof Error)?.stack as string | undefined;
+      const stack   = args.find((a): a is Error => a instanceof Error)?.stack;
       void report("error", message, stack);
-    };
-
-    console.warn = (...args: unknown[]) => {
-      origWarn(...args);
-      const message = args.map((a) => String(a)).join(" ");
-      void report("warning", message);
     };
 
     return () => {
       window.onerror = prevOnError;
       window.removeEventListener("unhandledrejection", onUnhandled);
       console.error = origError;
-      console.warn = origWarn;
     };
   }, []);
 

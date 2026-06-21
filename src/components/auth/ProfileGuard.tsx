@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchMeWithRetry } from "@/lib/fetch-me";
 
 interface ProfileGuardProps {
   children: React.ReactNode;
@@ -15,38 +14,28 @@ export function ProfileGuard({ children }: ProfileGuardProps) {
   useEffect(() => {
     let cancelled = false;
 
-    const checkProfile = async () => {
-      const me = await fetchMeWithRetry(6, 200);
-
-      if (cancelled) return;
-
-      if (!me) {
+    // Single fetch — /api/auth/me has a 15s private browser cache so this is
+    // essentially free on repeat visits. No retry loop needed.
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { user?: { role?: string; profileCompleted?: boolean } | null }) => {
+        if (cancelled) return;
+        const me = data?.user;
+        if (me?.role === "student" && !me.profileCompleted) {
+          router.replace("/complete-profile");
+          return;
+        }
         setReady(true);
-        return;
-      }
+      })
+      .catch(() => { if (!cancelled) setReady(true); });
 
-      // Only STUDENTS need a completed student profile. Teachers/staff/admins/
-      // superadmins have no student profile, so don't bounce them to
-      // /complete-profile when they land on a student page.
-      if (me.role === "student" && !me.profileCompleted) {
-        router.replace("/complete-profile");
-        return;
-      }
-
-      setReady(true);
-    };
-
-    void checkProfile();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [router]);
 
   if (!ready) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

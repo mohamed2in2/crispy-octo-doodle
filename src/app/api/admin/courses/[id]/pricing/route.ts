@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     price?: number | null;
     discountPercent?: number | null;
     discountExpiresAt?: string | null;
+    allowDirectInstall?: boolean;
   };
 
   const isPaid = body.isPaid ?? false;
@@ -30,11 +31,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       : null;
   const discountExpiresAt =
     body.discountExpiresAt ? new Date(body.discountExpiresAt) : null;
+  // Direct install only makes sense for free courses; auto-disable for paid
+  const allowDirectInstall = !isPaid ? (body.allowDirectInstall ?? false) : false;
 
   const updated = await prisma.course.update({
     where: { id },
-    data: { isPaid, price, discountPercent, discountExpiresAt },
-    select: { id: true, isPaid: true, price: true, discountPercent: true, discountExpiresAt: true },
+    data: { isPaid, price, discountPercent, discountExpiresAt, allowDirectInstall },
+    select: { id: true, isPaid: true, price: true, discountPercent: true, discountExpiresAt: true, allowDirectInstall: true },
   });
 
   return NextResponse.json({ course: updated });

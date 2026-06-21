@@ -1,14 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { getStudentSessionWithRetry } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unlockAtISO, isScheduledLocked } from "@/lib/publish";
 
 export async function GET() {
   try {
-    const session = await getStudentSessionWithRetry();
+    const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: "يجب تسجيل الدخول كطالب" }, { status: 401 });
+      return NextResponse.json({ error: "يجب تسجيل الدخول أولاً" }, { status: 401 });
+    }
+    // Teachers and staff don't have an enrolled-courses library
+    if (session.role === "teacher" || session.role === "staff") {
+      return NextResponse.json({ success: true, enrolledCourses: [] });
     }
 
     // Get enrolled courses with minimal data first
@@ -103,7 +107,10 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+          // 30s private browser cache: avoids re-fetching on quick navigation
+          // back to /library. Enrollment changes are rare; stale-while-revalidate
+          // gives a 60s background refresh window.
+          "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
         },
       }
     );

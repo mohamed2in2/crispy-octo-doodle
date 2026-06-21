@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { notifyExamLive } from "@/lib/notifications";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -42,6 +43,9 @@ export async function POST(req: NextRequest) {
         isActive: true,
       }
     });
+
+    // Notify enrolled students of this stage (fire-and-forget)
+    void notifyExamLive(exam.id, exam.educationalStage, exam.title);
 
     return NextResponse.json({ exam });
   } catch (error) {

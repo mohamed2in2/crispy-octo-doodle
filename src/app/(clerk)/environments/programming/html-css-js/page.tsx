@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { ProfileGuard } from "@/components/auth/ProfileGuard";
+import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
 
 const DEFAULT_HTML = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -67,6 +68,7 @@ button.addEventListener('click', () => {
 console.log('تم تحميل الصفحة بنجاح!');`;
 
 export default function HTMLEditorPage() {
+  const [user, setUser] = useState<MeUser | null>(null);
   const [html, setHtml] = useState(DEFAULT_HTML);
   const [css, setCss] = useState(DEFAULT_CSS);
   const [js, setJs] = useState(DEFAULT_JS);
@@ -81,6 +83,10 @@ export default function HTMLEditorPage() {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
   }, [output]);
+
+  useEffect(() => {
+    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+  }, []);
 
   const runCode = () => {
     setIsRunning(true);
@@ -172,7 +178,7 @@ export default function HTMLEditorPage() {
   return (
     <ProfileGuard>
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
-        <Navbar user={{ name: "", role: "student" }} />
+        <Navbar user={user ? { name: user.name, role: user.role } : null} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div

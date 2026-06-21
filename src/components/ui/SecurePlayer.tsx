@@ -23,7 +23,10 @@ export function SecurePlayer({
   onEnded,
   startSeconds = 0,
   onProgress,
+  onPause,
+  onPlay,
   className = "",
+  paused = false,
 }: {
   embedUrl: string;
   title: string;
@@ -36,7 +39,12 @@ export function SecurePlayer({
   startSeconds?: number;
   /** Reports current position (throttled) for saving. YouTube only — see above. */
   onProgress?: (seconds: number) => void;
+  /** Fired when playback pauses. */
+  onPause?: () => void;
+  /** Fired when playback resumes. */
+  onPlay?: () => void;
   className?: string;
+  paused?: boolean;
 }) {
   const { ref: wrapRef, isFs, cssFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
 
@@ -52,11 +60,15 @@ export function SecurePlayer({
           onEnded={onEnded}
           startSeconds={startSeconds}
           onProgress={onProgress}
+          onPause={onPause}
+          onPlay={onPlay}
+          paused={paused}
         />
       );
   }
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const vdoPlayerRef = React.useRef<any>(null);
 
   // Resume playback for Bunny & VdoCipher
   React.useEffect(() => {
@@ -73,6 +85,12 @@ export function SecurePlayer({
           if (data?.event === "timeupdate" && typeof data.time === "number") {
             onProgress?.(data.time);
           }
+          if (data?.event === "pause") {
+            onPause?.();
+          }
+          if (data?.event === "play" || data?.event === "playing") {
+            onPlay?.();
+          }
         } catch {
           // ignore parse errors
         }
@@ -87,11 +105,10 @@ export function SecurePlayer({
       script.async = true;
       document.body.appendChild(script);
 
-      let player: any = null;
-
       script.onload = () => {
         if (iframeRef.current && (window as any).VdoPlayer) {
-          player = new (window as any).VdoPlayer({ iframe: iframeRef.current });
+          const player = new (window as any).VdoPlayer({ iframe: iframeRef.current });
+          vdoPlayerRef.current = player;
           
           player.video.addEventListener("loadedmetadata", () => {
             if (startSeconds > 0) {
@@ -109,6 +126,14 @@ export function SecurePlayer({
               onProgress?.(player.video.currentTime);
             }
           });
+
+          player.video.addEventListener("pause", () => {
+            onPause?.();
+          });
+
+          player.video.addEventListener("play", () => {
+            onPlay?.();
+          });
         }
       };
 
@@ -116,9 +141,39 @@ export function SecurePlayer({
         if (document.body.contains(script)) {
           document.body.removeChild(script);
         }
+        vdoPlayerRef.current = null;
       };
     }
-  }, [provider, startSeconds, onProgress]);
+  }, [provider, startSeconds, onProgress, onPause, onPlay]);
+
+  // Handle paused prop changes for Bunny & VdoCipher
+  React.useEffect(() => {
+    if (provider === "bunny" && iframeRef.current) {
+      const method = paused ? "pause" : "play";
+      iframeRef.current.contentWindow?.postMessage(
+        JSON.stringify({ method }),
+        "*"
+      );
+    } else if (provider === "vdocipher" && vdoPlayerRef.current) {
+      try {
+        if (paused) {
+          if (typeof vdoPlayerRef.current.pause === "function") {
+            vdoPlayerRef.current.pause();
+          } else {
+            vdoPlayerRef.current.video?.pause();
+          }
+        } else {
+          if (typeof vdoPlayerRef.current.play === "function") {
+            vdoPlayerRef.current.play();
+          } else {
+            vdoPlayerRef.current.video?.play();
+          }
+        }
+      } catch (e) {
+        console.error("Failed to play/pause VdoCipher player:", e);
+      }
+    }
+  }, [paused, provider]);
 
   return (
     <div

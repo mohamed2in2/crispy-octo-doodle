@@ -6,8 +6,14 @@ import { randomBytes } from "crypto";
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "student") {
+    if (!session) {
       return NextResponse.json({ error: "يجب تسجيل الدخول أولاً" }, { status: 401 });
+    }
+    if (session.role === "teacher" || session.role === "staff") {
+      return NextResponse.json(
+        { error: `حساب ${session.role === "teacher" ? "المعلم" : "الموظف"} لا يمكنه التسجيل في الكورسات — هذا الإجراء مخصص للمتعلمين فقط.` },
+        { status: 403 }
+      );
     }
 
     const { id: courseId } = await params;

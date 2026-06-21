@@ -35,12 +35,15 @@ export function StreakFlame({ role }: { role?: string }) {
 
   useEffect(() => {
     if (role !== "student") return;
+    setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+
+    // /api/student/stats has Cache-Control: private, max-age=300 so the browser
+    // deduplicates this with any other caller on the same page (library, notif panel).
     let alive = true;
-    fetch("/api/student/stats", { credentials: "include", headers: { Accept: "application/json" } })
+    fetch("/api/student/stats", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { streak?: number } | null) => { if (alive && d) setStreak(d.streak ?? 0); })
       .catch(() => {});
-    setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
     return () => { alive = false; };
   }, [role]);
 

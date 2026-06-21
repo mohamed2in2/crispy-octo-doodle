@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { ProfileGuard } from "@/components/auth/ProfileGuard";
+import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
 
 // Periodic Table Data
 const ELEMENTS = [
@@ -194,6 +195,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function ChemistryPage() {
+  const [user, setUser] = useState<MeUser | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameMode, setGameMode] = useState<"element" | "usage">("element");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
@@ -212,6 +214,10 @@ export default function ChemistryPage() {
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+  }, []);
 
   const selectRandomQuestion = useCallback(() => {
     if (gameMode === "element") {
@@ -536,7 +542,7 @@ export default function ChemistryPage() {
   return (
     <ProfileGuard>
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
-        <Navbar user={{ name: "", role: "student" }} />
+        <Navbar user={user ? { name: user.name, role: user.role } : null} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div

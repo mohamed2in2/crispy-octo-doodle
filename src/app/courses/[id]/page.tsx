@@ -28,6 +28,7 @@ type CoursePreview = {
   folders: Array<{ id: string; name: string; videoCount: number; quizCount: number }>;
   freeVideos?: Array<{ id: string; title: string }>;
   hasAccess: boolean;
+  allowDirectInstall: boolean;
 };
 
 function buildWhatsAppUrl(phone: string, message: string) {
@@ -451,21 +452,39 @@ export default function CourseProductPage() {
                   >
                     ادخل الكورس الآن ←
                   </button>
-                ) : !course.isPaid || (course.effectivePrice === 0) ? (
-                  /* Free or 100% discount — one-click enroll */
+                ) : (!course.isPaid || course.effectivePrice === 0) ? (
+                  /* Free course — always direct install, no code needed */
                   <div className="space-y-3">
                     <button
                       onClick={enroll}
                       disabled={enrolling || userLoading}
-                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold text-base transition-colors"
+                      className="w-full py-3 rounded-xl text-white font-bold text-base transition-all disabled:opacity-60 flex items-center justify-center gap-2.5 shadow-lg active:scale-[0.98]"
+                      style={{
+                        background: "linear-gradient(135deg, var(--brand), var(--brand-strong))",
+                        boxShadow: "0 8px 24px -8px var(--brand-shadow)",
+                      }}
                     >
-                      {enrolling ? "جارٍ التسجيل..." : userLoading ? "جارٍ التحقق..." : "سجّل في الكورس مجاناً"}
+                      {enrolling ? (
+                        <><div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />جارٍ التثبيت...</>
+                      ) : userLoading ? (
+                        "جارٍ التحقق..."
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                          </svg>
+                          تثبيت الكورس
+                        </>
+                      )}
                     </button>
                     {!userLoading && !user && (
                       <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                        يلزم <button onClick={() => router.push(`/login?redirect_url=/courses/${courseId}`)} className="text-blue-600 dark:text-blue-400 underline">تسجيل الدخول</button> أولاً
+                        يلزم <button onClick={() => router.push(`/login?redirect_url=/courses/${courseId}`)} className="underline" style={{ color: "var(--brand)" }}>تسجيل الدخول</button> أولاً
                       </p>
                     )}
+                    <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}>
+                      مجاني تماماً — يُضاف لمكتبتك فوراً
+                    </p>
                   </div>
                 ) : (
                   /* Paid course — WhatsApp CTA + code input */

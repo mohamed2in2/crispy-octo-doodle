@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookie, getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAndUpdateStreak } from "@/lib/streak-middleware";
 
 export async function GET() {
   try {
@@ -11,9 +12,19 @@ export async function GET() {
       return NextResponse.json({ user: null });
     }
 
+    // Lightweight streak check: runs on first authenticated request of the day.
+    // Fire-and-forget — don't block the /me response on streak DB writes.
+    if (session.role === "student") {
+      void checkAndUpdateStreak(session.id).catch(() => {/* non-critical */});
+    }
+
     return NextResponse.json({ user: session }, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        // 15s private browser cache: subsequent calls within 15s use the cached
+        // response, eliminating redundant DB hits from concurrent page components.
+        // 'private' ensures CDNs never cache this. Stale-while-revalidate gives a
+        // 30s window where the browser serves stale while refreshing in background.
+        "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
       },
     });
   } catch (error) {

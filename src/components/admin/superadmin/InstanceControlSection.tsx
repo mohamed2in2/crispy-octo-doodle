@@ -164,6 +164,16 @@ export function InstanceControlSection() {
       toastError(e instanceof Error ? e.message : "خطأ");
     }
   };
+  const clearPw = async (id: string, name: string) => {
+    if (!needPw()) return;
+    if (!window.confirm(`هل تريد حذف كلمة مرور "${name}"؟ لن يتمكن من تسجيل الدخول بكلمة مرور بعد ذلك.`)) return;
+    try {
+      await patch(`/api/admin/superadmin/superadmins/${id}`, { clearPassword: true });
+      toastSuccess("تم حذف كلمة المرور");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "خطأ");
+    }
+  };
   const toggleActive = async (a: Superadmin) => {
     if (!needPw()) return;
     try {
@@ -324,6 +334,7 @@ export function InstanceControlSection() {
               isSelf={a.id === selfId}
               onRename={renameAdmin}
               onChangePw={changePw}
+              onClearPw={clearPw}
               onToggleActive={toggleActive}
               onRemove={removeAdmin}
             />
@@ -372,6 +383,7 @@ function SuperadminRow({
   isSelf,
   onRename,
   onChangePw,
+  onClearPw,
   onToggleActive,
   onRemove,
 }: {
@@ -379,6 +391,7 @@ function SuperadminRow({
   isSelf: boolean;
   onRename: (id: string, name: string) => void;
   onChangePw: (id: string, password: string) => void;
+  onClearPw: (id: string, name: string) => void;
   onToggleActive: (a: Superadmin) => void;
   onRemove: (id: string) => void;
 }) {
@@ -437,6 +450,15 @@ function SuperadminRow({
         >
           تغيير كلمة المرور
         </button>
+        {!admin.isOwner && (
+          <button
+            onClick={() => onClearPw(admin.id, admin.name)}
+            title="حذف كلمة المرور (يمنع تسجيل الدخول بكلمة مرور)"
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/25"
+          >
+            🗑 حذف كلمة المرور
+          </button>
+        )}
         {!admin.isOwner && (
           <>
             <button

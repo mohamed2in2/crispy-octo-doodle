@@ -68,60 +68,35 @@ export default function LibraryPage() {
   const [stats, setStats] = useState<StudentStats | null>(null);
 
   const loadLibrary = useCallback(() => {
-    // 1. Important/Fast: Fetch user data to render Header immediately
-    fetch("/api/auth/me", { 
-      credentials: "include",
-      headers: { "Accept": "application/json" }
-    })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data?.user) setUser(data.user);
-      })
-      .catch(err => console.error("Error fetching user:", err));
-
-    // Real gamification stats (points, streak, achievements, activity)
-    fetch("/api/student/stats", { credentials: "include", headers: { Accept: "application/json" } })
-      .then(res => res.ok ? res.json() : null)
-      .then((data: StudentStats | null) => { if (data) setStats(data); })
-      .catch(() => {});
-
-    // 2. Complex/Slow: Fetch courses in background while showing skeletons
+    // All three requests in parallel — /api/auth/me and /api/student/stats are
+    // both privately cached (15s and 5min respectively) so repeat visits are fast.
     setLoading(true);
-    fetch("/api/courses/enrolled", { 
-      credentials: "include",
-      headers: { "Accept": "application/json" }
-    })
-      .then(async (res) => {
-        if (res.ok) {
-          const coursesData = await res.json();
-          if (coursesData.success) {
-            setCourses(coursesData.enrolledCourses ?? []);
-          } else {
-            setCourses([]);
-          }
-        } else {
-          setCourses([]);
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching library data:", error);
-        setCourses([]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    void Promise.all([
+      fetch("/api/auth/me", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then((d: { user?: { name: string; role: string } | null } | null) => {
+          if (d?.user) setUser(d.user);
+        })
+        .catch(() => {}),
+
+      fetch("/api/student/stats", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then((d: StudentStats | null) => { if (d) setStats(d); })
+        .catch(() => {}),
+
+      fetch("/api/courses/enrolled", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then((d: { success?: boolean; enrolledCourses?: Course[] } | null) => {
+          setCourses(d?.success ? (d.enrolledCourses ?? []) : []);
+        })
+        .catch(() => setCourses([]))
+        .finally(() => setLoading(false)),
+    ]);
   }, []);
 
   useEffect(() => {
-    if (sessionStorage.getItem("library-refresh")) {
-      sessionStorage.removeItem("library-refresh");
-    }
-
-    const timer = setTimeout(() => {
-      void loadLibrary();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    sessionStorage.removeItem("library-refresh");
+    loadLibrary();
   }, [loadLibrary]);
 
   const totalVideos = courses.reduce(

@@ -139,9 +139,20 @@ export default function TeacherDashboardPage() {
     title: "", subject: "", description: "", thumbnailUrl: "", educationalStage: "", maxWatchCount: 3, sequentialAccess: true, homeworkUrl: "",
   });
   const [pricingSettings, setPricingSettings] = useState({
-    isPaid: false, price: "", discountPercent: "", discountExpiresAt: "",
+    isPaid: false, price: "", discountPercent: "", discountExpiresAt: "", allowDirectInstall: false,
   });
   const [savingPricing, setSavingPricing] = useState(false);
+
+  // Bulk codes generation state
+  const [bulkCount, setBulkCount] = useState(10);
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+
+  // Video timed questions state
+  const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
+  const [videoQuestions, setVideoQuestions] = useState<Record<string, any[]>>({});
+  const [loadingQuestions, setLoadingQuestions] = useState<Record<string, boolean>>({});
+  const [addQuestionStates, setAddQuestionStates] = useState<Record<string, any>>({});
 
   // In-app confirm dialog (replaces window.confirm)
   const [confirmState, setConfirmState] = useState<
@@ -452,6 +463,175 @@ export default function TeacherDashboardPage() {
     }
   };
 
+  const handleBulkGenerate = async () => {
+    if (!selectedCourse) return;
+    setBulkGenerating(true);
+    try {
+      const response = await fetch("/api/admin/codes/bulk", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: selectedCourse.id,
+          count: bulkCount,
+          prefix: bulkPrefix,
+          format: "csv",
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        notify("error", errData.error || "فشل توليد الأكواد");
+        setBulkGenerating(false);
+        return;
+      }
+
+      // Download CSV
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const contentDisposition = response.headers.get("content-disposition");
+      const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
+      a.download = filenameMatch?.[1] || `codes-${selectedCourse.id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      notify("success", `تم توليد ${bulkCount} كود وتحميل الملف بنجاح`);
+      fetchCodes(selectedCourse.id);
+    } catch (err) {
+      notify("error", "حدث خطأ أثناء الاتصال بالخادم");
+    } finally {
+      setBulkGenerating(false);
+    }
+  };
+
+  const loadVideoQuestions = async (videoId: string) => {
+    setLoadingQuestions((prev) => ({ ...prev, [videoId]: true }));
+    try {
+      const res = await fetch(`/api/admin/videos/${videoId}/questions`, { credentials: "include" });
+      const data = await res.json();
+      if (res.ok && data.questions) {
+        setVideoQuestions((prev) => ({ ...prev, [videoId]: data.questions }));
+      }
+    } catch {
+      notify("error", "تعذر تحميل أسئلة الفيديو");
+    } finally {
+      setLoadingQuestions((prev) => ({ ...prev, [videoId]: false }));
+    }
+  };
+
+  const toggleVideoQuestions = (videoId: string) => {
+    const isNowOpen = !expandedQuestions[videoId];
+    setExpandedQuestions((prev) => ({ ...prev, [videoId]: isNowOpen }));
+    if (isNowOpen) {
+      void loadVideoQuestions(videoId);
+    }
+  };
+
+  const handleDeleteQuestion = async (videoId: string, questionId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا السؤال نهائياً؟")) return;
+    try {
+      const res = await fetch(`/api/admin/videos/${videoId}/questions`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId }),
+      });
+      if (res.ok) {
+        notify("success", "تم حذف السؤال بنجاح");
+        void loadVideoQuestions(videoId);
+      } else {
+        const d = await res.json();
+        notify("error", d.error || "تعذر حذف السؤال");
+      }
+    } catch {
+      notify("error", "حدث خطأ أثناء حذف السؤال");
+    }
+  };
+
+  const getAddQuestionState = (videoId: string) => {
+    return addQuestionStates[videoId] || {
+      triggerTimestamp: "",
+      mode: "pause",
+      questionText: "",
+      optionA: "",
+      optionB: "",
+      optionC: "",
+      optionD: "",
+      correctOption: "A",
+      explanation: "",
+      refireOnRewatch: false,
+    };
+  };
+
+  const updateAddQuestionState = (videoId: string, fields: Partial<any>) => {
+    setAddQuestionStates((prev) => ({
+      ...prev,
+      [videoId]: { ...getAddQuestionState(videoId), ...fields },
+    }));
+  };
+
+  const handleAddQuestion = async (e: React.FormEvent, videoId: string) => {
+    e.preventDefault();
+    const state = getAddQuestionState(videoId);
+
+    // Parse MM:SS to seconds
+    let seconds = 0;
+    if (state.triggerTimestamp.includes(":")) {
+      const [m, s] = state.triggerTimestamp.split(":").map(Number);
+      if (isNaN(m) || isNaN(s)) {
+        notify("error", "توقيت غير صالح. استخدم تنسيق MM:SS");
+        return;
+      }
+      seconds = m * 60 + s;
+    } else {
+      seconds = Number(state.triggerTimestamp);
+      if (isNaN(seconds) || seconds < 0) {
+        notify("error", "توقيت غير صالح. أدخل الثواني الإجمالية أو تنسيق MM:SS");
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/admin/videos/${videoId}/questions`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          triggerSecond: seconds,
+          mode: state.mode,
+          questionText: state.questionText,
+          optionA: state.optionA,
+          optionB: state.optionB,
+          optionC: state.optionC,
+          optionD: state.optionD,
+          correctOption: state.correctOption,
+          explanation: state.explanation,
+          refireOnRewatch: state.refireOnRewatch,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        notify("success", "تم إضافة السؤال بنجاح");
+        // Reset form
+        setAddQuestionStates((prev) => {
+          const next = { ...prev };
+          delete next[videoId];
+          return next;
+        });
+        void loadVideoQuestions(videoId);
+      } else {
+        notify("error", data.error || "تعذر إضافة السؤال");
+      }
+    } catch {
+      notify("error", "حدث خطأ أثناء إضافة السؤال");
+    }
+  };
+
   // `section` lets each caller stay in its own tab (codes/students) instead of
   // always jumping to the course editor.
   const selectCourse = (course: Course, section: "courses" | "codes" | "students" = "courses") => {
@@ -474,6 +654,7 @@ export default function TeacherDashboardPage() {
       discountExpiresAt: course.discountExpiresAt
         ? new Date(course.discountExpiresAt).toISOString().slice(0, 16)
         : "",
+      allowDirectInstall: (course as any).allowDirectInstall ?? false,
     });
     fetchFolders(course.id);
     fetchCodes(course.id);
@@ -493,6 +674,7 @@ export default function TeacherDashboardPage() {
         price: pricingSettings.price ? parseFloat(pricingSettings.price) : null,
         discountPercent: pricingSettings.discountPercent ? parseFloat(pricingSettings.discountPercent) : null,
         discountExpiresAt: pricingSettings.discountExpiresAt || null,
+        allowDirectInstall: pricingSettings.allowDirectInstall,
       }),
     });
     const data = await readJson<{ error?: string }>(res);
@@ -712,44 +894,257 @@ export default function TeacherDashboardPage() {
                                   const provLabel = prov === "bunny" ? "Bunny" : prov === "youtube" ? "YouTube" : "VdoCipher";
                                   const provColor = prov === "bunny" ? "text-orange-500 bg-orange-500/12" : prov === "youtube" ? "text-red-500 bg-red-500/12" : "text-sky-500 bg-sky-500/12";
                                   return (
-                                    <div key={video.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
-                                      <span className="shrink-0 text-[var(--ink-muted)]"><IconVideo className="w-4 h-4" /></span>
-                                      <p className="text-sm text-[var(--ink)] font-medium truncate flex-1 min-w-0">{video.title}</p>
-                                      <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${provColor}`}>{provLabel}</span>
-                                      {video.isFree && (
-                                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">مجاني</span>
+                                    <div key={video.id} className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="shrink-0 text-[var(--ink-muted)]"><IconVideo className="w-4 h-4" /></span>
+                                        <p className="text-sm text-[var(--ink)] font-medium truncate flex-1 min-w-0">{video.title}</p>
+                                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${provColor}`}>{provLabel}</span>
+                                        {video.isFree && (
+                                          <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">مجاني</span>
+                                        )}
+                                        {/* Free / demo toggle */}
+                                        <button
+                                          type="button"
+                                          onClick={() => patchVideo(video.id, { isFree: !video.isFree })}
+                                          aria-pressed={video.isFree}
+                                          title="جعله مجانياً / تجريبياً — يشاهده غير المشتركين بلا حدود"
+                                          className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+                                            video.isFree
+                                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                              : "border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                                          }`}
+                                        >
+                                          {video.isFree ? "تجريبي ✓" : "اجعله تجريبياً"}
+                                        </button>
+                                        {/* Watch limit — only for paid (non-free) videos */}
+                                        {!video.isFree && (
+                                          <label className="shrink-0 inline-flex items-center gap-1 text-[11px] text-[var(--ink-muted)]">
+                                            <IconEye className="w-3.5 h-3.5" />
+                                            <select
+                                              value={video.maxWatchesPerUser ?? 3}
+                                              onChange={(e) => updateVideoWatches(video.id, parseInt(e.target.value))}
+                                              className="bg-[var(--surface)] text-[var(--ink)] border border-[var(--border)] rounded-lg pe-1 ps-2 py-1 text-xs font-bold focus:outline-none focus:border-sky-400/60 cursor-pointer"
+                                              aria-label="عدد المشاهدات"
+                                            >
+                                              {[1, 2, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n}×</option>)}
+                                            </select>
+                                          </label>
+                                        )}
+                                        {/* Timed Questions toggle */}
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleVideoQuestions(video.id)}
+                                          className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all ${
+                                            expandedQuestions[video.id]
+                                              ? "border-sky-500/40 bg-sky-500/10 text-sky-500"
+                                              : "border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                                          }`}
+                                        >
+                                          <span>❓ أسئلة الفيديو</span>
+                                          <span className="w-4 h-4 rounded-full bg-[var(--border)] text-[9px] flex items-center justify-center font-bold">
+                                            {videoQuestions[video.id]?.length ?? "•"}
+                                          </span>
+                                        </button>
+                                        <button onClick={() => deleteVideo(video.id)} aria-label="حذف الفيديو" className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors">
+                                          <IconTrash className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+
+                                      {/* Timed Questions Expandable Panel */}
+                                      {expandedQuestions[video.id] && (
+                                        <div className="mt-2 border-t border-[var(--border)] pt-3 space-y-4 bg-[var(--surface)]/30 rounded-xl p-3">
+                                          <h4 className="text-xs font-bold text-[var(--ink)] flex items-center gap-2">
+                                            <span>أسئلة هذا الفيديو</span>
+                                            {loadingQuestions[video.id] && (
+                                              <span className="w-3.5 h-3.5 border-2 border-sky-500/30 border-t-sky-500 rounded-full animate-spin" />
+                                            )}
+                                          </h4>
+
+                                          {/* Questions list */}
+                                          {(!videoQuestions[video.id] || videoQuestions[video.id].length === 0) ? (
+                                            <p className="text-xs text-[var(--ink-muted)]">لا توجد أسئلة مضافة لهذا الفيديو بعد.</p>
+                                          ) : (
+                                            <div className="space-y-3">
+                                              {videoQuestions[video.id].map((q) => {
+                                                const timeFormatted = `${Math.floor(q.triggerSecond / 60)}:${String(q.triggerSecond % 60).padStart(2, "0")}`;
+                                                return (
+                                                  <div key={q.id} className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex flex-col gap-2 relative">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                      <div className="flex items-center gap-2">
+                                                        <span className="bg-sky-500/10 text-sky-500 text-[10px] font-bold px-2 py-0.5 rounded-lg" dir="ltr">⏱ {timeFormatted}</span>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${q.mode === "pause" ? "bg-amber-500/10 text-amber-500" : "bg-teal-500/10 text-teal-500"}`}>
+                                                          {q.mode === "pause" ? "إيقاف الفيديو" : "عرض بدون إيقاف"}
+                                                        </span>
+                                                        {q.refireOnRewatch && (
+                                                          <span className="bg-purple-500/10 text-purple-500 text-[10px] font-bold px-2 py-0.5 rounded-lg">إعادة تكرار</span>
+                                                        )}
+                                                      </div>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteQuestion(video.id, q.id)}
+                                                        className="text-xs text-[var(--error)] hover:underline"
+                                                      >
+                                                        حذف
+                                                      </button>
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-[var(--ink)]">{q.questionText}</p>
+                                                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[var(--ink-muted)] mt-1">
+                                                      <div className={q.correctOption === "A" ? "text-emerald-500 font-bold" : ""}>أ) {q.optionA}</div>
+                                                      <div className={q.correctOption === "B" ? "text-emerald-500 font-bold" : ""}>ب) {q.optionB}</div>
+                                                      <div className={q.correctOption === "C" ? "text-emerald-500 font-bold" : ""}>ج) {q.optionC}</div>
+                                                      <div className={q.correctOption === "D" ? "text-emerald-500 font-bold" : ""}>د) {q.optionD}</div>
+                                                    </div>
+                                                    {q.explanation && (
+                                                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">الشرح: {q.explanation}</p>
+                                                    )}
+
+                                                    {/* Analytics */}
+                                                    {q.analytics && q.analytics.totalResponses > 0 && (
+                                                      <div className="mt-2 border-t border-[var(--border)]/60 pt-2 flex items-center gap-4 text-[10px] text-[var(--ink-muted)]">
+                                                        <span>إجمالي الإجابات: <strong>{q.analytics.totalResponses}</strong></span>
+                                                        <span>نسبة الإجابة الصحيحة: <strong className="text-emerald-500">{q.analytics.correctPercent}%</strong></span>
+                                                        <span>متوسط زمن الاستجابة: <strong>+{q.analytics.avgResponseDelay}ث</strong></span>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+
+                                          {/* Add timed question form */}
+                                          <form onSubmit={(e) => handleAddQuestion(e, video.id)} className="border-t border-[var(--border)] pt-3 space-y-3">
+                                            <h5 className="text-[11px] font-bold text-[var(--ink)]">إضافة سؤال جديد للفيديو</h5>
+                                            <div className="grid grid-cols-2 gap-2">
+                                              <div>
+                                                <label className={label}>التوقيت (ثواني أو MM:SS) *</label>
+                                                <input
+                                                  type="text"
+                                                  required
+                                                  placeholder="مثال: 01:30 أو 90"
+                                                  value={getAddQuestionState(video.id).triggerTimestamp}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { triggerTimestamp: e.target.value })}
+                                                  className={input}
+                                                  dir="ltr"
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className={label}>طريقة العرض *</label>
+                                                <select
+                                                  value={getAddQuestionState(video.id).mode}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { mode: e.target.value })}
+                                                  className={input}
+                                                >
+                                                  <option value="pause">إيقاف الفيديو حتى الإجابة (Pause)</option>
+                                                  <option value="overlay">عرض كارت زاوية بدون إيقاف (Overlay)</option>
+                                                </select>
+                                              </div>
+                                            </div>
+
+                                            <div>
+                                              <label className={label}>نص السؤال *</label>
+                                              <input
+                                                type="text"
+                                                required
+                                                placeholder="ما هي نتيجة العملية السابقة؟"
+                                                value={getAddQuestionState(video.id).questionText}
+                                                onChange={(e) => updateAddQuestionState(video.id, { questionText: e.target.value })}
+                                                className={input}
+                                              />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                              <div>
+                                                <label className={label}>الخيار أ *</label>
+                                                <input
+                                                  type="text"
+                                                  required
+                                                  value={getAddQuestionState(video.id).optionA}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { optionA: e.target.value })}
+                                                  className={input}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className={label}>الخيار ب *</label>
+                                                <input
+                                                  type="text"
+                                                  required
+                                                  value={getAddQuestionState(video.id).optionB}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { optionB: e.target.value })}
+                                                  className={input}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className={label}>الخيار ج *</label>
+                                                <input
+                                                  type="text"
+                                                  required
+                                                  value={getAddQuestionState(video.id).optionC}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { optionC: e.target.value })}
+                                                  className={input}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className={label}>الخيار د *</label>
+                                                <input
+                                                  type="text"
+                                                  required
+                                                  value={getAddQuestionState(video.id).optionD}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { optionD: e.target.value })}
+                                                  className={input}
+                                                />
+                                              </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                              <div>
+                                                <label className={label}>الإجابة الصحيحة *</label>
+                                                <select
+                                                  value={getAddQuestionState(video.id).correctOption}
+                                                  onChange={(e) => updateAddQuestionState(video.id, { correctOption: e.target.value })}
+                                                  className={input}
+                                                >
+                                                  <option value="A">الخيار أ</option>
+                                                  <option value="B">الخيار ب</option>
+                                                  <option value="C">الخيار ج</option>
+                                                  <option value="D">الخيار د</option>
+                                                </select>
+                                              </div>
+                                              <div>
+                                                <label className={label}>خيار التكرار</label>
+                                                <div className="flex items-center gap-2 h-[38px]">
+                                                  <input
+                                                    type="checkbox"
+                                                    id={`refire-${video.id}`}
+                                                    checked={getAddQuestionState(video.id).refireOnRewatch}
+                                                    onChange={(e) => updateAddQuestionState(video.id, { refireOnRewatch: e.target.checked })}
+                                                    className="w-4 h-4 text-sky-500 rounded border-[var(--border)] focus:ring-sky-500"
+                                                  />
+                                                  <label htmlFor={`refire-${video.id}`} className="text-xs text-[var(--ink)] select-none">تكرار السؤال عند إعادة التشغيل</label>
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <div>
+                                              <label className={label}>الشرح / التفسير (اختياري)</label>
+                                              <input
+                                                type="text"
+                                                placeholder="شرح مبسط يظهر للمتعلم بعد الإجابة..."
+                                                value={getAddQuestionState(video.id).explanation}
+                                                onChange={(e) => updateAddQuestionState(video.id, { explanation: e.target.value })}
+                                                className={input}
+                                              />
+                                            </div>
+
+                                            <button
+                                              type="submit"
+                                              className={`${primaryBtn} w-full text-xs py-2`}
+                                            >
+                                              حفظ السؤال
+                                            </button>
+                                          </form>
+                                        </div>
                                       )}
-                                      {/* Free / demo toggle */}
-                                      <button
-                                        type="button"
-                                        onClick={() => patchVideo(video.id, { isFree: !video.isFree })}
-                                        aria-pressed={video.isFree}
-                                        title="جعله مجانياً / تجريبياً — يشاهده غير المشتركين بلا حدود"
-                                        className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border transition-colors ${
-                                          video.isFree
-                                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
-                                            : "border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                                        }`}
-                                      >
-                                        {video.isFree ? "تجريبي ✓" : "اجعله تجريبياً"}
-                                      </button>
-                                      {/* Watch limit — only for paid (non-free) videos */}
-                                      {!video.isFree && (
-                                        <label className="shrink-0 inline-flex items-center gap-1 text-[11px] text-[var(--ink-muted)]">
-                                          <IconEye className="w-3.5 h-3.5" />
-                                          <select
-                                            value={video.maxWatchesPerUser ?? 3}
-                                            onChange={(e) => updateVideoWatches(video.id, parseInt(e.target.value))}
-                                            className="bg-[var(--surface)] text-[var(--ink)] border border-[var(--border)] rounded-lg pe-1 ps-2 py-1 text-xs font-bold focus:outline-none focus:border-sky-400/60 cursor-pointer"
-                                            aria-label="عدد المشاهدات"
-                                          >
-                                            {[1, 2, 3, 5, 10, 20].map((n) => <option key={n} value={n}>{n}×</option>)}
-                                          </select>
-                                        </label>
-                                      )}
-                                      <button onClick={() => deleteVideo(video.id)} aria-label="حذف الفيديو" className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors">
-                                        <IconTrash className="w-3.5 h-3.5" />
-                                      </button>
                                     </div>
                                   );
                                 })}
@@ -1041,6 +1436,38 @@ export default function TeacherDashboardPage() {
                         </button>
                       </div>
 
+                      {/* Install button toggle — free courses only */}
+                      {!pricingSettings.isPaid && (
+                        <button
+                          type="button"
+                          onClick={() => setPricingSettings({ ...pricingSettings, allowDirectInstall: !pricingSettings.allowDirectInstall })}
+                          className="w-full flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-sm font-bold transition-colors text-right"
+                          style={{
+                            borderColor: pricingSettings.allowDirectInstall ? "var(--brand)" : "var(--border)",
+                            background:  pricingSettings.allowDirectInstall ? "var(--brand-soft)" : "var(--surface-2)",
+                            color:       pricingSettings.allowDirectInstall ? "var(--brand)" : "var(--ink-2)",
+                          }}
+                        >
+                          <span
+                            className="w-10 h-6 rounded-full transition-colors flex items-center shrink-0"
+                            style={{ background: pricingSettings.allowDirectInstall ? "var(--brand)" : "var(--border)", padding: 2 }}
+                          >
+                            <span
+                              className="w-4 h-4 bg-white rounded-full shadow transition-transform"
+                              style={{ transform: pricingSettings.allowDirectInstall ? "translateX(-16px)" : "translateX(0)" }}
+                            />
+                          </span>
+                          <div className="flex-1 text-right">
+                            <div>تفعيل زر "تثبيت الكورس" 📲</div>
+                            <div className="text-xs font-normal mt-0.5" style={{ color: "var(--ink-3)" }}>
+                              {pricingSettings.allowDirectInstall
+                                ? "الطلاب يرون زر تثبيت مباشر بدون كود"
+                                : "الطلاب يحتاجون كود وصول للتسجيل"}
+                            </div>
+                          </div>
+                        </button>
+                      )}
+
                       {pricingSettings.isPaid && (
                         <div>
                           <label className={label}>السعر الأصلي (جنيه) *</label>
@@ -1154,6 +1581,50 @@ export default function TeacherDashboardPage() {
                       <IconPlus className="w-4 h-4" /> {n}
                     </button>
                   ))}
+                </div>
+
+                {/* Bulk generate panel */}
+                <div className={`${cardPad} space-y-4`}>
+                  <h3 className="font-bold text-[var(--ink)] text-xs flex items-center gap-2">
+                    <IconKey className="w-4 h-4 text-sky-500" />
+                    <span>توليد أكواد بكميات كبيرة (تحميل ملف CSV)</span>
+                  </h3>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="w-24 shrink-0">
+                      <label className={label}>عدد الأكواد</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={bulkCount}
+                        onChange={(e) => setBulkCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                        className={input}
+                      />
+                    </div>
+                    <div className="w-36 shrink-0">
+                      <label className={label}>البادئة (اختياري)</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: MATH"
+                        maxLength={10}
+                        value={bulkPrefix}
+                        onChange={(e) => setBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                        className={input}
+                        dir="ltr"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={bulkGenerating}
+                      onClick={handleBulkGenerate}
+                      className={primaryBtn}
+                    >
+                      {bulkGenerating ? "جارٍ التوليد..." : "إنشاء وتحميل CSV"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[var(--ink-muted)]">
+                    يمكنك توليد حتى 200 كود دفعة واحدة ببادئة مخصصة. سيتم تحميل ملف يحتوي على الأكواد الناتجة مباشرة.
+                  </p>
                 </div>
 
                 <div className={`${card} overflow-hidden`}>

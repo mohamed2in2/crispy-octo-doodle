@@ -80,9 +80,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const result = await prisma.quizResult.upsert({
     where: { studentId_quizId: { studentId: session.id, quizId } },
-    update: { score, totalQ, completedAt: new Date(), allowRetake: false },
-    create: { studentId: session.id, quizId, score, totalQ },
+    update: { score, totalQ, completedAt: new Date(), allowRetake: false, startedAt: startedAt ?? undefined },
+    create: { studentId: session.id, quizId, score, totalQ, startedAt: startedAt ?? undefined },
   });
+
+  // Save per-question answers (enables "view answers" + "wrong questions exam")
+  // Delete old answers for this result first (retake scenario)
+  await prisma.quizAnswer.deleteMany({ where: { resultId: result.id } });
+  if (breakdown.length > 0) {
+    await prisma.quizAnswer.createMany({
+      data: (breakdown as any[]).map((b) => ({
+        studentId:      session.id,
+        quizId,
+        questionId:     b.questionId,
+        resultId:       result.id,
+        selectedAnswer: b.yourAnswer,
+        correctAnswer:  b.correctAnswer,
+        isCorrect:      b.isCorrect,
+        question:       b.question,
+        optionA:        b.optionA,
+        optionB:        b.optionB,
+        optionC:        b.optionC,
+        optionD:        b.optionD,
+      })),
+    });
+  }
 
   // Points Logic
   if (session.role === "student") {

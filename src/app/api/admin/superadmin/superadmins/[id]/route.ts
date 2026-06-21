@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = (await req.json().catch(() => ({}))) as {
       name?: string;
       password?: string;
+      clearPassword?: boolean;
       isActive?: boolean;
       actionPassword?: string;
     };
@@ -40,10 +41,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (target.isOwner && body.isActive === false) {
       return NextResponse.json({ error: "لا يمكن إيقاف حساب المالك" }, { status: 400 });
     }
+    // The owner's password cannot be cleared — lockout guard.
+    if (target.isOwner && body.clearPassword) {
+      return NextResponse.json({ error: "لا يمكن حذف كلمة مرور حساب المالك" }, { status: 400 });
+    }
 
-    const data: { name?: string; password?: string; isActive?: boolean } = {};
+    const data: { name?: string; password?: string | null; isActive?: boolean } = {};
     if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
-    if (typeof body.password === "string" && body.password) {
+    if (body.clearPassword) {
+      // Nullify the password — blocks password-based login for this account.
+      data.password = null;
+    } else if (typeof body.password === "string" && body.password) {
       if (body.password.length < 6) {
         return NextResponse.json({ error: "كلمة المرور قصيرة جداً (٦ أحرف على الأقل)" }, { status: 400 });
       }

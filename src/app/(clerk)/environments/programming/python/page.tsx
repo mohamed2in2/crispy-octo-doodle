@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { ProfileGuard } from "@/components/auth/ProfileGuard";
+import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
 
 const DEFAULT_CODE = `# اكتب كود Python هنا
 print("مرحباً بالعالم!")
@@ -18,6 +19,7 @@ print("الأرقام مضاعفة:", doubled)
 `;
 
 export default function PythonEditorPage() {
+  const [user, setUser] = useState<MeUser | null>(null);
   const [code, setCode] = useState(DEFAULT_CODE);
   const [output, setOutput] = useState<Array<{ type: "log" | "error"; message: string }>>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -28,6 +30,10 @@ export default function PythonEditorPage() {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
   }, [output]);
+
+  useEffect(() => {
+    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+  }, []);
 
   const runCode = () => {
     setIsRunning(true);
@@ -80,7 +86,7 @@ export default function PythonEditorPage() {
   return (
     <ProfileGuard>
       <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950">
-        <Navbar user={{ name: "", role: "student" }} />
+        <Navbar user={user ? { name: user.name, role: user.role } : null} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div

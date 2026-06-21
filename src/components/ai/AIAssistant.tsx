@@ -32,8 +32,25 @@ const WELCOME_MESSAGE: ChatMessage = {
     "أهلاً بيك! أنا مرشدك الذكي على Code-UP 🌟\n\nأنا بشوف كل بياناتك (درجاتك، تقدمك، كورساتك) وممكن أساعدك في:\n• تحليل أداءك ونقاط ضعفك\n• خطة تدريبية مخصصة ليك\n• لو في إجابة اتسجلت غلط — هعمل طلب تعديل للمعلم\n• شكاوى عن مدرس أو محتوى\n• توجيهك لأي حاجة في الموقع\n\nاتكلم معايا براحة!",
 };
 
+const AUTH_CACHE_KEY = "ai_auth_v1";
+const AUTH_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function readAuthCache(): { isStudent: boolean; aiEnabled: boolean } | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, isStudent, aiEnabled } = JSON.parse(raw);
+    if (Date.now() - ts > AUTH_CACHE_TTL) { sessionStorage.removeItem(AUTH_CACHE_KEY); return null; }
+    return { isStudent, aiEnabled };
+  } catch { return null; }
+}
+
+function writeAuthCache(isStudent: boolean, aiEnabled: boolean) {
+  try { sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ ts: Date.now(), isStudent, aiEnabled })); } catch { /* ignore */ }
+}
+
 export function AIAssistant() {
-  const router = useRouter();
+  const router  = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -45,18 +62,41 @@ export function AIAssistant() {
   const [unread, setUnread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auth check
+  /*
+   * Auth check — lazy & cached.
+   * 1. Try sessionStorage cache first (0 network requests if hit).
+   * 2. If cache miss, wait 1.5s after mount so it doesn't race with critical
+   *    page requests (LCP data, course API, etc.), then fetch.
+   * 3. Result is cached for 10 minutes in sessionStorage.
+   */
   useEffect(() => {
-    Promise.all([
-      fetch("/api/auth/me").then((r) => r.json()).catch(() => null),
-      fetch("/api/ai/status").then((r) => r.json()).catch(() => null),
-    ])
-      .then(([auth, status]) => {
-        setIsStudent(auth?.user?.role === "student");
-        setAiEnabled(status?.enabled === true);
-        setAuthChecked(true);
-      })
-      .catch(() => setAuthChecked(true));
+    const cached = readAuthCache();
+    if (cached) {
+      setIsStudent(cached.isStudent);
+      setAiEnabled(cached.aiEnabled);
+      setAuthChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const [auth, status] = await Promise.all([
+          fetch("/api/auth/me", { credentials: "include" }).then((r) => r.json()).catch(() => null),
+          fetch("/api/ai/status").then((r) => r.json()).catch(() => null),
+        ]);
+        if (cancelled) return;
+        const student = auth?.user?.role === "student";
+        const enabled = status?.enabled === true;
+        setIsStudent(student);
+        setAiEnabled(enabled);
+        writeAuthCache(student, enabled);
+      } catch { /* non-critical */ } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    }, 1500); // 1.5s defer — lets critical page fetches land first
+
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   useEffect(() => {
@@ -78,49 +118,22 @@ export function AIAssistant() {
         body: JSON.stringify({ message }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.error || "حدث خطأ. حاول مرة تانية." },
-        ]);
-        return;
-      }
-
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: data.message,
-          actions: data.actions ? JSON.stringify(data.actions) : null,
+          content: res.ok ? data.message : (data.error || "حدث خطأ. حاول مرة تانية."),
+          actions: res.ok && data.actions ? JSON.stringify(data.actions) : null,
         },
       ]);
-
-      // Handle navigation actions
-      const navAction = (data.actions as ChatAction[] | undefined)?.find(
-        (a) => a.type === "navigate"
-      );
-      if (navAction) {
-        // navigate handled separately
-      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "تعذر الاتصال بالخادم. حاول لاحقاً." },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "تعذر الاتصال بالخادم. حاول لاحقاً." }]);
     } finally {
       setSending(false);
     }
   };
 
-  // Don't show on admin/teacher panels or login pages
-  const hideOn = [
-    "/adminpanel",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/profile-setup",
-  ];
+  const hideOn = ["/adminpanel", "/login", "/signup", "/forgot-password", "/profile-setup"];
   const shouldHide = hideOn.some((p) => pathname?.startsWith(p));
 
   if (!authChecked || !isStudent || !aiEnabled || shouldHide) return null;
@@ -141,9 +154,7 @@ export function AIAssistant() {
           aria-label="مرشد الذكاء الاصطناعي"
         >
           <span className="text-2xl group-hover:animate-bounce">🤖</span>
-          {unread && (
-            <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white" />
-          )}
+          {unread && <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white" />}
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             مرشدك الذكي 🌟
           </span>
@@ -156,63 +167,35 @@ export function AIAssistant() {
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-xl">
-                🤖
-              </div>
+              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-xl">🤖</div>
               <div>
                 <h3 className="font-bold text-base">مرشدك الذكي</h3>
                 <p className="text-xs text-white/80">يعرف كل بياناتك ويساعدك</p>
               </div>
             </div>
             <button
-              onClick={() => {
-                setOpen(false);
-                setMessages([]);
-                setInput("");
-                setSending(false);
-              }}
+              onClick={() => { setOpen(false); setMessages([]); setInput(""); setSending(false); }}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
               aria-label="إغلاق"
-            >
-              ✕
-            </button>
+            >✕</button>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-purple-50/40 via-white to-white dark:from-slate-900 dark:via-slate-900 dark:to-slate-900">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-400 text-sm py-8">
-                ابدأ الحوار...
-              </div>
-            )}
+            {messages.length === 0 && <div className="text-center text-gray-400 text-sm py-8">ابدأ الحوار...</div>}
             {messages.map((m, idx) => {
-              const actions: ChatAction[] = m.actions
-                ? (() => {
-                    try {
-                      return JSON.parse(m.actions);
-                    } catch {
-                      return [];
-                    }
-                  })()
-                : [];
+              const actions: ChatAction[] = m.actions ? (() => { try { return JSON.parse(m.actions!); } catch { return []; } })() : [];
               return (
-                <div
-                  key={idx}
-                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
-                      m.role === "user"
-                        ? "bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white rounded-br-sm shadow-md"
-                        : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-sm shadow-sm border border-purple-100 dark:border-purple-900/40"
-                    }`}
-                  >
+                <div key={idx} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
+                    m.role === "user"
+                      ? "bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white rounded-br-sm shadow-md"
+                      : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-sm shadow-sm border border-purple-100 dark:border-purple-900/40"
+                  }`}>
                     {m.content}
                     {actions.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-800/40 space-y-1">
-                        {actions.map((a, ai) => (
-                          <ActionBadge key={ai} action={a} router={router} />
-                        ))}
+                        {actions.map((a, ai) => <ActionBadge key={ai} action={a} router={router} />)}
                       </div>
                     )}
                   </div>
@@ -235,40 +218,38 @@ export function AIAssistant() {
 
           {/* Quick Prompts */}
           {messages.length <= 1 && (
-            <div className="px-3 pb-2 flex flex-wrap gap-1.5 bg-white dark:bg-slate-900 border-t border-purple-100 dark:border-purple-900/40">
-              {QUICK_PROMPTS.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => send(q)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/50 transition-colors"
-                >
-                  {q}
+            <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-none border-t border-purple-100 dark:border-purple-900/30">
+              {QUICK_PROMPTS.map((p) => (
+                <button key={p} onClick={() => send(p)} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors whitespace-nowrap">
+                  {p}
                 </button>
               ))}
             </div>
           )}
 
           {/* Input */}
-          <form
-            onSubmit={(e) => { e.preventDefault(); send(); }}
-            className="p-3 border-t border-purple-100 dark:border-purple-900/40 bg-white dark:bg-slate-900 flex gap-2"
-          >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="اكتب رسالتك..."
-              disabled={sending}
-              className="flex-1 px-4 py-2.5 rounded-2xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-shadow"
-            >
-              ➤
-            </button>
-          </form>
+          <div className="p-4 border-t border-purple-100 dark:border-purple-900/30">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                placeholder="اكتب رسالتك..."
+                className="flex-1 rounded-2xl border border-purple-200 dark:border-purple-800/40 bg-purple-50/50 dark:bg-slate-800 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-600 text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
+                dir="rtl"
+                disabled={sending}
+              />
+              <button
+                onClick={() => void send()}
+                disabled={sending || !input.trim()}
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 text-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-40 disabled:scale-100"
+                aria-label="إرسال"
+              >
+                <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
@@ -276,38 +257,26 @@ export function AIAssistant() {
 }
 
 function ActionBadge({ action, router }: { action: ChatAction; router: ReturnType<typeof useRouter> }) {
-  if (action.status === "failed") {
-    return (
-      <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-        ⚠️ فشل: {action.error}
-      </div>
-    );
-  }
-  if (action.status === "ok" || action.status === "ignored") return null;
-
-  const labels: Record<string, string> = {
-    create_grade_request: "🎯 تم إرسال طلب تعديل الدرجة للمعلم",
-    create_ticket: "🎫 تم إنشاء تذكرة دعم",
-    submit_feedback: "💬 تم تسجيل ملاحظتك",
-    navigate: "🔗 توجيه",
-  };
-
-  const label = labels[action.type] || action.type;
-
-  if (action.type === "navigate") {
-    return (
-      <button
-        onClick={() => router.push(String((action as ChatAction).id || "/"))}
-        className="text-xs text-purple-700 dark:text-purple-300 underline"
-      >
-        {label}
-      </button>
-    );
-  }
+  const color =
+    action.status === "success" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+    : action.status === "error"   ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+    : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+  const icon =
+    action.status === "success" ? "✓"
+    : action.status === "error"   ? "✗"
+    : action.type === "navigate"  ? "→"
+    : "⟳";
 
   return (
-    <div className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded font-medium">
-      {label}
+    <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border ${color}`}>
+      <span className="font-bold">{icon}</span>
+      <span>
+        {action.type === "navigate" && action.id ? (
+          <button onClick={() => router.push(action.id!)} className="underline underline-offset-2">
+            {action.status === "success" ? "انتقل للكورس" : action.status}
+          </button>
+        ) : action.status}
+      </span>
     </div>
   );
 }

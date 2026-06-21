@@ -57,7 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               include: {
                 progress: {
                   where: { studentId: session.id },
-                  select: { watched: true, watchedAt: true },
+                  select: { watched: true, watchedAt: true, lastPositionSeconds: true },
                 },
                 watchSessions: {
                   where: { studentId: session.id, usedWatchSlot: true },

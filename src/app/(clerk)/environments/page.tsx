@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { ProfileGuard } from "@/components/auth/ProfileGuard";
+import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
 
 const SUBJECTS = [
   {
@@ -82,10 +84,16 @@ const SUBJECTS = [
 ];
 
 export default function EnvironmentsPage() {
+  const [user, setUser] = useState<MeUser | null>(null);
+
+  useEffect(() => {
+    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+  }, []);
+
   return (
     <ProfileGuard>
       <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300">
-        <Navbar user={{ name: "", role: "student" }} />
+        <Navbar user={user ? { name: user.name, role: user.role } : null} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
           {/* Header */}
           <motion.div

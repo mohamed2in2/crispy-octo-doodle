@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/ui/Navbar";
 import { useToast } from "@/components/ui/Toast";
 import { SecurePlayer } from "@/components/ui/SecurePlayer";
+import { usePositionSaver } from "@/lib/use-position-saver";
+import { VideoQuestionModal } from "@/components/player/VideoQuestionModal";
+import { VideoQuestionOverlay } from "@/components/player/VideoQuestionOverlay";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -15,7 +18,7 @@ type VideoItem = {
   durationMinutes?: number;
   maxWatchesPerUser?: number;
   usedWatches?: number;
-  progress?: Array<{ watched: boolean; watchedAt?: string | null }>;
+  progress?: Array<{ watched: boolean; watchedAt?: string | null; lastPositionSeconds?: number }>;
   publishAt?: string | null;
 };
 
@@ -44,7 +47,6 @@ type CourseData = {
   folders: FolderItem[];
 };
 
-
 type PlayerState = {
   videoId: string;
   sessionToken: string;
@@ -53,6 +55,23 @@ type PlayerState = {
   provider: string;
   startedAt: string;
   durationMinutes: number;
+  startSeconds?: number;
+  watchSessionId?: string;
+};
+
+type QuestionItem = {
+  id: string;
+  triggerSecond: number;
+  mode: string; // "pause" | "overlay"
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  refireOnRewatch?: boolean;
+  answered?: boolean;
+  correctOption?: string;
+  explanation?: string;
 };
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
@@ -181,6 +200,16 @@ function WatchSlots({ used, total }: { used: number; total: number }) {
   );
 }
 
+function formatTime(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function CourseLearningPage() {
@@ -211,6 +240,18 @@ export default function CourseLearningPage() {
   // Watch modal
   const [modalVideo, setModalVideo] = useState<{ id: string; title: string } | null>(null);
   const [watching, setWatching] = useState(false);
+
+  // Resume Position and Timed Questions state
+  const [savedPosition, setSavedPosition] = useState<number>(0);
+  const [fetchingPosition, setFetchingPosition] = useState(false);
+  const [playerPaused, setPlayerPaused] = useState(false);
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [answeredQuestionIds, setAnsweredQuestionIds] = useState<Set<string>>(new Set());
+  const [firedQuestionIds, setFiredQuestionIds] = useState<Set<string>>(new Set());
+  const [activeQuestion, setActiveQuestion] = useState<QuestionItem | null>(null);
+  const [activeOverlayQuestion, setActiveOverlayQuestion] = useState<QuestionItem | null>(null);
+  const playerTimeRef = useRef(0);
+  const lastTimeRef = useRef(0);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -316,12 +357,53 @@ export default function CourseLearningPage() {
 
   useEffect(() => { if (courseId) void loadCourse(); }, [courseId, loadCourse]);
 
+  // Fetch saved resume position when selecting a video
+  useEffect(() => {
+    if (!activeVideoId) return;
+    setSavedPosition(0);
+    setFetchingPosition(true);
+    fetch(`/api/videos/${activeVideoId}/position`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { seconds?: number } | null) => {
+        setSavedPosition(d?.seconds ?? 0);
+      })
+      .catch(() => {})
+      .finally(() => setFetchingPosition(false));
+  }, [activeVideoId]);
+
+  // Fetch questions for active video
+  useEffect(() => {
+    setFiredQuestionIds(new Set());
+    setActiveQuestion(null);
+    setActiveOverlayQuestion(null);
+    if (!player?.videoId) {
+      setQuestions([]);
+      setAnsweredQuestionIds(new Set());
+      return;
+    }
+
+    fetch(`/api/videos/${player.videoId}/questions`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { questions?: QuestionItem[] }) => {
+        if (data.questions) {
+          setQuestions(data.questions);
+          const answered = new Set<string>();
+          data.questions.forEach((q) => {
+            if (q.answered) answered.add(q.id);
+          });
+          setAnsweredQuestionIds(answered);
+        }
+      })
+      .catch(() => {});
+  }, [player?.videoId]);
+
   // ── Countdown ticker ─────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (playerPaused || activeQuestion) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [playerPaused, activeQuestion]);
 
   useEffect(() => {
     if (!player) return;
@@ -376,13 +458,78 @@ export default function CourseLearningPage() {
 
   // ── Watch flow ───────────────────────────────────────────────────────────
 
+  // Position saving hook (resume playback + cumulative watched time).
+  const { reportProgress } = usePositionSaver(player?.videoId ?? null);
+
+  // Drives both position-save and timed-question triggering off the player's
+  // reported currentTime. A question fires only when the playhead PASSES its
+  // trigger second during forward playback (not on a seek/jump).
+  const handleTimeUpdate = useCallback((seconds: number) => {
+    playerTimeRef.current = seconds;
+    reportProgress(seconds);
+
+    const prevT = lastTimeRef.current;
+
+    // Seeked backward → re-arm refire-on-rewatch questions ahead of the playhead.
+    if (seconds < prevT - 2) {
+      setFiredQuestionIds((prev) => {
+        const next = new Set(prev);
+        questions.forEach((q) => {
+          if (q.refireOnRewatch && q.triggerSecond > seconds) next.delete(q.id);
+        });
+        return next;
+      });
+    }
+
+    questions.forEach((q) => {
+      if (answeredQuestionIds.has(q.id) && !q.refireOnRewatch) return;
+      if (firedQuestionIds.has(q.id)) return;
+      // Forward pass through the trigger (guard against large seeks).
+      const passed = prevT <= q.triggerSecond && seconds >= q.triggerSecond && seconds - prevT <= 4;
+      if (!passed) return;
+
+      setFiredQuestionIds((prev) => {
+        const next = new Set(prev);
+        next.add(q.id);
+        return next;
+      });
+      if (q.mode === "pause") {
+        setPlayerPaused(true);
+        setActiveQuestion(q);
+      } else {
+        setActiveOverlayQuestion(q);
+      }
+    });
+
+    lastTimeRef.current = seconds;
+  }, [questions, answeredQuestionIds, firedQuestionIds, reportProgress]);
+
+  const handleQuestionAnswered = () => {
+    if (activeQuestion) {
+      setAnsweredQuestionIds((prev) => new Set(prev).add(activeQuestion.id));
+      setActiveQuestion(null);
+      setPlayerPaused(false);
+    }
+  };
+
+  const handleOverlayQuestionAnswered = () => {
+    if (activeOverlayQuestion) {
+      setAnsweredQuestionIds((prev) => new Set(prev).add(activeOverlayQuestion.id));
+      setActiveOverlayQuestion(null);
+    }
+  };
+
+  const handleOverlayQuestionDismissed = () => {
+    setActiveOverlayQuestion(null);
+  };
+
   const openModal = (video: VideoItem) => {
     if (isLocked(video.id)) return;
     if (hasNoWatches) { toastError("استنفذت جميع محاولات المشاهدة — تواصل مع المعلم"); return; }
     setModalVideo({ id: video.id, title: video.title });
   };
 
-  const confirmWatch = async () => {
+  const confirmWatch = async (resume: boolean = true) => {
     if (!modalVideo) return;
     setWatching(true);
     try {
@@ -390,6 +537,7 @@ export default function CourseLearningPage() {
       const data = await res.json();
       if (!res.ok) { toastError(data.error || "تعذر بدء جلسة المشاهدة"); return; }
       const vid = flatVideos.find((v) => v.id === modalVideo.id);
+      const startAt = resume ? savedPosition : 0;
       setPlayer({
         videoId: modalVideo.id,
         sessionToken: data.sessionToken,
@@ -398,6 +546,8 @@ export default function CourseLearningPage() {
         provider: data.provider ?? "vdocipher",
         startedAt: new Date().toISOString(),
         durationMinutes: vid?.durationMinutes ?? 0,
+        startSeconds: startAt,
+        watchSessionId: data.sessionId,
       });
       setModalVideo(null);
       await loadCourse();
@@ -554,53 +704,71 @@ export default function CourseLearningPage() {
                           const active = activeVideoId === video.id;
                           const playing = player?.videoId === video.id;
 
+                          // Calculate progress percent
+                          const lastPos = video.progress?.[0]?.lastPositionSeconds ?? 0;
+                          const durSec = (video.durationMinutes ?? 0) * 60;
+                          const progressPct = durSec > 0 ? Math.min(100, Math.round((lastPos / durSec) * 100)) : 0;
+
                           return (
                             <button
                               key={video.id}
                               onClick={() => { setActiveVideoId(video.id); setNavOpen(false); }}
                               aria-current={active ? "true" : undefined}
-                              className={`relative w-full flex items-center gap-2.5 px-4 py-2.5 text-right transition-colors ${
+                              className={`relative w-full flex flex-col items-stretch px-4 py-2.5 text-right transition-colors ${
                                 active
                                   ? "bg-sky-400/8 dark:bg-sky-400/6"
                                   : "hover:bg-[var(--border)]"
                               } ${locked || scheduledUnlock ? "opacity-50" : ""}`}
                             >
-                              {/* Active rail */}
-                              {active && (
-                                <span className="absolute inset-y-0 start-0 w-0.5 bg-sky-400 rounded-e-full" aria-hidden />
-                              )}
 
-                              {/* State icon */}
-                              <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                                playing ? "bg-sky-400/20" :
-                                watched ? "bg-sky-400/12" :
-                                "bg-[var(--border)]"
-                              }`}>
-                                {playing ? (
-                                  <IconPlay className="w-2.5 h-2.5 text-sky-400" />
-                                ) : watched ? (
-                                  <IconCheck className="w-3 h-3 text-sky-400" />
-                                ) : scheduledUnlock ? (
-                                  <IconClock className="w-3 h-3 text-[var(--ink-muted)]" />
-                                ) : locked ? (
-                                  <IconLock className="w-3 h-3 text-[var(--ink-muted)]" />
-                                ) : (
-                                  <IconPlay className="w-2.5 h-2.5 text-[var(--ink-muted)]" />
+                              <div className="flex items-center gap-2.5 w-full">
+                                {/* Active rail */}
+                                {active && (
+                                  <span className="absolute inset-y-0 start-0 w-0.5 bg-sky-400 rounded-e-full" aria-hidden />
                                 )}
-                              </span>
 
-                              <span className={`text-xs leading-relaxed flex-1 text-right truncate ${
-                                active ? "text-[var(--ink)] font-semibold" :
-                                watched ? "text-[var(--ink-muted)]" :
-                                (locked || scheduledUnlock) ? "text-[var(--ink-muted)]" :
-                                "text-[var(--ink-muted)]"
-                              }`}>
-                                {video.title}
-                              </span>
+                                {/* State icon */}
+                                <span className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+                                  playing ? "bg-sky-400/20" :
+                                  watched ? "bg-sky-400/12" :
+                                  "bg-[var(--border)]"
+                                }`}>
+                                  {playing ? (
+                                    <IconPlay className="w-2.5 h-2.5 text-sky-400" />
+                                  ) : watched ? (
+                                    <IconCheck className="w-3 h-3 text-sky-400" />
+                                  ) : scheduledUnlock ? (
+                                    <IconClock className="w-3 h-3 text-[var(--ink-muted)]" />
+                                  ) : locked ? (
+                                    <IconLock className="w-3 h-3 text-[var(--ink-muted)]" />
+                                  ) : (
+                                    <IconPlay className="w-2.5 h-2.5 text-[var(--ink-muted)]" />
+                                  )}
+                                </span>
 
-                              {/* Playing pulse */}
-                              {playing && (
-                                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" aria-hidden />
+                                <span className={`text-xs leading-relaxed flex-1 text-right truncate ${
+                                  active ? "text-[var(--ink)] font-semibold" :
+                                  watched ? "text-[var(--ink-muted)]" :
+                                  (locked || scheduledUnlock) ? "text-[var(--ink-muted)]" :
+                                  "text-[var(--ink-muted)]"
+                                }`}>
+                                  {video.title}
+                                </span>
+
+                                {/* Playing pulse */}
+                                {playing && (
+                                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" aria-hidden />
+                                )}
+                              </div>
+
+                              {/* Progress bar under card */}
+                              {!watched && !locked && !scheduledUnlock && progressPct > 0 && (
+                                <div className="w-full h-1 bg-[var(--border)] rounded-full overflow-hidden mt-1.5">
+                                  <div
+                                    className="h-full bg-sky-400 rounded-full"
+                                    style={{ width: `${progressPct}%` }}
+                                  />
+                                </div>
                               )}
                             </button>
                           );
@@ -711,14 +879,42 @@ export default function CourseLearningPage() {
                   {isPlayerActive ? (
                     /* ─ Active player ─ */
                     <div className="flex flex-col flex-1" onContextMenu={(e) => e.preventDefault()}>
-                      {/* 16:9 watermark-safe player */}
-                      <SecurePlayer
-                        embedUrl={player!.embedUrl}
-                        title={activeVideo.title}
-                        watermark={user?.phone || user?.name || ""}
-                        provider={player!.provider}
-                        onEnded={() => void markCompleteFor(player!.videoId)}
-                      />
+                      {/* 16:9 watermark-safe player container */}
+                      <div className="relative w-full overflow-hidden">
+                        <SecurePlayer
+                          embedUrl={player!.embedUrl}
+                          title={activeVideo.title}
+                          watermark={user?.phone || user?.name || ""}
+                          provider={player!.provider}
+                          startSeconds={player!.startSeconds}
+                          onProgress={handleTimeUpdate}
+                          paused={playerPaused}
+                          onEnded={() => void markCompleteFor(player!.videoId)}
+                        />
+
+                        {/* Programmatic blocking question modal (pause mode) */}
+                        {activeQuestion && (
+                          <VideoQuestionModal
+                            question={activeQuestion}
+                            videoId={player!.videoId}
+                            watchSessionId={player!.watchSessionId}
+                            currentSecond={playerTimeRef.current}
+                            onAnswered={handleQuestionAnswered}
+                          />
+                        )}
+
+                        {/* Non-blocking overlay question (overlay mode) */}
+                        {activeOverlayQuestion && (
+                          <VideoQuestionOverlay
+                            question={activeOverlayQuestion}
+                            videoId={player!.videoId}
+                            watchSessionId={player!.watchSessionId}
+                            currentSecond={playerTimeRef.current}
+                            onAnswered={handleOverlayQuestionAnswered}
+                            onDismiss={handleOverlayQuestionDismissed}
+                          />
+                        )}
+                      </div>
 
                       {/* ── Video progress + mark-complete bar ── */}
                       {(() => {
@@ -958,30 +1154,58 @@ export default function CourseLearningPage() {
               })()}
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                {savedPosition > 3 ? (
+                  <>
+                    <button
+                      onClick={() => confirmWatch(true)}
+                      disabled={watching}
+                      className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(56,189,248,0.2)]"
+                    >
+                      {watching ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      )}
+                      <span>استئناف من {formatTime(savedPosition)}</span>
+                    </button>
+                    <button
+                      onClick={() => confirmWatch(false)}
+                      disabled={watching}
+                      className="w-full py-2.5 rounded-xl border border-sky-500/30 hover:bg-sky-500/5 text-sky-400 text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <IconPlay className="w-3.5 h-3.5" />
+                      <span>البدء من البداية</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => confirmWatch(false)}
+                    disabled={watching}
+                    className="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    {watching ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        جارٍ البدء...
+                      </>
+                    ) : (
+                      <>
+                        <IconPlay className="w-3.5 h-3.5" />
+                        ابدأ المشاهدة
+                      </>
+                    )}
+                  </button>
+                )}
                 <button
                   onClick={() => setModalVideo(null)}
                   disabled={watching}
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--border)] hover:border-[var(--ink-muted)]/40 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] font-semibold transition-all disabled:opacity-40"
+                  className="w-full py-2 rounded-xl border border-[var(--border)] hover:border-[var(--ink-muted)]/40 text-xs text-[var(--ink-muted)] hover:text-[var(--ink)] font-semibold transition-all disabled:opacity-40"
                 >
                   إلغاء
-                </button>
-                <button
-                  onClick={confirmWatch}
-                  disabled={watching}
-                  className="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
-                >
-                  {watching ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      جارٍ البدء...
-                    </>
-                  ) : (
-                    <>
-                      <IconPlay className="w-3.5 h-3.5" />
-                      ابدأ المشاهدة
-                    </>
-                  )}
                 </button>
               </div>
             </motion.div>
