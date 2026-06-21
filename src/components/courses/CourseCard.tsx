@@ -50,6 +50,8 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
   const [applying,  setApplying]  = useState(false);
   const [installing, setInstalling] = useState(false);
   const [installed,  setInstalled]  = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [payMode,    setPayMode]    = useState<"code" | "balance">("code");
 
   const countdown      = useCountdown(course.discountExpiresAt ?? null);
   const hasDiscount    = (course.discountPercent ?? 0) > 0;
@@ -85,6 +87,26 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
       toastError("تعذر الاتصال بالخادم");
     } finally {
       setInstalling(false);
+    }
+  };
+
+  const purchaseCourse = async () => {
+    if (purchasing) return;
+    setPurchasing(true);
+    try {
+      const res = await fetch(`/api/courses/${course.id}/purchase`, { method: "POST", credentials: "include" });
+      const data: { message?: string; courseTitle?: string; charged?: number; error?: string } = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toastSuccess(data.message || `تم شراء «${course.title}» بنجاح!`);
+        onCodeApplied();
+        router.push("/library");
+      } else {
+        toastError(data.error || "تعذر إتمام الشراء");
+      }
+    } catch {
+      toastError("تعذر الاتصال بالخادم");
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -275,7 +297,8 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
               )}
             </button>
           ) : (
-            <>
+            /* Paid course — balance purchase OR code input */
+            <div className="space-y-2">
               <button
                 onClick={() => router.push(`/courses/${course.id}`)}
                 className="w-full py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
@@ -283,28 +306,47 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
               >
                 عرض تفاصيل الكورس
               </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={applyCode}
-                  disabled={applying || !code.trim()}
-                  className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-                  style={{ background: "var(--brand)" }}
-                >
-                  {applying ? "…" : "تفعيل"}
+
+              {/* Pay mode toggle */}
+              <div className="flex gap-1 p-1 rounded-[10px]" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                <button onClick={() => setPayMode("balance")}
+                  className="flex-1 rounded-[8px] text-xs font-bold cursor-pointer border-none transition-colors"
+                  style={{ padding: "7px 6px", background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
+                  💰 شراء بالرصيد
                 </button>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                  onKeyDown={e => e.key === "Enter" && applyCode()}
-                  placeholder="كود الوصول"
-                  maxLength={12}
-                  dir="ltr"
-                  className="flex-1 rounded-xl px-3 py-2 text-center font-mono text-sm tracking-widest focus:outline-none transition-colors"
-                  style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)" }}
-                />
+                <button onClick={() => setPayMode("code")}
+                  className="flex-1 rounded-[8px] text-xs font-bold cursor-pointer border-none transition-colors"
+                  style={{ padding: "7px 6px", background: payMode === "code" ? "var(--brand)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
+                  🔑 كود الوصول
+                </button>
               </div>
-            </>
+
+              {payMode === "balance" ? (
+                <button onClick={purchaseCourse} disabled={purchasing}
+                  className="w-full rounded-xl py-2.5 text-sm font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg,var(--gold-2),#9a6a1c)", boxShadow: "0 4px 14px -6px rgba(200,146,47,.5)" }}>
+                  {purchasing ? (
+                    <><div className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />جارٍ الشراء...</>
+                  ) : (
+                    <>{finalPrice != null ? `شراء بـ ${finalPrice} جنيه من رصيدك` : "شراء بالرصيد"}</>
+                  )}
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={applyCode} disabled={applying || !code.trim()}
+                    className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                    style={{ background: "var(--brand)" }}>
+                    {applying ? "…" : "تفعيل"}
+                  </button>
+                  <input type="text" value={code}
+                    onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
+                    onKeyDown={e => e.key === "Enter" && applyCode()}
+                    placeholder="كود الوصول" maxLength={16} dir="ltr"
+                    className="flex-1 rounded-xl px-3 py-2 text-center font-mono text-sm tracking-widest focus:outline-none transition-colors"
+                    style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)" }} />
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
