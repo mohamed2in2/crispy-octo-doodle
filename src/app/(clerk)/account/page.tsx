@@ -342,11 +342,42 @@ export default function AccountPage() {
 
       {answerModal && <AnswerModal resultId={answerModal.id} quizTitle={answerModal.title} onClose={() => setAnswerModal(null)} />}
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 py-10">
-        <div className="grid gap-6" style={{ gridTemplateColumns: "240px 1fr" }}>
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 py-6 md:py-10">
 
-          {/* ── Sidebar ── */}
-          <aside className="rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
+        {/* ── Mobile section picker (visible only on small screens) ── */}
+        <div className="md:hidden mb-4">
+          {/* User info strip */}
+          <div className="flex items-center gap-3 mb-3" style={{ padding: "12px 16px", borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full shrink-0" style={{ background: "var(--brand)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+            </span>
+            <div className="flex-1 min-w-0">
+              <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
+              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700 }}>{isStudent ? "طالب" : user.role}</span>
+            </div>
+            <button onClick={handleSignOut} disabled={signingOut} className="shrink-0 cursor-pointer border-none rounded-[9px] transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ padding: "8px 12px", background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 700, fontSize: 12, fontFamily: "var(--font-body)" }}>
+              {signingOut ? "..." : "خروج"}
+            </button>
+          </div>
+          {/* Section select dropdown */}
+          <select
+            value={section}
+            onChange={e => go(e.target.value)}
+            className="w-full cursor-pointer rounded-[12px] border-none outline-none"
+            style={{ padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink)", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14, appearance: "auto" }}
+          >
+            {SECTIONS.map(s => (
+              <option key={s.id} value={s.id}>{s.icon} {s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── Desktop layout: sidebar + content ── */}
+        <div className="grid gap-6 md:grid-cols-[240px_1fr]">
+
+          {/* ── Sidebar (hidden on mobile) ── */}
+          <aside className="hidden md:block rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
             <div className="text-center p-5" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(180deg,var(--brand-soft),transparent)" }}>
               <span className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3" style={{ background: "var(--brand)", border: "4px solid var(--surface)", boxShadow: "var(--shadow)" }}>
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
@@ -400,7 +431,7 @@ export default function AccountPage() {
                   </div>
                   <div style={{ padding: "20px 24px 24px" }}>
                     <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 20, color: "var(--ink)", margin: "0 0 16px" }}>معلومات الحساب</h2>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px]">
                       {[
                         { label: "الاسم الكامل",    value: user.name || "—",       icon: "👤" },
                         { label: "البريد الإلكتروني",value: user.email,             icon: "📧", ltr: true },

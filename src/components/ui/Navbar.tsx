@@ -154,7 +154,7 @@ export function Navbar({ user }: NavbarProps) {
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
       <div
-        className="max-w-[1320px] mx-auto px-7 h-[74px] grid items-center gap-[18px]"
+        className="max-w-[1320px] mx-auto px-3 sm:px-7 h-[64px] sm:h-[74px] grid items-center gap-2 sm:gap-[18px]"
         style={{ gridTemplateColumns: "1fr auto 1fr" }}
       >
         {/* Logo */}
@@ -183,13 +183,13 @@ export function Navbar({ user }: NavbarProps) {
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-[10px] justify-self-end">
-          <StreakFlame role={user?.role} />
+        <div className="flex items-center gap-[6px] sm:gap-[10px] justify-self-end">
+          <span className="hidden sm:block"><StreakFlame role={user?.role} /></span>
 
-          {/* Balance badge — students only */}
+          {/* Balance badge — students only, hidden on mobile */}
           {user?.role === "student" && balance !== null && (
             <Link href="/account" aria-label="رصيدي" title="رصيدي"
-              className="flex items-center gap-1.5 rounded-[10px] border border-[var(--gold-2)] no-underline transition-all hover:scale-105"
+              className="hidden sm:flex items-center gap-1.5 rounded-[10px] border border-[var(--gold-2)] no-underline transition-all hover:scale-105"
               style={{ padding: "5px 11px", background: "var(--gold-soft)" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3m.08 4h.01"/>
@@ -209,8 +209,8 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {searchOpen && (
-              <div className="absolute top-full mt-2 w-[340px] rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: 0, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
+                style={{ left: 0, right: 0, width: "min(340px, 90vw)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
                   <input
                     autoFocus
@@ -310,9 +310,9 @@ export function Navbar({ user }: NavbarProps) {
             )}
           </button>
 
-          {/* Leaderboard cup */}
+          {/* Leaderboard cup — hidden on mobile */}
           <Link href="/leaderboard" aria-label="لوحة الشرف" title="لوحة الشرف"
-            className="w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--gold-soft)] text-[var(--gold-2)] hover:bg-[var(--gold-2)] hover:text-white transition-colors">
+            className="hidden sm:flex w-[38px] h-[38px] items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--gold-soft)] text-[var(--gold-2)] hover:bg-[var(--gold-2)] hover:text-white transition-colors">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17a2 2 0 0 1-.7 1.5L8 20h8l-1.3-1.5a2 2 0 0 1-.7-1.5v-2.3M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
             </svg>
@@ -335,8 +335,8 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {notifOpen && (
-              <div className="absolute top-full mt-2 w-[320px] rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: 0, background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
+                style={{ left: 0, right: 0, width: "min(320px, 90vw)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>
