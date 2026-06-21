@@ -210,8 +210,8 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
         {/* Subject + Grade tag */}
         {tagText && (
           <span
-            className="self-start text-xs font-bold rounded-full px-3 py-1"
-            style={{ background: subjectColor.bg + "18", color: subjectColor.bg, border: `1px solid ${subjectColor.bg}30` }}
+            className="self-start text-xs font-bold rounded-full px-3 py-1.5 leading-tight"
+            style={{ background: subjectColor.bg + "18", color: subjectColor.bg, border: `1px solid ${subjectColor.bg}30`, wordBreak: "break-word" }}
           >
             {tagText}
           </span>
@@ -332,18 +332,19 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
                   )}
                 </button>
               ) : (
-                <div className="flex gap-2">
-                  <button onClick={applyCode} disabled={applying || !code.trim()}
-                    className="shrink-0 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-                    style={{ background: "var(--brand)" }}>
-                    {applying ? "…" : "تفعيل"}
-                  </button>
+                /* code input — stacks vertically on mobile */
+                <div className="flex flex-col gap-2">
                   <input type="text" value={code}
                     onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
                     onKeyDown={e => e.key === "Enter" && applyCode()}
-                    placeholder="كود الوصول" maxLength={16} dir="ltr"
-                    className="flex-1 rounded-xl px-3 py-2 text-center font-mono text-sm tracking-widest focus:outline-none transition-colors"
-                    style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)" }} />
+                    placeholder="أدخل كود الوصول" maxLength={16} dir="ltr"
+                    className="w-full rounded-xl px-3 py-3 text-center font-mono text-sm tracking-widest focus:outline-none transition-colors"
+                    style={{ border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", minHeight: 44 }} />
+                  <button onClick={applyCode} disabled={applying || !code.trim()}
+                    className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                    style={{ background: "var(--brand)", minHeight: 44 }}>
+                    {applying ? "جارٍ التفعيل..." : "تفعيل الكود"}
+                  </button>
                 </div>
               )}
             </div>

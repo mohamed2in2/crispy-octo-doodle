@@ -7,7 +7,7 @@ const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 function VideoMockup() {
   return (
     <div
-      className="w-full max-w-[260px] aspect-video rounded-xl overflow-hidden shadow-xl flex flex-col"
+      className="w-full max-w-full sm:max-w-[260px] aspect-video rounded-xl overflow-hidden shadow-xl flex flex-col"
       style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
     >
       <div
@@ -39,7 +39,7 @@ function StatsMockup() {
   const bars = [45, 72, 55, 88, 62, 95, 70];
   return (
     <div
-      className="w-full max-w-[260px] rounded-xl shadow-xl p-4 flex flex-col gap-3"
+      className="w-full max-w-full sm:max-w-[260px] rounded-xl shadow-xl p-4 flex flex-col gap-3"
       style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
     >
       <div className="flex justify-between items-center">
@@ -150,7 +150,7 @@ export function FeaturesSection() {
 
           {/* Wide — Video */}
           <FeatureCard wide reduced={!!reduced}>
-            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-10 h-full">
+            <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10 h-full">
               <div className="flex-1 flex flex-col justify-between h-full gap-6">
                 <div>
                   <IconBox>{FEATURES[0].icon}</IconBox>
@@ -158,7 +158,7 @@ export function FeaturesSection() {
                   <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>{FEATURES[0].body}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-center md:justify-end shrink-0">
+              <div className="flex items-center justify-center lg:justify-end shrink-0 w-full lg:w-auto">
                 <VideoMockup />
               </div>
             </div>
@@ -222,7 +222,7 @@ export function FeaturesSection() {
 
           {/* Wide — Stats (NO col-start-1 so it fills cols 2-3 of row 2) */}
           <FeatureCard wide reduced={!!reduced}>
-            <div className="flex flex-col md:flex-row items-start gap-6 md:gap-10 h-full">
+            <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-10 h-full">
               <div className="flex-1 flex flex-col justify-between h-full gap-6">
                 <div>
                   <IconBox>{FEATURES[3].icon}</IconBox>
@@ -230,7 +230,7 @@ export function FeaturesSection() {
                   <p className="text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>{FEATURES[3].body}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-center md:justify-end shrink-0">
+              <div className="flex items-center justify-center lg:justify-end shrink-0 w-full lg:w-auto">
                 <StatsMockup />
               </div>
             </div>

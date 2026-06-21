@@ -154,7 +154,7 @@ export function Navbar({ user }: NavbarProps) {
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
       <div
-        className="max-w-[1320px] mx-auto px-3 sm:px-7 h-[64px] sm:h-[74px] grid items-center gap-2 sm:gap-[18px]"
+        className="max-w-[1320px] mx-auto px-3 sm:px-7 h-[60px] sm:h-[74px] grid items-center gap-1.5 sm:gap-[18px]"
         style={{ gridTemplateColumns: "1fr auto 1fr" }}
       >
         {/* Logo */}
@@ -202,7 +202,7 @@ export function Navbar({ user }: NavbarProps) {
           <div ref={searchRef} className="relative">
             <button type="button" onClick={() => { setSearchOpen((o) => !o); setNotifOpen(false); }}
               aria-label="بحث"
-              className="w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
+              className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
               </svg>
@@ -210,7 +210,7 @@ export function Navbar({ user }: NavbarProps) {
 
             {searchOpen && (
               <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: 0, right: 0, width: "min(340px, 90vw)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+                style={{ left: "auto", right: 0, width: "min(340px, calc(100vw - 24px))", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
                   <input
                     autoFocus
@@ -298,7 +298,7 @@ export function Navbar({ user }: NavbarProps) {
 
           {/* Theme toggle */}
           <button type="button" onClick={cycleTheme} aria-label={isDark ? "وضع فاتح" : "وضع داكن"}
-            className="w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
+            className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
             {isDark ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
@@ -336,7 +336,7 @@ export function Navbar({ user }: NavbarProps) {
 
             {notifOpen && (
               <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
-                style={{ left: 0, right: 0, width: "min(320px, 90vw)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+                style={{ left: "auto", right: 0, width: "min(320px, calc(100vw - 24px))", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>
@@ -418,7 +418,7 @@ export function Navbar({ user }: NavbarProps) {
           )}
 
           {/* Hamburger */}
-          <button type="button" className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors cursor-pointer"
+          <button type="button" className="md:hidden w-11 h-11 rounded-lg flex items-center justify-center text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors cursor-pointer"
             onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

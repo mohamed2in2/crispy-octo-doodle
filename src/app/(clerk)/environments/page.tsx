@@ -7,6 +7,7 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { ProfileGuard } from "@/components/auth/ProfileGuard";
 import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
+import { getIQData, getIQLevel, LEVEL_COLORS, type IQData } from "@/lib/iq-system";
 
 const SUBJECTS = [
   {
@@ -16,7 +17,7 @@ const SUBJECTS = [
     color: "from-blue-500 to-cyan-500",
     shadow: "shadow-cyan-500/20",
     description: "جبر، هندسة، حساب التفاضل والتكامل",
-    available: false,
+    available: true,
   },
   {
     id: "physics",
@@ -25,7 +26,7 @@ const SUBJECTS = [
     color: "from-purple-500 to-pink-500",
     shadow: "shadow-purple-500/20",
     description: "ميكانيكا، كهرباء، مغناطيسية",
-    available: false,
+    available: true,
   },
   {
     id: "chemistry",
@@ -43,7 +44,7 @@ const SUBJECTS = [
     color: "from-teal-400 to-emerald-600",
     shadow: "shadow-teal-500/20",
     description: "خلية، وراثة، تطور",
-    available: false,
+    available: true,
   },
   {
     id: "programming",
@@ -61,7 +62,7 @@ const SUBJECTS = [
     color: "from-amber-400 to-orange-500",
     shadow: "shadow-amber-500/20",
     description: "تاريخ مصر والعالم",
-    available: false,
+    available: true,
   },
   {
     id: "geography",
@@ -70,7 +71,7 @@ const SUBJECTS = [
     color: "from-indigo-400 to-blue-600",
     shadow: "shadow-indigo-500/20",
     description: "خرائط، مناخ، موارد طبيعية",
-    available: false,
+    available: true,
   },
   {
     id: "languages",
@@ -79,15 +80,17 @@ const SUBJECTS = [
     color: "from-rose-400 to-pink-600",
     shadow: "shadow-rose-500/20",
     description: "عربي، إنجليزي، فرنسي",
-    available: false,
+    available: true,
   },
 ];
 
 export default function EnvironmentsPage() {
   const [user, setUser] = useState<MeUser | null>(null);
+  const [iqData, setIqData] = useState<IQData | null>(null);
 
   useEffect(() => {
     fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+    setIqData(getIQData());
   }, []);
 
   return (
@@ -109,6 +112,91 @@ export default function EnvironmentsPage() {
             <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">بيئات الكورسات</h1>
             <p className="text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">اختر المادة للدخول إلى بيئة كورسات تفاعلية متخصصة مصممة لاحتياجاتك</p>
           </motion.div>
+
+          {/* IQ Brain Card — full width hero */}
+          {iqData && (() => {
+            const level = getIQLevel(iqData.overallIQ);
+            const lc = LEVEL_COLORS[level] || LEVEL_COLORS["متوسط"];
+            const pct = Math.min(100, ((iqData.overallIQ - 200) / 1800) * 100);
+            return (
+              <motion.div
+                className="mb-8"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <Link href="/environments/iq" className="block group no-underline">
+                  <div className="relative rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5"
+                    style={{ background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)" }}>
+                    {/* Decorative blobs */}
+                    <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-[60px] opacity-40"
+                      style={{ background: lc.color }} />
+                    <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full blur-[50px] opacity-30"
+                      style={{ background: "#7C3AED" }} />
+
+                    <div className="relative z-10 p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6">
+                      {/* Ring */}
+                      <div className="shrink-0">
+                        {(() => {
+                          const r = 42; const c = 2 * Math.PI * r;
+                          return (
+                            <svg width="110" height="110" viewBox="0 0 110 110">
+                              <circle cx="55" cy="55" r={r} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="8" />
+                              <circle cx="55" cy="55" r={r} fill="none" stroke={lc.color} strokeWidth="8"
+                                strokeDasharray={c} strokeDashoffset={c - (pct / 100) * c}
+                                strokeLinecap="round" transform="rotate(-90 55 55)"
+                                style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" }} />
+                              <text x="55" y="50" textAnchor="middle" fontSize="22" fontWeight="900" fill="white">{iqData.overallIQ}</text>
+                              <text x="55" y="66" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,.6)">معدل الذكاء</text>
+                              <text x="55" y="80" textAnchor="middle" fontSize="11" fontWeight="700" fill={lc.color}>{level}</text>
+                            </svg>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 text-center sm:text-right">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-2"
+                          style={{ background: "rgba(124,58,237,.3)", color: "#C4B5FD", border: "1px solid rgba(124,58,237,.5)" }}>
+                          🧠 بيئة الذكاء المعرفي
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-black text-white mb-1">معدلي</h2>
+                        <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,.6)" }}>
+                          {iqData.totalGamesPlayed} جلسة · streak {iqData.streak.current} 🔥
+                        </p>
+                        {/* Skill mini bars */}
+                        <div className="flex gap-1 flex-wrap justify-center sm:justify-end">
+                          {(["السرعة","الذاكرة","التركيز","المرونة"] as const).map((label, i) => {
+                            const skillKeys = ["speed","memory","attention","flexibility"] as const;
+                            const sk = skillKeys[i];
+                            const p = Math.min(100, ((iqData.skills[sk].score - 200) / 1800) * 100);
+                            const colors = ["#E91E63","#9C27B0","#FF9800","#FF5722"];
+                            return (
+                              <div key={sk} className="flex flex-col items-center gap-1">
+                                <div className="h-12 w-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.1)" }}>
+                                  <div className="w-full rounded-full transition-all duration-700" style={{ height: `${p}%`, background: colors[i], marginTop: `${100-p}%` }} />
+                                </div>
+                                <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,.5)" }}>{label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="shrink-0">
+                        <div className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm text-white transition-all group-hover:scale-105"
+                          style={{ background: "linear-gradient(135deg,#7C3AED,#534AB7)", boxShadow: "0 8px 24px -4px rgba(124,58,237,.5)" }}>
+                          عرض المعدل
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })()}
 
           {/* Subject Cards Grid */}
           <motion.div

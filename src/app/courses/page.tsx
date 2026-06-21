@@ -79,7 +79,7 @@ function FilterPill({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+      className={`relative shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors ${
         active
           ? "text-white"
           : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
@@ -202,8 +202,8 @@ export default function CoursesPage() {
             </p>
           </motion.div>
 
-          {/* Filter rail — sticky under navbar */}
-          <div className="sticky top-16 z-[var(--z-dropdown)] mb-8">
+          {/* Filter rail — sticky under navbar (60px mobile, 74px desktop) */}
+          <div className="sticky top-[60px] sm:top-[74px] z-[var(--z-dropdown)] mb-6 sm:mb-8">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 dark:bg-[#0f172a]/90 backdrop-blur-xl shadow-sm p-3 md:p-4 space-y-3">
 
               {/* Search */}
@@ -219,7 +219,7 @@ export default function CoursesPage() {
                   placeholder="ابحث عن كورس…"
                   value={filters.search}
                   onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-                  className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] dark:bg-[#1e293b] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:border-sky-400/50 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] text-sm transition-all"
+                  className="w-full pr-10 pl-4 md:pl-10 py-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] dark:bg-[#1e293b] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:border-sky-400/50 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] text-sm transition-all"
                   aria-label="البحث في الكورسات"
                 />
                 <kbd
@@ -329,13 +329,13 @@ export default function CoursesPage() {
 
           {/* Loading skeletons */}
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {Array.from({ length: 8 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
           ) : courses.length > 0 ? (
-            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               <AnimatePresence mode="popLayout" initial={false}>
                 {courses.map((course, i) => (
                   <motion.div

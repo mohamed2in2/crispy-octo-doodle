@@ -170,7 +170,7 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             <MagneticArea className="w-full sm:w-auto">
               <Link
                 href={isLoggedIn ? "/library" : "/signup"}
-                className="group relative px-8 py-3.5 md:py-4 font-bold rounded-full transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto min-w-[200px] text-white hover:opacity-90"
+                className="group relative px-8 py-4 font-bold rounded-full transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto text-white hover:opacity-90"
                 style={{ background: "var(--brand)", boxShadow: "0 0 0 0 var(--brand-shadow)" }}
               >
                 <span className="relative z-10">{isLoggedIn ? "متابعة التعلم" : "ابدأ الآن مجاناً"}</span>
@@ -186,7 +186,7 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             {!isLoggedIn && (
               <Link
                 href="/courses"
-                className="px-8 py-3.5 md:py-4 font-bold rounded-full transition-all text-base flex items-center justify-center w-full sm:w-auto min-w-[200px] backdrop-blur-sm"
+                className="px-8 py-4 font-bold rounded-full transition-all text-base flex items-center justify-center w-full sm:w-auto backdrop-blur-sm"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
               >
                 استكشف الكورسات
@@ -199,13 +199,13 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             variants={rise}
             className="flex flex-wrap items-center justify-center gap-2 mt-10 md:mt-12"
           >
-            <span className="text-xs md:text-sm font-medium ml-1" style={{ color: "var(--ink-3)" }}>اختر صفك:</span>
+            <span className="text-sm font-medium w-full text-center sm:w-auto sm:ml-1" style={{ color: "var(--ink-3)" }}>اختر صفك:</span>
             {GRADE_SHORTCUTS.map((g) => (
               <Link
                 key={g.stage}
                 href={`/courses?stage=${g.stage}`}
-                className="group/chip inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all backdrop-blur-sm"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
+                className="group/chip inline-flex items-center gap-1.5 px-4 py-3 rounded-full text-sm font-bold transition-all backdrop-blur-sm"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)", minHeight: 44 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.background = "var(--brand-soft)";
                   (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)";

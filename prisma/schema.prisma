@@ -58,6 +58,8 @@ model User {
   balanceTransactions  BalanceTransaction[]
   homeworkSubmissions  HomeworkSubmission[]
   teacherHomeworks     Homework[]           @relation("TeacherHomework")
+  iqData               String?              // JSON blob: IQData from iq-system.ts
+  overallIQ            Int                  @default(1000)
 
   @@index([role])
   @@index([educationalStage])

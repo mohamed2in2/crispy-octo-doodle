@@ -7,6 +7,7 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
+import { getIQData, SKILL_LABELS, SKILL_COLORS, getIQLevel, type IQData, type IQSkillName } from "@/lib/iq-system";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface User {
@@ -65,10 +66,109 @@ const SECTIONS = [
   { id: "wrong",        label: "امتحان من أخطائي",        icon: "🎯" },
   { id: "wallet",       label: "رصيدي",                   icon: "💰" },
   { id: "achievements", label: "الإنجازات",               icon: "🏆" },
+  { id: "iq",           label: "IQ Dashboard",            icon: "🧠" },
   { id: "security",     label: "الأمان",                  icon: "🔒" },
 ];
 
 const ACH_ICON: Record<string, string> = { rocket: "🚀", bolt: "⚡", flame: "🔥", star: "⭐", medal: "🏅", trophy: "🏆" };
+
+/* ─── IQ Dashboard Component ────────────────────────────────────────────── */
+const IQ_LEVEL_STYLE: Record<string, { bg: string; color: string }> = {
+  "مبتدئ":  { bg: "#EEE", color: "#888" },
+  "متوسط":  { bg: "#7F77DD22", color: "#7F77DD" },
+  "متقدم":  { bg: "#EF9F2722", color: "#EF9F27" },
+  "خبير":   { bg: "#D4537E22", color: "#D4537E" },
+  "نخبة":   { bg: "#534AB722", color: "#534AB7" },
+};
+
+function IQSkillBar({ skillKey, data }: { skillKey: IQSkillName; data: IQData["skills"][IQSkillName] }) {
+  const pct = Math.min(100, (data.score / 2000) * 100);
+  const style = IQ_LEVEL_STYLE[data.level] || IQ_LEVEL_STYLE["متوسط"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <span style={{ width: 100, textAlign: "right", fontSize: 12, color: "var(--ink-3)", flexShrink: 0 }}>{SKILL_LABELS[skillKey]}</span>
+      <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: SKILL_COLORS[skillKey], borderRadius: 4, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 40, textAlign: "center", color: "var(--ink)" }}>{data.score.toLocaleString("ar-EG")}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, ...style, flexShrink: 0 }}>{data.level}</span>
+    </div>
+  );
+}
+
+function IQDashboard() {
+  const [iqData, setIqData] = useState<IQData | null>(null);
+
+  useEffect(() => {
+    setIqData(getIQData());
+    const handler = () => setIqData(getIQData());
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  if (!iqData) return null;
+
+  const overallLevel = getIQLevel(iqData.overallIQ);
+  const levelStyle = IQ_LEVEL_STYLE[overallLevel] || IQ_LEVEL_STYLE["متوسط"];
+  const skills = Object.keys(iqData.skills) as IQSkillName[];
+
+  return (
+    <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+      <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link href="/environments" style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", textDecoration: "none" }}>→ ابدأ العب لتحسين نقاطك</Link>
+        <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>🧠 IQ Dashboard</h2>
+      </div>
+
+      {/* Overall IQ Card */}
+      <div style={{ padding: "20px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ textAlign: "center", minWidth: 80 }}>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--ink)", fontFamily: "var(--font-head)" }}>{iqData.overallIQ}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-3)" }}>IQ الكلي</div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>المستوى:</span>
+            <span style={{ fontSize: 13, fontWeight: 700, padding: "3px 10px", borderRadius: 20, ...levelStyle }}>{overallLevel}</span>
+          </div>
+          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ink-3)" }}>
+            <span>🎮 {iqData.totalGamesPlayed} جلسة</span>
+            {iqData.streak.current > 0 && <span>🔥 {iqData.streak.current} يوم streak</span>}
+          </div>
+          {/* mini progress bar 0–2000 */}
+          <div style={{ marginTop: 8, height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(100, (iqData.overallIQ/2000)*100)}%`, height: "100%", background: "linear-gradient(90deg,#534AB7,#7F77DD)", borderRadius: 3 }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--ink-3)", marginTop: 2 }}>
+            <span>0</span><span>2000</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Skills Breakdown */}
+      <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)" }}>
+        <h3 style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 14, textAlign: "right" }}>تفصيل المهارات</h3>
+        {skills.map(sk => <IQSkillBar key={sk} skillKey={sk} data={iqData.skills[sk]} />)}
+      </div>
+
+      {/* Recent activity */}
+      <div style={{ padding: "14px 22px" }}>
+        <h3 style={{ fontWeight: 700, fontSize: 13, color: "var(--ink-3)", marginBottom: 10, textAlign: "right" }}>آخر الجلسات</h3>
+        {skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a,b)=>b.date-a.date).slice(0,5).length === 0 ? (
+          <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, padding: "12px 0" }}>لم تلعب بعد — اذهب للبيئات وابدأ!</p>
+        ) : (
+          skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a,b)=>b.date-a.date).slice(0,5).map((s,i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i<4?"1px solid var(--border)":"none" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: SKILL_COLORS[s.skill as IQSkillName], flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: "var(--ink)" }}>{SKILL_LABELS[s.skill as IQSkillName]}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>{s.score.toLocaleString("ar-EG")}</span>
+              <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{new Date(s.date).toLocaleDateString("ar-EG",{month:"short",day:"numeric"})}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 const OPTION_LABELS: Record<string, string> = { A: "أ", B: "ب", C: "ج", D: "د" };
 
@@ -120,7 +220,7 @@ function AnswerModal({ resultId, quizTitle, onClose }: { resultId: string; quizT
                   <p style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", margin: "0 0 10px" }}>
                     <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>س{i + 1}.</span> {a.question}
                   </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {(["A","B","C","D"] as const).map(opt => {
                       const isSelected = a.selectedAnswer === opt;
                       const isCorrect  = a.correctAnswer === opt;
@@ -342,7 +442,7 @@ export default function AccountPage() {
 
       {answerModal && <AnswerModal resultId={answerModal.id} quizTitle={answerModal.title} onClose={() => setAnswerModal(null)} />}
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 py-6 md:py-10">
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 md:py-10">
 
         {/* ── Mobile section picker (visible only on small screens) ── */}
         <div className="md:hidden mb-4">
@@ -374,7 +474,7 @@ export default function AccountPage() {
         </div>
 
         {/* ── Desktop layout: sidebar + content ── */}
-        <div className="grid gap-6 md:grid-cols-[240px_1fr]">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-[240px_1fr]">
 
           {/* ── Sidebar (hidden on mobile) ── */}
           <aside className="hidden md:block rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
@@ -416,6 +516,46 @@ export default function AccountPage() {
 
           {/* ── Content ── */}
           <div>
+            {/* Mobile section picker — scrollable tab bar, hidden on md+ */}
+            <div className="md:hidden mb-4 -mx-1">
+              {/* User chip on mobile */}
+              <div className="flex items-center gap-2 px-1 mb-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full shrink-0" style={{ background: "var(--brand)", color: "#fff", fontWeight: 800, fontSize: 13 }}>
+                  {user.name?.[0] ?? "م"}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{user.name}</span>
+                {balance !== null && (
+                  <span className="mr-auto flex items-center gap-1 rounded-full px-2.5 py-1" style={{ background: "var(--gold-soft)", border: "1px solid var(--gold-2)" }}>
+                    <span style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 13, color: "var(--gold-2)" }}>{balance} ج</span>
+                  </span>
+                )}
+              </div>
+              {/* Horizontal scrollable tabs */}
+              <div className="flex overflow-x-auto gap-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
+                {SECTIONS.map(s => (
+                  <button key={s.id} onClick={() => go(s.id)}
+                    className="shrink-0 flex flex-col items-center gap-1 cursor-pointer border-none rounded-[12px] transition-colors"
+                    style={{
+                      padding: "10px 14px",
+                      minWidth: 72,
+                      minHeight: 64,
+                      background: section === s.id ? "var(--brand-soft)" : "var(--surface)",
+                      border: `1px solid ${section === s.id ? "var(--brand)" : "var(--border)"}`,
+                      color: section === s.id ? "var(--brand)" : "var(--ink-3)",
+                    }}>
+                    <span style={{ fontSize: 20 }}>{s.icon}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: section === s.id ? 700 : 500, whiteSpace: "nowrap" }}>{s.label.replace("امتحان من أخطائي", "أخطائي")}</span>
+                  </button>
+                ))}
+                <button onClick={handleSignOut} disabled={signingOut}
+                  className="shrink-0 flex flex-col items-center gap-1 cursor-pointer border-none rounded-[12px] transition-colors"
+                  style={{ padding: "10px 14px", minWidth: 72, minHeight: 64, background: "var(--danger-soft)", border: "1px solid var(--danger)", color: "var(--danger)" }}>
+                  <span style={{ fontSize: 20 }}>🚪</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, whiteSpace: "nowrap" }}>خروج</span>
+                </button>
+              </div>
+            </div>
+
             {error && (
               <div className="mb-4 flex items-center gap-2" style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid var(--danger)", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 14 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>{error}
@@ -582,7 +722,7 @@ export default function AccountPage() {
                 ) : (
                   <>
                     <div style={{ overflowX: "auto" }}>
-                      <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 900 }}>
+                      <table className="w-full text-xs sm:text-sm" style={{ borderCollapse: "collapse", minWidth: 700 }}>
                         <thead>
                           <tr style={{ background: "var(--bg)", borderBottom: "2px solid var(--border)" }}>
                             {["#","اسم الامتحان","عدد الأسئلة","النتيجة","الدرجة","محلولة","صحيحة","الإجابات","وقت البداية","وقت النهاية"].map(h => (
@@ -701,13 +841,13 @@ export default function AccountPage() {
                           <p style={{ fontWeight: 700, fontSize: 14.5, color: "var(--ink)", margin: "0 0 12px" }}>
                             <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>س{i + 1}.</span> {q.question}
                           </p>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {(["A","B","C","D"] as const).map(opt => {
                               const chosen = wrongExamAnswers[q.questionId] === opt;
                               return (
                                 <button key={opt} onClick={() => setWrongExamAnswers(prev => ({ ...prev, [q.questionId]: opt }))}
                                   className="flex items-center gap-2 cursor-pointer rounded-[10px] text-right transition-all"
-                                  style={{ padding: "10px 14px", border: `1px solid ${chosen ? "var(--brand)" : "var(--border)"}`, background: chosen ? "var(--brand-soft)" : "transparent", fontFamily: "var(--font-body)", fontSize: 13.5, color: chosen ? "var(--brand)" : "var(--ink-2)", fontWeight: chosen ? 700 : 400 }}>
+                                  style={{ padding: "12px 14px", minHeight: 48, border: `1px solid ${chosen ? "var(--brand)" : "var(--border)"}`, background: chosen ? "var(--brand-soft)" : "transparent", fontFamily: "var(--font-body)", fontSize: 14, color: chosen ? "var(--brand)" : "var(--ink-2)", fontWeight: chosen ? 700 : 400 }}>
                                   <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, minWidth: 20 }}>{OPTION_LABELS[opt]}</span>
                                   {q[`option${opt}` as keyof WrongQuestion] as string}
                                 </button>
@@ -851,6 +991,9 @@ export default function AccountPage() {
                 </div>
               )
             )}
+
+            {/* ════ IQ DASHBOARD ════ */}
+            {section === "iq" && <IQDashboard />}
 
             {/* ════ SECURITY ════ */}
             {section === "security" && (

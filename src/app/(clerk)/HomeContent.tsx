@@ -90,7 +90,7 @@ export function HomeContent({ text }: { text: SiteText }) {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
                   href="/signup"
-                  className="group relative px-8 py-3.5 font-bold rounded-full text-base inline-flex items-center justify-center overflow-hidden min-w-[180px] text-white hover:opacity-90 transition-opacity"
+                  className="group relative px-8 py-4 font-bold rounded-full text-base flex w-full sm:w-auto items-center justify-center overflow-hidden text-white hover:opacity-90 transition-opacity"
                   style={{ background: "var(--brand)", boxShadow: "0 8px 24px -8px var(--brand-shadow)" }}
                 >
                   <span className="relative z-10">إنشاء حساب مجاني</span>
@@ -100,7 +100,7 @@ export function HomeContent({ text }: { text: SiteText }) {
                 </Link>
                 <Link
                   href="/courses"
-                  className="px-8 py-3.5 font-bold rounded-full text-base inline-flex items-center justify-center min-w-[180px] transition-all hover:border-[var(--brand-strong)]"
+                  className="px-8 py-4 font-bold rounded-full text-base flex w-full sm:w-auto items-center justify-center transition-all hover:border-[var(--brand-strong)]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
                 >
                   تصفح الكورسات
