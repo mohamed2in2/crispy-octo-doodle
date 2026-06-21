@@ -21,6 +21,7 @@ const superadminSections = [
   { id: "teachers",          label: "المعلمون" },
   { id: "deleted-teachers",  label: "المعلمون المحذوفون" },
   { id: "create",            label: "إضافة مدرس" },
+  { id: "wallet",            label: "💰 إدارة الرصيد" },
   { id: "daily-exams",       label: "امتحانات لوحة الشرف" },
   { id: "logs",              label: "سجلات النشاط" },
   { id: "staff-accounts",    label: "المشرفون والموظفون" },

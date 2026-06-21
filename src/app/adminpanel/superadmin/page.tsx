@@ -18,6 +18,7 @@ import { InstanceControlSection } from "@/components/admin/superadmin/InstanceCo
 import { SiteTextSection } from "@/components/admin/superadmin/SiteTextSection";
 import { AdvancedSettingsSection } from "@/components/admin/superadmin/AdvancedSettingsSection";
 import { AccessGate } from "@/components/admin/superadmin/AccessGate";
+import { WalletSection } from "@/components/admin/superadmin/WalletSection";
 import { IconMenu, IconTrash } from "@/components/admin/AdminIcons";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -411,6 +412,8 @@ export default function SuperadminPage() {
             </div>
           )}
 
+
+          {activeSection === "wallet" && <WalletSection />}
 
           {activeSection === "students" && <StudentsSection userRole={userRole} />}
 
