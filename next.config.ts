@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   allowedDevOrigins: ["localhost", "127.0.0.1", "*.app.github.dev"],
 
+  // Turbopack (default in Next.js 16) — empty object opts in cleanly
+  // and suppresses the "webpack config but no turbopack config" error.
+  turbopack: {},
+
   experimental: {
     optimizePackageImports: [
       "framer-motion",
@@ -13,21 +17,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       allowedOrigins: ["localhost:3000", "127.0.0.1:3000", "*.app.github.dev"],
     },
-  },
-
-  webpack(config, { dev }) {
-    if (dev) {
-      // Use in-memory webpack cache during development.
-      // The default PackFileCacheStrategy writes to .next/cache on every
-      // compilation; on Windows (and under some AV scanners) these writes
-      // can be interrupted mid-flush, producing the repeated
-      // "unexpected end of file" error that forces a full recompile on
-      // every request.  Memory cache avoids all disk writes — the trade-off
-      // is that each route module is recompiled once per dev-server session
-      // instead of being persisted across restarts, which is acceptable.
-      config.cache = { type: "memory" };
-    }
-    return config;
   },
 
   headers: async () => [
