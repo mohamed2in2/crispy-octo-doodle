@@ -78,7 +78,7 @@ export default async function proxy(req: NextRequest) {
   // Admin panel login page — always public
   if (isAdminLoginPage(pathname)) return pass();
 
-  const authed = true;
+  const authed = await hasValidSession(req);
 
   // Admin sub-pages: redirect to /adminpanel login if no session
   if (startsWithAny(pathname, ADMIN_PANEL_PREFIXES) && !authed) {
