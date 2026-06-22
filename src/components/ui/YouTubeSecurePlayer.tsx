@@ -175,10 +175,9 @@ export function YouTubeSecurePlayer({
         if (onTimeUpdateRef.current && t > 0) {
           onTimeUpdateRef.current(t);
         }
-        // Report position for resume, throttled to ~5s.
-        if (onProgressRef.current && t > 0 && Date.now() - lastReportRef.current > 5000) {
-          lastReportRef.current = Date.now();
-          onProgressRef.current(Math.floor(t));
+        // High-frequency position update for progress saver & timed questions (called every ~333ms)
+        if (onProgressRef.current && t > 0) {
+          onProgressRef.current(t);
         }
       }
     }, 333);
