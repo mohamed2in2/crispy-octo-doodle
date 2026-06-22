@@ -154,8 +154,7 @@ export function Navbar({ user }: NavbarProps) {
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
       <div
-        className="max-w-[1320px] mx-auto px-3 sm:px-7 h-[60px] sm:h-[74px] grid items-center gap-1.5 sm:gap-[18px]"
-        style={{ gridTemplateColumns: "1fr auto 1fr" }}
+        className="max-w-[1320px] mx-auto px-3 sm:px-7 h-[60px] sm:h-[74px] flex justify-between lg:grid lg:grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-[18px]"
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-[11px] no-underline justify-self-start" aria-label="Code-UP">
@@ -170,8 +169,8 @@ export function Navbar({ user }: NavbarProps) {
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1 justify-self-center" role="navigation">
+        {/* Desktop nav — lg breakpoint prevents layout crowding on tablet */}
+        <nav className="hidden lg:flex items-center gap-1 justify-self-center" role="navigation">
           {NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className="no-underline whitespace-nowrap transition-colors"
               style={{ padding: "9px 15px", borderRadius: 10, fontSize: 15, fontWeight: 600,
@@ -184,12 +183,12 @@ export function Navbar({ user }: NavbarProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-[6px] sm:gap-[10px] justify-self-end">
-          <span className="hidden sm:block"><StreakFlame role={user?.role} /></span>
+          <StreakFlame role={user?.role} />
 
-          {/* Balance badge — students only, hidden on mobile */}
+          {/* Balance badge — students only */}
           {user?.role === "student" && balance !== null && (
             <Link href="/account" aria-label="رصيدي" title="رصيدي"
-              className="hidden sm:flex items-center gap-1.5 rounded-[10px] border border-[var(--gold-2)] no-underline transition-all hover:scale-105"
+              className="flex items-center gap-1.5 rounded-[10px] border border-[var(--gold-2)] no-underline transition-all hover:scale-105"
               style={{ padding: "5px 11px", background: "var(--gold-soft)" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3m.08 4h.01"/>
@@ -199,7 +198,7 @@ export function Navbar({ user }: NavbarProps) {
           )}
 
           {/* Search */}
-          <div ref={searchRef} className="md:relative">
+          <div ref={searchRef} className="lg:relative">
             <button type="button" onClick={() => { setSearchOpen((o) => !o); setNotifOpen(false); }}
               aria-label="بحث"
               className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
@@ -209,7 +208,7 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {searchOpen && (
-              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] md:right-0 md:left-auto right-3 left-3 md:w-[340px] w-auto"
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] lg:right-0 lg:left-auto right-3 left-3 lg:w-[340px] w-auto"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
                   <input
@@ -298,7 +297,7 @@ export function Navbar({ user }: NavbarProps) {
 
           {/* Theme toggle */}
           <button type="button" onClick={cycleTheme} aria-label={isDark ? "وضع فاتح" : "وضع داكن"}
-            className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
+            className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
             {isDark ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
@@ -319,7 +318,7 @@ export function Navbar({ user }: NavbarProps) {
           </Link>
 
           {/* Notification bell */}
-          <div ref={notifRef} className="md:relative">
+          <div ref={notifRef} className="lg:relative">
             <button type="button" onClick={() => { setNotifOpen((o) => !o); setSearchOpen(false); }}
               aria-label="الإشعارات" aria-expanded={notifOpen}
               className="relative w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
@@ -335,7 +334,7 @@ export function Navbar({ user }: NavbarProps) {
             </button>
 
             {notifOpen && (
-              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] md:right-0 md:left-auto right-3 left-3 md:w-[320px] w-auto"
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] lg:right-0 lg:left-auto right-3 left-3 lg:w-[320px] w-auto"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
                 <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
                   {unreadCount > 0 && (
@@ -416,48 +415,8 @@ export function Navbar({ user }: NavbarProps) {
               </Link>
             </div>
           )}
-
-          {/* Hamburger */}
-          <button type="button" className="md:hidden w-11 h-11 rounded-lg flex items-center justify-center text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--border)] transition-colors cursor-pointer"
-            onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
         </div>
       </div>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div id="mobile-nav" role="navigation" className="md:hidden py-3 border-t border-[var(--border)] space-y-0.5 pb-4 px-4">
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined}
-              className="block no-underline rounded-[10px] transition-colors"
-              style={{ padding: "10px 14px", fontSize: 15, fontWeight: 600,
-                color: isActive(link.href) ? "var(--brand)" : "var(--ink-2)",
-                background: isActive(link.href) ? "var(--brand-soft)" : "transparent" }}>
-              {link.label}
-            </Link>
-          ))}
-          <div className="pt-3 border-t border-[var(--border)] mt-2 flex flex-col gap-2">
-            {user ? (
-              <>
-                <span className="text-sm font-medium text-[var(--ink-2)] px-3">{user.name}</span>
-                <button type="button" onClick={handleLogout} className="w-full text-center rounded-[10px] cursor-pointer"
-                  style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: "var(--danger)", background: "var(--danger-soft)", border: "none" }}>
-                  تسجيل الخروج
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="block text-center no-underline rounded-[10px] border border-[var(--border)]" style={{ padding: "11px 14px", fontSize: 14, fontWeight: 600, color: "var(--ink-2)" }}>دخول</Link>
-                <Link href="/signup" className="block text-center no-underline rounded-[10px]" style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, background: "var(--brand)", color: "#fff" }}>إنشاء حساب</Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 }

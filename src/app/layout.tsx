@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { AIAssistant } from "@/components/ai/AIAssistant";
+import { MobileTabBar } from "@/components/ui/MobileTabBar";
 import { MaintenanceScreen } from "@/components/MaintenanceScreen";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { verifyToken } from "@/lib/auth";
@@ -124,6 +125,7 @@ export default async function RootLayout({
               <ToastProvider>
                 {children}
                 <AIAssistant />
+                <MobileTabBar />
               </ToastProvider>
             </>
           )}

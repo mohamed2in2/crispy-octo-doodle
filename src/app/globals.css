@@ -11,6 +11,7 @@
   --bg-2:          #EFECE4;
   --surface:       #FFFFFF;
   --surface-2:     #F8F7F3;
+  --nav:           #FFFFFF;
   --border:        #E6E1D7;
   --border-strong: #D7D1C4;
 
@@ -69,6 +70,7 @@ html.dark {
   --bg-2:          #0D1A28;
   --surface:       #0F1E2E;
   --surface-2:     #15273A;
+  --nav:           #0C1825;
   --border:        #1E3346;
   --border-strong: #2B4458;
 
@@ -136,6 +138,16 @@ body {
 ::selection {
   background: var(--brand);
   color: #fff;
+}
+
+/* ─── Mobile & Tablet bottom tab bar padding ──────────────────────────────── */
+/* The MobileTabBar toggles this class while it is visible so page content and
+   the footer clear the fixed bar (and the iOS home indicator) on phones & tablets.
+   Kept in sync with the lg:hidden breakpoint (max-width: 1023px). */
+@media (max-width: 1023px) {
+  body.has-bottom-nav {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ─── Scrollbar ────────────────────────────────────────────────────────────── */

@@ -176,8 +176,6 @@ export default async function LeaderboardPage({
     { rank: "٤-١٠", label: "المركز ٤ إلى ١٠", prize: "تيشيرت المنصة",                       gold: false },
   ];
 
-  const list = activeTab === "points" ? topStudents : topStreakers;
-
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)", fontFamily: "var(--font-body)" }}>
       <Navbar user={{ name: session.name, role }} />
@@ -266,7 +264,53 @@ export default async function LeaderboardPage({
 
             {/* ── Admin prize table ── */}
             {isAdmin && (
-              <div className="overflow-x-auto">
+              <>
+              {/* Mobile: admin cards (table scrolls off-screen on phones) */}
+              <div className="md:hidden flex flex-col gap-2.5" style={{ padding: 14 }}>
+                {(activeTab === "points" ? topStudents : topStreakers).map((s, i) => {
+                  const badge = rankBadge(i);
+                  const row   = s as { id: string; name: string; points?: number; loginStreak?: number; educationalStage: string | null; phone?: string | null; parentPhone?: string | null; age?: number | null };
+                  const score = activeTab === "points" ? `${row.points ?? 0} نقطة` : `${row.loginStreak ?? 0} يوم`;
+                  return (
+                    <div key={row.id} style={{ borderRadius: 14, border: "1px solid var(--border)", background: i < 3 ? "var(--surface-2)" : "var(--surface)", padding: 14 }}>
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center shrink-0 font-black" style={{ width: 38, height: 38, borderRadius: "50%", background: badge.bg, color: badge.color, fontSize: 15, fontFamily: "var(--font-head)" }}>
+                          {["١","٢","٣"][i] ?? i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate" style={{ fontWeight: 700, color: "var(--ink)", fontSize: 14 }}>
+                            {row.name}{row.age ? <span style={{ fontSize: 11.5, color: "var(--ink-3)", marginRight: 6 }}>({row.age} سنة)</span> : null}
+                          </div>
+                          <div className="truncate" style={{ fontSize: 12, color: "var(--ink-3)" }}>{row.educationalStage || "—"}</div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 shrink-0" style={{ padding: "5px 11px", borderRadius: 9, background: activeTab === "streak" ? "var(--gold-soft)" : "var(--brand-soft)", color: activeTab === "streak" ? "var(--gold-2)" : "var(--brand)", fontWeight: 800, fontSize: 13, fontFamily: "var(--font-head)" }}>
+                          {activeTab === "streak" && <Flame className="w-3 h-3" />}{score}
+                        </span>
+                      </div>
+                      {(row.phone || row.parentPhone) && (
+                        <div className="flex flex-wrap gap-2" style={{ marginTop: 11, paddingTop: 11, borderTop: "1px solid var(--border)" }}>
+                          {row.phone && (
+                            <a href={`tel:${row.phone}`} dir="ltr" className="flex items-center gap-1.5 no-underline" style={{ padding: "7px 12px", minHeight: 38, borderRadius: 9, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 600, fontSize: 12.5 }}>
+                              📞 {row.phone}
+                            </a>
+                          )}
+                          {row.parentPhone && (
+                            <a href={`tel:${row.parentPhone}`} dir="ltr" className="flex items-center gap-1.5 no-underline" style={{ padding: "7px 12px", minHeight: 38, borderRadius: 9, background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--ink-2)", fontWeight: 600, fontSize: 12.5 }}>
+                              👨‍👧 {row.parentPhone}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {(activeTab === "points" ? topStudents : topStreakers).length === 0 && (
+                  <div className="text-center py-10" style={{ color: "var(--ink-3)", fontSize: 15 }}>لا يوجد طلاب في لوحة الشرف حتى الآن.</div>
+                )}
+              </div>
+
+              {/* Desktop: full table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border)", background: "var(--bg)" }}>
@@ -337,6 +381,7 @@ export default async function LeaderboardPage({
                   </tbody>
                 </table>
               </div>
+              </>
             )}
 
             {/* ── Student cards ── */}

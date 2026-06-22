@@ -453,7 +453,7 @@ export default function AccountPage() {
 
 
         {/* ── Desktop layout: sidebar + content ── */}
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-[240px_1fr]">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-[240px_minmax(0,1fr)]">
 
           {/* ── Sidebar (hidden on mobile) ── */}
           <aside className="hidden md:block rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
@@ -494,9 +494,9 @@ export default function AccountPage() {
           </aside>
 
           {/* ── Content ── */}
-          <div>
+          <div className="min-w-0">
             {/* Mobile section picker — scrollable tab bar, hidden on md+ */}
-            <div className="md:hidden mb-4 -mx-1">
+            <div className="md:hidden mb-4 -mx-1 min-w-0">
               {/* User chip on mobile */}
               <div className="flex items-center gap-2 px-1 mb-3">
                 <span className="flex items-center justify-center w-8 h-8 rounded-full shrink-0" style={{ background: "var(--brand)", color: "#fff", fontWeight: 800, fontSize: 13 }}>
@@ -700,7 +700,45 @@ export default function AccountPage() {
                   <div className="py-12 text-center"><div style={{ fontSize: 36, marginBottom: 8 }}>📋</div><p style={{ color: "var(--ink-3)" }}>لم تؤدِّ أي اختبار بعد.</p></div>
                 ) : (
                   <>
-                    <div style={{ overflowX: "auto" }}>
+                    {/* Mobile: card list (table scrolls horribly on phones) */}
+                    <div className="md:hidden flex flex-col gap-3" style={{ padding: 14 }}>
+                      {pagedResults.map((r) => {
+                        const tone = r.pct >= 80 ? "brand" : r.pct >= 50 ? "gold" : "danger";
+                        const bg = tone === "brand" ? "var(--brand-soft)" : tone === "gold" ? "var(--gold-soft)" : "var(--danger-soft)";
+                        const fg = tone === "brand" ? "var(--brand)" : tone === "gold" ? "var(--gold-2)" : "var(--danger)";
+                        return (
+                          <div key={r.id} style={{ borderRadius: 14, border: "1px solid var(--border)", background: "var(--surface-2)", padding: 14 }}>
+                            <div className="flex items-start gap-3">
+                              <span className="flex items-center justify-center shrink-0" style={{ width: 54, height: 54, borderRadius: 13, background: bg, color: fg, fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 17 }}>
+                                {r.pct}%
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.quizTitle}</div>
+                                <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 7 }}>{r.subject}</div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 12, color: "var(--ink-2)" }}>
+                                  <span>الدرجة <strong style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>{r.score}/{r.totalQ}</strong></span>
+                                  <span>صحيحة <strong style={{ color: "var(--brand)", fontFamily: "var(--font-head)" }}>{r.correct}</strong></span>
+                                  <span>محلولة {r.attempted}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-2" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                              <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{new Date(r.completedAt).toLocaleDateString("ar-EG", { month: "short", day: "numeric" })}</span>
+                              {r.hasAnswers ? (
+                                <button onClick={() => setAnswerModal({ id: r.id, title: r.quizTitle })}
+                                  className="cursor-pointer border-none rounded-[9px] text-white active:opacity-80 transition-opacity"
+                                  style={{ padding: "8px 16px", minHeight: 40, background: "var(--brand)", fontSize: 13, fontWeight: 700 }}>
+                                  عرض الإجابات
+                                </button>
+                              ) : <span style={{ fontSize: 12, color: "var(--ink-3)" }}>لا إجابات</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop: full table */}
+                    <div className="hidden md:block" style={{ overflowX: "auto" }}>
                       <table className="w-full text-xs sm:text-sm" style={{ borderCollapse: "collapse", minWidth: 700 }}>
                         <thead>
                           <tr style={{ background: "var(--bg)", borderBottom: "2px solid var(--border)" }}>
