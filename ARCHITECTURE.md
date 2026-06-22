@@ -563,7 +563,33 @@ npm run db:migrate
 npm run db:generate
 ```
 
-### Seeding Database
+### Seeding Database    tg
+```bash
+npm run db:seed
+```
+
+### Development Server
+```bash
+npm run dev
+# Runs on http://localhost:3000
+```
+
+### Production Build
+```bash
+npm run build
+npm start
+```
+
+--- 
+## Development Notes
+
+### Running Migrations
+```bash
+npm run db:migrate
+npm run db:generate
+```
+
+### Seeding Database    tg
 ```bash
 npm run db:seed
 ```
