@@ -6,6 +6,30 @@ import { verifyMasterPassword } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const today = new Date().toISOString().split("T")[0];
+    const failedTriesKey = `admin_failed_logins_${today}`;
+
+    const currentTriesSetting = await prisma.appSetting.findUnique({
+      where: { key: failedTriesKey },
+    });
+    const currentTries = currentTriesSetting ? parseInt(currentTriesSetting.value, 10) : 0;
+
+    if (currentTries >= 30) {
+      return NextResponse.json(
+        { error: "تم تجاوز الحد الأقصى لمحاولات الدخول الفاشلة اليوم" },
+        { status: 429 }
+      );
+    }
+
+    const recordFailedAttempt = async () => {
+      const newTries = currentTries + 1;
+      await prisma.appSetting.upsert({
+        where: { key: failedTriesKey },
+        update: { value: String(newTries) },
+        create: { key: failedTriesKey, value: String(newTries) },
+      });
+    };
+
     const body = (await req.json()) as {
       role?: string;
       name?: string;
@@ -57,6 +81,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      await recordFailedAttempt();
       return NextResponse.json({ error: "كلمة المرور الرئيسية غير صحيحة" }, { status: 401 });
     }
 
@@ -69,6 +94,7 @@ export async function POST(req: NextRequest) {
         where: { name, role: "teacher", isDeleted: false },
       });
       if (!teacher || !teacher.password) {
+        await recordFailedAttempt();
         return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
       }
       if (!teacher.isActive) {
@@ -76,6 +102,7 @@ export async function POST(req: NextRequest) {
       }
       const valid = await bcrypt.compare(password, teacher.password);
       if (!valid) {
+        await recordFailedAttempt();
         return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
       }
       const token = await signToken({
@@ -103,6 +130,7 @@ export async function POST(req: NextRequest) {
         },
       });
       if (!user || !user.password) {
+        await recordFailedAttempt();
         return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
       }
       if (!user.isActive) {
@@ -110,6 +138,7 @@ export async function POST(req: NextRequest) {
       }
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) {
+        await recordFailedAttempt();
         return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
       }
       const token = await signToken({

@@ -17,6 +17,8 @@ type CoursePatchInput = {
   contactPhone?: string | null;
   maxWatchCount?: number | null;
   homeworkUrl?: string | null;
+  sequentialAccess?: boolean;
+  enableWatchedButton?: boolean;
 };
 
 function validateCourseData(data: CoursePatchInput): { valid: boolean; error?: string } {
@@ -150,6 +152,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return NextResponse.json({ error: "رابط الواجب غير صحيح" }, { status: 400 });
       }
       updateData.homeworkUrl = data.homeworkUrl ? data.homeworkUrl.trim() : null;
+    }
+    if (data.sequentialAccess !== undefined) {
+      updateData.sequentialAccess = !!data.sequentialAccess;
+    }
+    if (data.enableWatchedButton !== undefined) {
+      updateData.enableWatchedButton = !!data.enableWatchedButton;
     }
 
     const updated = await prisma.course.update({
