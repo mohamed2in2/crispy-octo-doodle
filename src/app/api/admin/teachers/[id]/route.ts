@@ -9,6 +9,19 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || !hasPermission(session.role, "edit_teacher_name")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
@@ -63,6 +76,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || !hasPermission(session.role, "delete_teacher")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }

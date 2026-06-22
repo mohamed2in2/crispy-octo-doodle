@@ -9,6 +9,19 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || !hasPermission(session.role, "restore_student")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }

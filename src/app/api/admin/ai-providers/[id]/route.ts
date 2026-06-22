@@ -12,6 +12,20 @@ async function requireSuperadmin() {
 
 /** Update a provider. A present apiKey is encrypted and overwrites the old one. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   const session = await requireSuperadmin();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 

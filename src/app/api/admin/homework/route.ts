@@ -1,3 +1,4 @@
+import { logAdminAction } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +23,19 @@ export async function GET() {
 /** POST — create a homework */
 export async function POST(req: NextRequest) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || session.role !== "teacher") return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 
   const body = await req.json() as {

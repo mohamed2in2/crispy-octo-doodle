@@ -1,3 +1,5 @@
+import { getSession } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { signToken, setAuthCookie } from "@/lib/auth";
@@ -5,6 +7,20 @@ import { prisma } from "@/lib/prisma";
 import { verifyMasterPassword } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   try {
     const today = new Date().toISOString().split("T")[0];
     const failedTriesKey = `admin_failed_logins_${today}`;

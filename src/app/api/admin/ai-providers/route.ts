@@ -26,6 +26,20 @@ export async function GET() {
 
 /** Create a provider. If apiKey is present it's encrypted; the plaintext is dropped. */
 export async function POST(req: NextRequest) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   const session = await requireSuperadmin();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 

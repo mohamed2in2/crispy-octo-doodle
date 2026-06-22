@@ -1,3 +1,4 @@
+import { logAdminAction } from "@/lib/admin-auth";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
@@ -90,6 +91,19 @@ function validateQuizData(title: string, questions: any[]): { valid: boolean; er
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
     if (!session || session.role !== "teacher") {
       return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
     }

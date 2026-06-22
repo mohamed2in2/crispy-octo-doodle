@@ -7,6 +7,19 @@ import { hasPermission } from "@/lib/rbac";
 /** Permanent deletion (skips the grace period) of a soft-deleted teacher. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || !hasPermission(session.role, "delete_teacher")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }

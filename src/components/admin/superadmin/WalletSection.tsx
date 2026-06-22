@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AccessGate } from "./AccessGate";
 import { useToast } from "@/components/ui/Toast";
 
 interface MoneyCode {
@@ -127,7 +128,8 @@ export function WalletSection() {
   };
 
   return (
-    <div dir="rtl">
+    <AccessGate id="wallet" title="إدارة الرصيد" type="wallet">
+      <div dir="rtl">
       {/* Tab bar */}
       <div className="flex gap-2 mb-6 p-1 rounded-[14px]" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", width: "fit-content" }}>
         {[
@@ -388,6 +390,7 @@ export function WalletSection() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </AccessGate>
   );
 }

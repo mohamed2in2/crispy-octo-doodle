@@ -12,6 +12,20 @@ async function requireOwner() {
 
 /** Rename / reset password / suspend a superadmin. Owner only. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   const session = await requireOwner();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 
@@ -88,6 +102,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 /** Delete a superadmin. Owner only; the owner account itself is protected. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   const session = await requireOwner();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 

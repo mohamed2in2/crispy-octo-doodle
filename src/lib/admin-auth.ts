@@ -78,6 +78,13 @@ export function verifyBulkPassword(password: string): boolean {
   return timingSafeCompare(password, env);
 }
 
+/** Verifies the wallet access password (gates WalletSection). */
+export function verifyWalletPassword(password: string): boolean {
+  const env = process.env.WALLET_PASSWORD;
+  if (!env || !password) return false;
+  return timingSafeCompare(password, env);
+}
+
 // ─── Activity logging ─────────────────────────────────────────────────────────
 
 export interface ActivityLogParams {

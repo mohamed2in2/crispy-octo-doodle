@@ -20,6 +20,20 @@ export async function GET() {
 
 /** Update one setting; cache is invalidated so it takes effect immediately. */
 export async function PATCH(req: NextRequest) {
+    const __logSession = await getSession();
+    if (__logSession && __logSession.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: __logSession.id,
+          adminName: __logSession.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
+
   const session = await requireSuperadmin();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 

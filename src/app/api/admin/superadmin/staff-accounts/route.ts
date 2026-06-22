@@ -37,6 +37,19 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
     if (!session || !hasPermission(session.role, "manage_staff_accounts")) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
     }

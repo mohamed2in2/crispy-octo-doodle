@@ -57,6 +57,19 @@ export async function GET() {
 /** Create a scheduled request, or run an instant deletion (env-password gated). */
 export async function POST(req: NextRequest) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session || !hasPermission(session.role, "bulk_delete_users")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }

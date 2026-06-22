@@ -1,3 +1,4 @@
+import { logAdminAction } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
@@ -32,6 +33,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
+
+    if (session && session.role === "superadmin") {
+      try {
+        await logAdminAction({
+          adminId: session.id,
+          adminName: session.name,
+          action: "SUPERADMIN_ACTION",
+          targetType: "API_ROUTE",
+          targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+          targetName: req.method,
+        });
+      } catch (e) {}
+    }
   if (!session) return NextResponse.json({ error: "غير مصحح" }, { status: 401 });
   if (!hasPermission(session.role, "create_teacher")) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });

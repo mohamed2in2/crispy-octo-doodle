@@ -6,7 +6,7 @@ import { useState } from "react";
  * and any data they load — are not rendered until the password is verified
  * server-side. Unlock lasts for the browser session only.
  */
-export function AccessGate({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+export function AccessGate({ id, title, type, children }: { id: string; title: string; type?: string; children: React.ReactNode }) {
   const storeKey = `gate_${id}`;
   const [unlocked, setUnlocked] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -28,7 +28,7 @@ export function AccessGate({ id, title, children }: { id: string; title: string;
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, type }),
       });
       if (!res.ok) {
         setError("كلمة المرور غير صحيحة");
@@ -52,7 +52,7 @@ export function AccessGate({ id, title, children }: { id: string; title: string;
         <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
           هذه المنطقة محميّة. أدخل كلمة مرور الوصول للمتابعة.
           <br />
-          إن لم تكن تعرفها، اطلبها من المالك (قل له: «أحتاج كلمة مرور الـ bulk»).
+          إن لم تكن تعرفها، اطلبها من المالك (قل له: {type === "wallet" ? "«أحتاج كلمة مرور المحفظة»" : "«أحتاج كلمة مرور الـ bulk»"}).
         </p>
         <form onSubmit={submit} className="mt-5 space-y-3 text-right">
           <input
