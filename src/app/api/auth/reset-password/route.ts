@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const normalized = normalizeEgyptPhone(String(phone));
 
     if (!isPhoneVerificationBypassed()) {
-      if (firebaseToken && firebaseToken !== "bypass") {
+      if (firebaseToken && firebaseToken !== "bypass" && firebaseToken !== "whatsapp") {
         const firebaseUser = await verifyFirebaseIdToken(String(firebaseToken));
         if (!firebaseUser || !firebaseUser.phoneNumber) {
           return NextResponse.json(

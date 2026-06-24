@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isPhoneVerificationBypassed()) {
-      if (firebaseToken && firebaseToken !== "bypass") {
+      if (firebaseToken && firebaseToken !== "bypass" && firebaseToken !== "whatsapp") {
         const firebaseUser = await verifyFirebaseIdToken(String(firebaseToken));
         if (!firebaseUser || !firebaseUser.phoneNumber) {
           return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
