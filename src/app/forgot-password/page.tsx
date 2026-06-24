@@ -21,6 +21,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isBypassed, setIsBypassed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [sentChannel, setSentChannel] = useState<"whatsapp" | "sms" | null>(null);
+  const [success, setSuccess] = useState("");
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
@@ -55,15 +57,16 @@ export default function ForgotPasswordPage() {
     return p;
   };
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCode = async (e?: React.FormEvent, forceSms?: boolean) => {
+    if (e) e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatPhone(phone) }),
+        body: JSON.stringify({ phone: formatPhone(phone), forceChannel: forceSms ? "sms" : undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -75,7 +78,18 @@ export default function ForgotPasswordPage() {
         setIsBypassed(true);
         setDevCode("123456");
         setCode("123456");
+        setSentChannel("sms");
         setStep("reset");
+        return;
+      }
+
+      if (data?.channel === "whatsapp") {
+        setIsBypassed(false);
+        setDevCode(null);
+        setSentChannel("whatsapp");
+        setSuccess("تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب وليس الرسائل النصية (SMS).");
+        setStep("reset");
+        setCooldown(60);
         return;
       }
 
@@ -101,6 +115,8 @@ export default function ForgotPasswordPage() {
       confirmationResultRef.current = confirmationResult;
       setIsBypassed(false);
       setDevCode(null);
+      setSentChannel("sms");
+      setSuccess("تم إرسال رمز التحقق عبر الرسائل النصية (SMS) لعدم توفر خدمة واتساب حالياً. يرجى التحقق من الرسائل النصية على هاتفك.");
       setStep("reset");
       setCooldown(60);
     } catch (err: any) {
@@ -128,28 +144,37 @@ export default function ForgotPasswordPage() {
       let firebaseToken = "bypass";
 
       if (!isBypassed) {
-        if (!confirmationResultRef.current) {
-          setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
-          setLoading(false);
-          return;
-        }
+        if (sentChannel === "whatsapp") {
+          firebaseToken = "whatsapp";
+        } else {
+          if (!confirmationResultRef.current) {
+            setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
+            setLoading(false);
+            return;
+          }
 
-        try {
-          const userCredential = await confirmationResultRef.current.confirm(code);
-          const firebaseUser = userCredential.user;
-          firebaseToken = await firebaseUser.getIdToken();
-        } catch (err: any) {
-          console.error("Firebase verify code confirm error:", err);
-          setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-          setLoading(false);
-          return;
+          try {
+            const userCredential = await confirmationResultRef.current.confirm(code);
+            const firebaseUser = userCredential.user;
+            firebaseToken = await firebaseUser.getIdToken();
+          } catch (err: any) {
+            console.error("Firebase verify code confirm error:", err);
+            setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+            setLoading(false);
+            return;
+          }
         }
       }
 
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatPhone(phone), firebaseToken, newPassword }),
+        body: JSON.stringify({
+          phone: formatPhone(phone),
+          firebaseToken,
+          verificationCode: code,
+          newPassword,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -213,6 +238,12 @@ export default function ForgotPasswordPage() {
             </div>
           )}
 
+          {success && (
+            <div className="mb-5 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {success}
+            </div>
+          )}
+
           {error && (
             <div className="mb-5 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
               {error}
@@ -235,6 +266,29 @@ export default function ForgotPasswordPage() {
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-mono tracking-widest text-lg"
               />
             </div>
+
+            <div className="text-center text-xs text-slate-500 dark:text-slate-400 mt-2">
+              تحتاج مساعدة؟ تواصل مع الدعم:{" "}
+              <a
+                href="tel:+201282287267"
+                className="text-sky-600 dark:text-sky-400 font-semibold hover:underline"
+              >
+                01282287267
+              </a>
+            </div>
+
+            {sentChannel === "whatsapp" && (
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => handleSendCode(undefined, true)}
+                  disabled={loading}
+                  className="text-sky-600 dark:text-sky-400 underline font-semibold hover:text-sky-800 dark:hover:text-sky-300 cursor-pointer"
+                >
+                  لم أستلم الرمز على واتساب؟ الإرسال عبر SMS بدلاً من ذلك
+                </button>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

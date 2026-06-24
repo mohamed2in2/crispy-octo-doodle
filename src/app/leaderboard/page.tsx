@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Clock, Flame } from "lucide-react";
 
+export const revalidate = 86400; // Cache page for 24 hours (Next.js ISR)
+
+
 function getCompetitionTier(stage: string | null): string[] {
   if (!stage) return [];
   if (stage.startsWith("primary")) return ["primary_4", "primary_5", "primary_6"];
@@ -69,92 +72,57 @@ export default async function LeaderboardPage({
   const resolvedParams = await searchParams;
   const activeTab = resolvedParams.tab === "streak" ? "streak" : "points";
 
-  /* ── Student: tier-based rank ─────────────────────────────────────────── */
-  let currentUser: { id: string; points: number; pointsUpdatedAt: Date | null; educationalStage: string | null; loginStreak: number } | null = null;
-  let currentRank      = 0;
-  let currentStreakRank = 0;
-
+  /* ── Cached Leaderboard Retrieval & User Rank extraction ─────────────────── */
+  let currentUserStage: string | null = null;
   if (isStudent) {
-    currentUser = await prisma.user.findUnique({
+    const dbUser = await prisma.user.findUnique({
       where: { id: session.id },
-      select: { id: true, points: true, pointsUpdatedAt: true, educationalStage: true, loginStreak: true },
+      select: { educationalStage: true },
     });
+    currentUserStage = dbUser?.educationalStage ?? null;
   }
 
-  const competitionTier = getCompetitionTier(currentUser?.educationalStage ?? null);
-  // Students filter to their tier; admins see all students (no tier filter)
-  const stageFilter = isStudent && competitionTier.length > 0
-    ? { educationalStage: { in: competitionTier } }
-    : {};
+  const cacheRow = await prisma.leaderboardCache.findUnique({
+    where: { key: "leaderboard_data" },
+  });
+  const cache = cacheRow ? JSON.parse(cacheRow.data) : null;
+  const lastUpdatedAt = cacheRow ? new Date(cacheRow.updatedAt) : null;
 
-  // Admin select includes contact details needed for prize delivery
-  const adminSelect = { id: true, name: true, points: true, loginStreak: true, educationalStage: true, phone: true, email: true, parentPhone: true, age: true } as const;
-  const studentSelect = { id: true, name: true, points: true, educationalStage: true } as const;
-  const streakStudentSelect = { id: true, name: true, loginStreak: true, educationalStage: true } as const;
+  const tierKey = isStudent
+    ? (currentUserStage?.startsWith("primary") ? "student_primary"
+       : currentUserStage?.startsWith("prep") ? "student_prep"
+       : currentUserStage?.startsWith("sec") ? "student_sec"
+       : "student_all")
+    : "student_all";
 
   type AdminRow   = { id: string; name: string; points: number; loginStreak: number; educationalStage: string | null; phone: string | null; email: string; parentPhone: string | null; age: number | null };
   type StudentRow = { id: string; name: string; points: number; educationalStage: string | null };
   type StreakRow  = { id: string; name: string; loginStreak: number; educationalStage: string | null };
 
-  let topStudents:  (StudentRow | AdminRow)[] = [];
-  let topStreakers: (StreakRow  | AdminRow)[] = [];
+  const topStudents:  (StudentRow | AdminRow)[] = isAdmin
+    ? (cache?.topStudents?.admin ?? [])
+    : (cache?.topStudents?.[tierKey] ?? []);
 
-  if (activeTab === "points") {
-    topStudents = isAdmin
-      ? await prisma.user.findMany({
-          where: { role: "student", points: { gt: 0 } },
-          orderBy: [{ points: "desc" }, { pointsUpdatedAt: "asc" }],
-          take: 10, select: adminSelect,
-        })
-      : await prisma.user.findMany({
-          where: { role: "student", points: { gt: 0 }, ...stageFilter },
-          orderBy: [{ points: "desc" }, { pointsUpdatedAt: "asc" }],
-          take: 10, select: studentSelect,
-        });
+  const topStreakers: (StreakRow  | AdminRow)[] = isAdmin
+    ? (cache?.topStreakers?.admin ?? [])
+    : (cache?.topStreakers?.[tierKey] ?? []);
 
-    if (isStudent && currentUser) {
-      const ahead = await prisma.user.count({
-        where: {
-          role: "student", ...stageFilter,
-          OR: [
-            { points: { gt: currentUser.points } },
-            { points: currentUser.points, pointsUpdatedAt: { lt: currentUser.pointsUpdatedAt ?? undefined } },
-          ],
-        },
-      });
-      currentRank = ahead + 1;
-    }
-  }
+  let currentRank      = 0;
+  let currentStreakRank = 0;
 
-  if (activeTab === "streak") {
-    topStreakers = isAdmin
-      ? await prisma.user.findMany({
-          where: { role: "student", loginStreak: { gt: 0 } },
-          orderBy: [{ loginStreak: "desc" }, { lastLoginDate: "desc" }],
-          take: 10, select: adminSelect,
-        })
-      : await prisma.user.findMany({
-          where: { role: "student", loginStreak: { gt: 0 }, ...stageFilter },
-          orderBy: [{ loginStreak: "desc" }, { lastLoginDate: "desc" }],
-          take: 10, select: streakStudentSelect,
-        });
-
-    if (isStudent && currentUser && currentUser.loginStreak > 0) {
-      const ahead = await prisma.user.count({
-        where: { role: "student", ...stageFilter, loginStreak: { gt: currentUser.loginStreak } },
-      });
-      currentStreakRank = ahead + 1;
-    }
+  if (isStudent && cache?.userRanks?.[session.id]) {
+    currentRank = cache.userRanks[session.id].pointsRank || 0;
+    currentStreakRank = cache.userRanks[session.id].streakRank || 0;
   }
 
   const now       = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-  const dailyExam = isStudent && currentUser?.educationalStage
+  const dailyExam = isStudent && currentUserStage
     ? await prisma.dailyExam.findFirst({
         where: {
-          educationalStage: currentUser.educationalStage,
+          educationalStage: currentUserStage,
           isActive: true,
           date: { gte: todayStart, lt: todayEnd },
         },
@@ -208,6 +176,12 @@ export default async function LeaderboardPage({
             </h1>
           </div>
           <p style={{ fontSize: 17, color: "var(--ink-2)", margin: 0 }}>تنافس مع زملائك، احصد النقاط، واربح جوائز قيّمة!</p>
+          {lastUpdatedAt && (
+            <p style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Clock className="w-3.5 h-3.5" />
+              آخر تحديث: {lastUpdatedAt.toLocaleString("ar-EG", { timeZone: "Africa/Cairo", dateStyle: "medium", timeStyle: "short" })} (تحديث يومي تلقائي)
+            </p>
+          )}
 
           {/* Tab toggle */}
           <div

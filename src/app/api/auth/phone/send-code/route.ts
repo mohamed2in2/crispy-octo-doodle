@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeEgyptPhone } from "@/lib/phone";
 import { isPhoneVerificationBypassed } from "@/lib/twilio";
+import { generateVerificationCode, sendVerificationCode } from "@/lib/whatsapp";
+import { createPhoneVerificationChallenge, setPhoneVerificationCookie } from "@/lib/auth";
+import { checkCooldown } from "@/lib/cooldown";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone } = await req.json();
+    const { phone, forceChannel } = await req.json();
     if (!phone || typeof phone !== "string") {
       return NextResponse.json({ error: "رقم المتعلم مطلوب" }, { status: 400 });
     }
@@ -32,7 +35,35 @@ export async function POST(req: NextRequest) {
 
     const bypass = isPhoneVerificationBypassed();
 
-    return NextResponse.json({ success: true, bypass });
+    if (bypass) {
+      return NextResponse.json({ success: true, bypass, channel: "dev" });
+    }
+
+    // Server-side cooldown validation: 60 seconds per phone number
+    const cooldownCheck = checkCooldown(normalizedPhone, 60000);
+    if (!cooldownCheck.allowed) {
+      return NextResponse.json(
+        { error: `يرجى الانتظار ${cooldownCheck.remainingSeconds} ثانية قبل محاولة إرسال الرمز مجدداً.` },
+        { status: 429 }
+      );
+    }
+
+    // If manual SMS override requested, bypass WhatsApp and return SMS channel
+    if (forceChannel === "sms") {
+      return NextResponse.json({ success: true, channel: "sms", bypass });
+    }
+
+    // Try sending WhatsApp OTP first, automatically fall back to SMS on Meta API failure
+    const code = generateVerificationCode();
+    const result = await sendVerificationCode(normalizedPhone, code);
+
+    // For WhatsApp success, we store the code hash in a secure HTTP-only cookie
+    if (result.channel === "whatsapp") {
+      const challengeToken = await createPhoneVerificationChallenge(normalizedPhone, code);
+      await setPhoneVerificationCookie(challengeToken);
+    }
+
+    return NextResponse.json({ success: true, channel: result.channel, bypass });
   } catch (error) {
     console.error("Phone verification code route error:", error);
     return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });

@@ -99,7 +99,7 @@ export async function createPhoneVerificationChallenge(phone: string, code?: str
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("10m")
+    .setExpirationTime("3m")
     .sign(JWT_SECRET);
 }
 
@@ -109,7 +109,7 @@ export async function setPhoneVerificationCookie(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 60 * 10,
+    maxAge: 60 * 3,
     path: "/",
   });
 }

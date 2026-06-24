@@ -751,3 +751,10 @@ model HomeworkSubmission {
   @@index([studentId])
   @@index([homeworkId])
 }
+
+model LeaderboardCache {
+  key       String   @id
+  data      String   // Stores computed leaderboard JSON
+  updatedAt DateTime @default(now()) @updatedAt
+}
+

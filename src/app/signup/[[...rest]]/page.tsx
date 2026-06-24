@@ -33,6 +33,7 @@ export default function SignupPage() {
   const [codeMethod, setCodeMethod] = useState<"sms" | "verify" | "dev">("sms");
   const [isBypassed, setIsBypassed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [sentChannel, setSentChannel] = useState<"whatsapp" | "sms" | null>(null);
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
@@ -75,7 +76,7 @@ export default function SignupPage() {
     return raw;
   };
 
-  const sendCode = async () => {
+  const sendCode = async (forceSms?: boolean) => {
     if (!canSendCode) {
       setError("أدخل رقم المتعلم أولاً");
       return;
@@ -89,7 +90,7 @@ export default function SignupPage() {
       const response = await fetch("/api/auth/phone/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatForSend(form.phone) }),
+        body: JSON.stringify({ phone: formatForSend(form.phone), forceChannel: forceSms ? "sms" : undefined }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -102,8 +103,18 @@ export default function SignupPage() {
         setIsBypassed(true);
         setCodeSent(true);
         setCodeMethod("dev");
+        setSentChannel("sms");
         setForm((s) => ({ ...s, verificationCode: "123456" }));
         setSuccess("وضع التطوير مفعّل: تم تخطي التحقق من رقم الهاتف (DEV).");
+        return;
+      }
+
+      if (data?.channel === "whatsapp") {
+        setIsBypassed(false);
+        setCodeSent(true);
+        setSentChannel("whatsapp");
+        setSuccess("تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب وليس الرسائل النصية (SMS).");
+        setCooldown(60);
         return;
       }
 
@@ -129,8 +140,8 @@ export default function SignupPage() {
       confirmationResultRef.current = confirmationResult;
       setIsBypassed(false);
       setCodeSent(true);
-      setCodeMethod("sms");
-      setSuccess("تم الارسال");
+      setSentChannel("sms");
+      setSuccess("تم إرسال رمز التحقق عبر الرسائل النصية (SMS) لعدم توفر خدمة واتساب حالياً. يرجى التحقق من الرسائل النصية على هاتفك.");
       setCooldown(60);
     } catch (err: any) {
       console.error("Firebase Auth sendCode error:", err);
@@ -163,21 +174,25 @@ export default function SignupPage() {
       let firebaseToken = "bypass";
 
       if (!isBypassed) {
-        if (!confirmationResultRef.current) {
-          setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
-          setSigningUp(false);
-          return;
-        }
+        if (sentChannel === "whatsapp") {
+          firebaseToken = "whatsapp";
+        } else {
+          if (!confirmationResultRef.current) {
+            setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
+            setSigningUp(false);
+            return;
+          }
 
-        try {
-          const userCredential = await confirmationResultRef.current.confirm(form.verificationCode);
-          const firebaseUser = userCredential.user;
-          firebaseToken = await firebaseUser.getIdToken();
-        } catch (err: any) {
-          console.error("Firebase verify code confirm error:", err);
-          setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-          setSigningUp(false);
-          return;
+          try {
+            const userCredential = await confirmationResultRef.current.confirm(form.verificationCode);
+            const firebaseUser = userCredential.user;
+            firebaseToken = await firebaseUser.getIdToken();
+          } catch (err: any) {
+            console.error("Firebase verify code confirm error:", err);
+            setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
+            setSigningUp(false);
+            return;
+          }
         }
       }
 
@@ -193,6 +208,7 @@ export default function SignupPage() {
           educationalStage: form.educationalStage,
           password: form.password,
           firebaseToken,
+          verificationCode: form.verificationCode,
           referralCode: refCode || undefined,
         }),
       });
@@ -341,9 +357,22 @@ export default function SignupPage() {
 
               <div className="md:col-span-2 rounded-xl border border-sky-200/60 bg-sky-50/70 p-4 text-sm text-sky-900 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200">
                 {codeMethod === "verify" && "سيتم إرسال الرمز عبر Twilio Verify. أفضل خيار للإنتاج."}
-                {codeMethod === "sms" && "سيتم إرسال الرمز عبر SMS مباشرة إلى رقم المتعلم."}
                 {codeMethod === "dev" && "وضع التطوير مفعّل: الكود محفوظ محليًا لتجربة التسجيل بدون SMS."}
-                {!codeSent && "اضغط إرسال كود التحقق بعد كتابة رقم المتعلم الصحيح."}
+                {!codeSent && codeMethod !== "dev" && codeMethod !== "verify" && "سيتم إرسال كود التحقق عبر WhatsApp كقناة أساسية، أو عبر SMS كقناة احتياطية."}
+                {codeSent && sentChannel === "whatsapp" && "تم إرسال الرمز عبر WhatsApp إلى رقم المتعلم."}
+                {codeSent && sentChannel === "sms" && "تم إرسال الرمز عبر SMS مباشرة إلى رقم المتعلم."}
+                {codeSent && sentChannel === "whatsapp" && (
+                  <div className="mt-2 pt-2 border-t border-sky-200/40 dark:border-sky-900/40">
+                    <button
+                      type="button"
+                      onClick={() => sendCode(true)}
+                      disabled={sendingCode}
+                      className="text-xs text-sky-700 dark:text-sky-300 underline font-semibold hover:text-sky-900 dark:hover:text-white cursor-pointer"
+                    >
+                      لم أستلم الرمز على واتساب؟ الإرسال عبر SMS بدلاً من ذلك
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div id="recaptcha-container"></div>
@@ -362,13 +391,24 @@ export default function SignupPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={sendCode}
+                  onClick={() => sendCode()}
                   disabled={sendingCode || !canSendCode || cooldown > 0}
                   className="h-12 px-5 rounded-xl bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
                 >
                   {sendingCode ? "جارٍ الإرسال..." : cooldown > 0 ? `إعادة الإرسال خلال ${cooldown}ث` : codeSent ? "إعادة إرسال الكود" : "إرسال كود التحقق"}
                 </button>
               </div>
+              {codeSent && (
+                <div className="md:col-span-2 text-center text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  تحتاج مساعدة؟ تواصل مع الدعم:{" "}
+                  <a
+                    href="tel:+201282287267"
+                    className="text-sky-600 dark:text-sky-400 font-semibold hover:underline"
+                  >
+                    01282287267
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
