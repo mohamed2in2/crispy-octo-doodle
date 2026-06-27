@@ -22,11 +22,18 @@ export function generateVerificationCode(): string {
  * Throws a WhatsAppSendError on failure or non-2xx response.
  */
 export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<boolean> {
+  // Offline mode — skip actual API call (useful for staging without WhatsApp credentials)
+  if (process.env.WHATSAPP_OFFLINE === "true") {
+    throw new WhatsAppSendError("WhatsApp is offline (WHATSAPP_OFFLINE=true)", 503);
+  }
+
   const token = process.env.WHATSAPP_PERMANENT_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const version = process.env.WHATSAPP_API_VERSION || "v25.0";
   const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME;
   const templateLang = process.env.WHATSAPP_OTP_TEMPLATE_LANG || "ar_EG";
+  // Set WHATSAPP_TEMPLATE_HAS_BUTTON="false" if your template has no URL button
+  const templateHasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON !== "false";
 
   if (!token || !phoneId || !templateName) {
     throw new WhatsAppSendError(
@@ -42,30 +49,42 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
     throw new WhatsAppSendError(`Phone normalization failed: ${err.message}`, 400);
   }
 
-  const components = templateName === "3p_direct_integration_test_template"
-    ? undefined
-    : [
-        {
-          type: "body",
-          parameters: [
-            {
-              type: "text",
-              text: code,
-            },
-          ],
-        },
-        {
-          type: "button",
-          index: "0",
-          sub_type: "url",
-          parameters: [
-            {
-              type: "text",
-              text: code,
-            },
-          ],
-        },
-      ];
+  let components: object[] | undefined;
+
+  // WHATSAPP_PARAMETER_NAME: the named variable defined in your Meta template (e.g. "otp_code", "code").
+  // Required for templates created with named params ({{variable_name}} style).
+  // Leave empty/unset only if your template uses old positional params ({{1}}, {{2}}).
+  const paramName = process.env.WHATSAPP_PARAMETER_NAME || "";
+
+  if (templateName === "3p_direct_integration_test_template") {
+    // Meta's built-in test template needs no components
+    components = undefined;
+  } else {
+    // Build the body parameter object — include parameter_name for named-variable templates
+    const bodyParam: Record<string, string> = { type: "text", text: code };
+    if (paramName) bodyParam.parameter_name = paramName;
+
+    const bodyComponents: object[] = [
+      {
+        type: "body",
+        parameters: [bodyParam],
+      },
+    ];
+
+    if (templateHasButton) {
+      const btnParam: Record<string, string> = { type: "text", text: code };
+      if (paramName) btnParam.parameter_name = paramName;
+
+      bodyComponents.push({
+        type: "button",
+        index: "0",
+        sub_type: "url",
+        parameters: [btnParam],
+      });
+    }
+
+    components = bodyComponents;
+  }
 
   const payload = {
     messaging_product: "whatsapp",

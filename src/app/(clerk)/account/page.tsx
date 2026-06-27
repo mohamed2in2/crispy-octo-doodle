@@ -59,26 +59,26 @@ interface Device {
 
 /* ─── Nav sections ───────────────────────────────────────────────────────── */
 const SECTIONS = [
-  { id: "profile",      label: "ملف المستخدم",           icon: "👤" },
-  { id: "courses",      label: "كورساتي",                 icon: "📚" },
-  { id: "stats",        label: "إحصائياتي",               icon: "📊" },
-  { id: "results",      label: "نتائج الاختبارات",        icon: "📝" },
-  { id: "wrong",        label: "امتحان من أخطائي",        icon: "🎯" },
-  { id: "wallet",       label: "رصيدي",                   icon: "💰" },
-  { id: "achievements", label: "الإنجازات",               icon: "🏆" },
-  { id: "iq",           label: "IQ Dashboard",            icon: "🧠" },
-  { id: "security",     label: "الأمان",                  icon: "🔒" },
+  { id: "profile", label: "ملف المستخدم", icon: "👤" },
+  { id: "courses", label: "كورساتي", icon: "📚" },
+  { id: "stats", label: "إحصائياتي", icon: "📊" },
+  { id: "results", label: "نتائج الاختبارات", icon: "📝" },
+  { id: "wrong", label: "امتحان من أخطائي", icon: "🎯" },
+  { id: "wallet", label: "رصيدي", icon: "💰" },
+  { id: "achievements", label: "الإنجازات", icon: "🏆" },
+  { id: "iq", label: "IQ Dashboard", icon: "🧠" },
+  { id: "security", label: "الأمان", icon: "🔒" },
 ];
 
 const ACH_ICON: Record<string, string> = { rocket: "🚀", bolt: "⚡", flame: "🔥", star: "⭐", medal: "🏅", trophy: "🏆" };
 
 /* ─── IQ Dashboard Component ────────────────────────────────────────────── */
 const IQ_LEVEL_STYLE: Record<string, { bg: string; color: string }> = {
-  "مبتدئ":  { bg: "#EEE", color: "#888" },
-  "متوسط":  { bg: "#7F77DD22", color: "#7F77DD" },
-  "متقدم":  { bg: "#EF9F2722", color: "#EF9F27" },
-  "خبير":   { bg: "#D4537E22", color: "#D4537E" },
-  "نخبة":   { bg: "#534AB722", color: "#534AB7" },
+  "مبتدئ": { bg: "#EEE", color: "#888" },
+  "متوسط": { bg: "#7F77DD22", color: "#7F77DD" },
+  "متقدم": { bg: "#EF9F2722", color: "#EF9F27" },
+  "خبير": { bg: "#D4537E22", color: "#D4537E" },
+  "نخبة": { bg: "#534AB722", color: "#534AB7" },
 };
 
 function IQSkillBar({ skillKey, data }: { skillKey: IQSkillName; data: IQData["skills"][IQSkillName] }) {
@@ -136,7 +136,7 @@ function IQDashboard() {
           </div>
           {/* mini progress bar 0–2000 */}
           <div style={{ marginTop: 8, height: 6, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
-            <div style={{ width: `${Math.min(100, (iqData.overallIQ/2000)*100)}%`, height: "100%", background: "linear-gradient(90deg,#534AB7,#7F77DD)", borderRadius: 3 }} />
+            <div style={{ width: `${Math.min(100, (iqData.overallIQ / 2000) * 100)}%`, height: "100%", background: "linear-gradient(90deg,#534AB7,#7F77DD)", borderRadius: 3 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--ink-3)", marginTop: 2 }}>
             <span>0</span><span>2000</span>
@@ -153,15 +153,15 @@ function IQDashboard() {
       {/* Recent activity */}
       <div style={{ padding: "14px 22px" }}>
         <h3 style={{ fontWeight: 700, fontSize: 13, color: "var(--ink-3)", marginBottom: 10, textAlign: "right" }}>آخر الجلسات</h3>
-        {skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a,b)=>b.date-a.date).slice(0,5).length === 0 ? (
+        {skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a, b) => b.date - a.date).slice(0, 5).length === 0 ? (
           <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, padding: "12px 0" }}>لم تلعب بعد — اذهب للبيئات وابدأ!</p>
         ) : (
-          skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a,b)=>b.date-a.date).slice(0,5).map((s,i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i<4?"1px solid var(--border)":"none" }}>
+          skills.flatMap(sk => iqData.skills[sk].sessions.slice(-3).map(s => ({ ...s, skill: sk }))).sort((a, b) => b.date - a.date).slice(0, 5).map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 4 ? "1px solid var(--border)" : "none" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: SKILL_COLORS[s.skill as IQSkillName], flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 12, color: "var(--ink)" }}>{SKILL_LABELS[s.skill as IQSkillName]}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>{s.score.toLocaleString("ar-EG")}</span>
-              <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{new Date(s.date).toLocaleDateString("ar-EG",{month:"short",day:"numeric"})}</span>
+              <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{new Date(s.date).toLocaleDateString("ar-EG", { month: "short", day: "numeric" })}</span>
             </div>
           ))
         )}
@@ -197,7 +197,7 @@ function AnswerModal({ resultId, quizTitle, onClose }: { resultId: string; quizT
     fetch(`/api/student/results/${resultId}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.result) setData(d.result); })
-      .catch(() => {});
+      .catch(() => { });
   }, [resultId]);
 
   return (
@@ -221,9 +221,9 @@ function AnswerModal({ resultId, quizTitle, onClose }: { resultId: string; quizT
                     <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>س{i + 1}.</span> {a.question}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(["A","B","C","D"] as const).map(opt => {
+                    {(["A", "B", "C", "D"] as const).map(opt => {
                       const isSelected = a.selectedAnswer === opt;
-                      const isCorrect  = a.correctAnswer === opt;
+                      const isCorrect = a.correctAnswer === opt;
                       return (
                         <div key={opt} style={{
                           padding: "8px 12px", borderRadius: 8, fontSize: 13,
@@ -253,22 +253,22 @@ function AnswerModal({ resultId, quizTitle, onClose }: { resultId: string; quizT
 
 /* ─── Main component ─────────────────────────────────────────────────────── */
 export default function AccountPage() {
-  const router  = useRouter();
-  const [section, setSection]   = useState("profile");
-  const [user,    setUser]      = useState<User | null>(null);
+  const router = useRouter();
+  const [section, setSection] = useState("profile");
+  const [user, setUser] = useState<User | null>(null);
   const [resolved, setResolved] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [deleting,   setDeleting]   = useState(false);
-  const [error,      setError]      = useState("");
-  const [copiedRef,  setCopiedRef]  = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+  const [copiedRef, setCopiedRef] = useState(false);
 
   // Lazy section data
-  const [stats,   setStats]   = useState<StudentStats | null>(null);
+  const [stats, setStats] = useState<StudentStats | null>(null);
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [results, setResults] = useState<ShapedResult[] | null>(null);
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [wrongQuestions, setWrongQuestions] = useState<{ total: number; bySubject: Record<string, WrongQuestion[]>; questions: WrongQuestion[] } | null>(null);
-  const [balance,  setBalance]  = useState<number | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
   const [balanceTx, setBalanceTx] = useState<BalanceTx[]>([]);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
@@ -281,9 +281,9 @@ export default function AccountPage() {
 
   // Wrong questions exam
   const [wrongFilter, setWrongFilter] = useState("all");
-  const [wrongExam, setWrongExam]     = useState<WrongQuestion[] | null>(null);
+  const [wrongExam, setWrongExam] = useState<WrongQuestion[] | null>(null);
   const [wrongExamAnswers, setWrongExamAnswers] = useState<Record<string, string>>({});
-  const [wrongExamDone, setWrongExamDone]       = useState(false);
+  const [wrongExamDone, setWrongExamDone] = useState(false);
 
   /* ── Auth ── */
   useEffect(() => {
@@ -343,7 +343,7 @@ export default function AccountPage() {
         .then(d => setDevices(d?.devices ?? []))
         .catch(() => setDevices([]));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats, courses, results, devices, wrongQuestions, balance]);
 
   const go = (s: string) => { setSection(s); loadSection(s); setResultPage(1); };
@@ -383,7 +383,7 @@ export default function AccountPage() {
   };
 
   const stageLabel = user ? (EDUCATIONAL_STAGES.find(s => s.value === user.educationalStage)?.label ?? user.educationalStage ?? "—") : "—";
-  const isStudent  = user?.role === "student";
+  const isStudent = user?.role === "student";
   const filteredSections = SECTIONS.filter(s => {
     if (!isStudent) {
       return s.id === "profile" || s.id === "security";
@@ -395,7 +395,7 @@ export default function AccountPage() {
   const exportExcel = () => {
     if (!results) return;
     const rows = [
-      ["التسلسل","اسم الامتحان","الكورس","عدد الأسئلة","النتيجة %","الدرجة","محلولة","صحيحة","وقت البداية","وقت النهاية"],
+      ["التسلسل", "اسم الامتحان", "الكورس", "عدد الأسئلة", "النتيجة %", "الدرجة", "محلولة", "صحيحة", "وقت البداية", "وقت النهاية"],
       ...results.map(r => [
         r.serial, r.quizTitle, r.courseTitle, r.totalQ, r.pct + "%",
         `${r.score} من ${r.totalQ}`, r.attempted, r.correct,
@@ -405,8 +405,8 @@ export default function AccountPage() {
     ];
     const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a"); a.href = url; a.download = "نتائج_الاختبارات.csv"; a.click();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "نتائج_الاختبارات.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -435,7 +435,7 @@ export default function AccountPage() {
 
   /* ── Pagination helpers ── */
   const pagedResults = results ? results.slice((resultPage - 1) * PAGE_SIZE, resultPage * PAGE_SIZE) : [];
-  const totalPages   = results ? Math.ceil(results.length / PAGE_SIZE) : 0;
+  const totalPages = results ? Math.ceil(results.length / PAGE_SIZE) : 0;
 
   /* ── Wrong questions filtered list ── */
   const filteredWrong = wrongQuestions
@@ -459,7 +459,7 @@ export default function AccountPage() {
           <aside className="hidden md:block rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
             <div className="text-center p-5" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(180deg,var(--brand-soft),transparent)" }}>
               <span className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3" style={{ background: "var(--brand)", border: "4px solid var(--surface)", boxShadow: "var(--shadow)" }}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>
               </span>
               <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, color: "var(--ink)", margin: "0 0 4px" }}>{user.name}</h2>
               <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700 }}>
@@ -475,10 +475,12 @@ export default function AccountPage() {
             <nav style={{ padding: "8px 8px" }}>
               {filteredSections.map(s => (
                 <button key={s.id} onClick={() => go(s.id)} className="w-full flex items-center gap-3 cursor-pointer border-none transition-colors rounded-[10px]"
-                  style={{ padding: "10px 12px", marginBottom: 2, textAlign: "right", fontFamily: "var(--font-body)",
+                  style={{
+                    padding: "10px 12px", marginBottom: 2, textAlign: "right", fontFamily: "var(--font-body)",
                     background: section === s.id ? "var(--brand-soft)" : "transparent",
                     color: section === s.id ? "var(--brand)" : "var(--ink-2)",
-                    fontWeight: section === s.id ? 700 : 600, fontSize: 13.5 }}>
+                    fontWeight: section === s.id ? 700 : 600, fontSize: 13.5
+                  }}>
                   <span className="flex-1 text-right">{s.label}</span>
                   <span>{s.icon}</span>
                 </button>
@@ -487,7 +489,7 @@ export default function AccountPage() {
             <div style={{ padding: "8px 8px", borderTop: "1px solid var(--border)" }}>
               <button onClick={handleSignOut} disabled={signingOut} className="w-full flex items-center justify-between gap-3 cursor-pointer border-none rounded-[10px] transition-colors"
                 style={{ padding: "10px 12px", background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 700, fontSize: 13.5, fontFamily: "var(--font-body)" }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                 {signingOut ? "جارٍ الخروج..." : "تسجيل الخروج"}
               </button>
             </div>
@@ -537,7 +539,7 @@ export default function AccountPage() {
 
             {error && (
               <div className="mb-4 flex items-center gap-2" style={{ padding: "12px 16px", borderRadius: 12, border: "1px solid var(--danger)", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 14 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>{error}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" /></svg>{error}
               </div>
             )}
 
@@ -552,13 +554,13 @@ export default function AccountPage() {
                     <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 20, color: "var(--ink)", margin: "0 0 16px" }}>معلومات الحساب</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px]">
                       {[
-                        { label: "الاسم الكامل",    value: user.name || "—",       icon: "👤" },
-                        { label: "البريد الإلكتروني",value: user.email,             icon: "📧", ltr: true },
-                        { label: "رقم الهاتف",      value: user.phone || "—",      icon: "📱", ltr: true },
-                        { label: "رقم ولي الأمر",   value: user.parentPhone || "—",icon: "👨‍👧", ltr: true },
-                        { label: "العمر",            value: user.age ? `${user.age} سنة` : "—", icon: "🎂" },
-                        { label: "المرحلة",         value: stageLabel || "—",       icon: "🎓" },
-                        { label: "تاريخ الانضمام",  value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : "—", icon: "📅", full: true },
+                        { label: "الاسم الكامل", value: user.name || "—", icon: "👤" },
+                        { label: "البريد الإلكتروني", value: user.email, icon: "📧", ltr: true },
+                        { label: "رقم الهاتف", value: user.phone || "—", icon: "📱", ltr: true },
+                        { label: "رقم ولي الأمر", value: user.parentPhone || "—", icon: "👨‍👧", ltr: true },
+                        { label: "العمر", value: user.age ? `${user.age} سنة` : "—", icon: "🎂" },
+                        { label: "المرحلة", value: stageLabel || "—", icon: "🎓" },
+                        { label: "تاريخ الانضمام", value: user.createdAt ? new Date(user.createdAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : "—", icon: "📅", full: true },
                       ].map(item => (
                         <div key={item.label} className="flex items-center gap-3 justify-between" style={{ padding: "12px 14px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border)", gridColumn: item.full ? "1 / -1" : undefined }}>
                           <div style={{ textAlign: "right", minWidth: 0 }}>
@@ -579,7 +581,7 @@ export default function AccountPage() {
                     </div>
                     <p style={{ fontSize: 12.5, color: "var(--ink-2)", margin: "0 0 12px", textAlign: "right" }}>شارك كودك — كل صديق ينضم تحصل كلاكما على ٥٠ نقطة!</p>
                     <div className="flex items-center gap-3">
-                      <button onClick={async () => { const url = `${window.location.origin}/signup?ref=${user.referralCode}`; await navigator.clipboard.writeText(url).catch(() => {}); setCopiedRef(true); setTimeout(() => setCopiedRef(false), 2000); }}
+                      <button onClick={async () => { const url = `${window.location.origin}/signup?ref=${user.referralCode}`; await navigator.clipboard.writeText(url).catch(() => { }); setCopiedRef(true); setTimeout(() => setCopiedRef(false), 2000); }}
                         className="flex items-center gap-1.5 cursor-pointer border-none rounded-[9px]"
                         style={{ padding: "9px 14px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--ink-2)", fontSize: 12.5, fontWeight: 600 }}>
                         {copiedRef ? "✓ تم النسخ" : "نسخ الرابط"}
@@ -610,29 +612,29 @@ export default function AccountPage() {
                   <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>📚 كورساتي</h2>
                 </div>
                 {!courses ? <div className="flex items-center justify-center py-10 gap-2" style={{ color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /><span>جارٍ التحميل...</span></div>
-                : courses.length === 0 ? <div className="py-10 text-center"><div style={{ fontSize: 36, marginBottom: 8 }}>📭</div><p style={{ color: "var(--ink-3)" }}>لم تسجل في أي كورس.</p><Link href="/courses" className="inline-block mt-3 no-underline rounded-[10px] text-white" style={{ padding: "9px 22px", background: "var(--brand)", fontWeight: 700 }}>تصفح الكورسات</Link></div>
-                : (
-                  <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                    {courses.map(c => {
-                      const total   = c.totalVideos || c.folders?.reduce((s,f) => s + f.videos.length, 0) || 1;
-                      const watched = c.watchedVideos || c.folders?.reduce((s,f) => s + f.videos.filter(v => v.watched).length, 0) || 0;
-                      const pct     = Math.round((watched / Math.max(total, 1)) * 100);
-                      return (
-                        <div key={c.id} className="flex items-center gap-3" style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                          <Link href={`/courses/${c.id}/learn`} className="shrink-0 no-underline rounded-[9px] text-white hover:opacity-80" style={{ padding: "8px 14px", background: "var(--brand)", fontSize: 13, fontWeight: 700 }}>▶ تعلم</Link>
-                          <div className="flex-1 min-w-0">
-                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 3 }}>{c.title}</div>
-                            <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>{c.subject} · {c.teacher.name}</div>
-                            <div style={{ height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10b981" : "var(--brand)", borderRadius: 3 }} />
+                  : courses.length === 0 ? <div className="py-10 text-center"><div style={{ fontSize: 36, marginBottom: 8 }}>📭</div><p style={{ color: "var(--ink-3)" }}>لم تسجل في أي كورس.</p><Link href="/courses" className="inline-block mt-3 no-underline rounded-[10px] text-white" style={{ padding: "9px 22px", background: "var(--brand)", fontWeight: 700 }}>تصفح الكورسات</Link></div>
+                    : (
+                      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {courses.map(c => {
+                          const total = c.totalVideos || c.folders?.reduce((s, f) => s + f.videos.length, 0) || 1;
+                          const watched = c.watchedVideos || c.folders?.reduce((s, f) => s + f.videos.filter(v => v.watched).length, 0) || 0;
+                          const pct = Math.round((watched / Math.max(total, 1)) * 100);
+                          return (
+                            <div key={c.id} className="flex items-center gap-3" style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                              <Link href={`/courses/${c.id}/learn`} className="shrink-0 no-underline rounded-[9px] text-white hover:opacity-80" style={{ padding: "8px 14px", background: "var(--brand)", fontSize: 13, fontWeight: 700 }}>▶ تعلم</Link>
+                              <div className="flex-1 min-w-0">
+                                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 3 }}>{c.title}</div>
+                                <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>{c.subject} · {c.teacher.name}</div>
+                                <div style={{ height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${pct}%`, background: pct === 100 ? "#10b981" : "var(--brand)", borderRadius: 3 }} />
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 3 }}>{watched} / {total} فيديو · {pct}%</div>
+                              </div>
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 3 }}>{watched} / {total} فيديو · {pct}%</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                          );
+                        })}
+                      </div>
+                    )}
               </div>
             )}
 
@@ -640,44 +642,44 @@ export default function AccountPage() {
             {section === "stats" && (
               <div className="space-y-4">
                 {!stats ? <div className="flex items-center justify-center py-16 gap-2 rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /></div>
-                : (
-                  <>
-                    <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
-                      <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, color: "var(--ink)", margin: "0 0 18px", textAlign: "center" }}>⭐ إحصائيات كورساتك ⭐</h3>
-                      <div className="flex justify-around flex-wrap gap-4">
-                        <Ring pct={stats.hours > 0 ? Math.min((stats.hours / Math.max(stats.hours + 5, 10)) * 100, 100) : 0} color="var(--brand)" label="ساعات التعلم" sublabel={`${stats.hours} ساعة`} />
-                        <Ring pct={stats.quizzesPassed > 0 ? Math.round((stats.quizzesPassed / Math.max(stats.quizzesPassed + 5, 10)) * 100) : 0} color="var(--gold-2)" label="الاختبارات" sublabel={`${stats.quizzesPassed} ناجح`} />
-                        <Ring pct={stats.watchedVideos > 0 ? Math.min((stats.watchedVideos / Math.max(stats.watchedVideos + 10, 20)) * 100, 100) : 0} color="#8b5cf6" label="الفيديوهات" sublabel={`${stats.watchedVideos} فيديو`} />
+                  : (
+                    <>
+                      <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
+                        <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, color: "var(--ink)", margin: "0 0 18px", textAlign: "center" }}>⭐ إحصائيات كورساتك ⭐</h3>
+                        <div className="flex justify-around flex-wrap gap-4">
+                          <Ring pct={stats.hours > 0 ? Math.min((stats.hours / Math.max(stats.hours + 5, 10)) * 100, 100) : 0} color="var(--brand)" label="ساعات التعلم" sublabel={`${stats.hours} ساعة`} />
+                          <Ring pct={stats.quizzesPassed > 0 ? Math.round((stats.quizzesPassed / Math.max(stats.quizzesPassed + 5, 10)) * 100) : 0} color="var(--gold-2)" label="الاختبارات" sublabel={`${stats.quizzesPassed} ناجح`} />
+                          <Ring pct={stats.watchedVideos > 0 ? Math.min((stats.watchedVideos / Math.max(stats.watchedVideos + 10, 20)) * 100, 100) : 0} color="#8b5cf6" label="الفيديوهات" sublabel={`${stats.watchedVideos} فيديو`} />
+                        </div>
                       </div>
-                    </div>
-                    <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
-                      <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, color: "var(--ink)", margin: "0 0 14px", textAlign: "center" }}>⭐ إحصائياتك على المنصة ⭐</h3>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {[
-                          { label: "إجمالي ساعات التعلم",    value: `${stats.hours} ساعة`,      color: "var(--brand)" },
-                          { label: "الفيديوهات المشاهدة",    value: `${stats.watchedVideos}`,    color: "var(--brand)" },
-                          { label: "الاختبارات الناجحة",     value: `${stats.quizzesPassed}`,    color: "var(--gold-2)" },
-                          { label: "النقاط المكتسبة",        value: `${stats.points}`,           color: "var(--gold-2)" },
-                          { label: "سلسلة المواظبة",         value: `${stats.streak} يوم 🔥`,   color: "#f97316" },
-                          { label: "الكورسات المسجّل بها",   value: `${stats.coursesCount}`,     color: "#8b5cf6" },
-                        ].map(item => (
-                          <div key={item.label} className="flex items-center justify-between" style={{ padding: "12px 16px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                            <span style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 17, color: item.color }}>{item.value}</span>
-                            <span style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{item.label}</span>
-                          </div>
-                        ))}
+                      <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
+                        <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, color: "var(--ink)", margin: "0 0 14px", textAlign: "center" }}>⭐ إحصائياتك على المنصة ⭐</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {[
+                            { label: "إجمالي ساعات التعلم", value: `${stats.hours} ساعة`, color: "var(--brand)" },
+                            { label: "الفيديوهات المشاهدة", value: `${stats.watchedVideos}`, color: "var(--brand)" },
+                            { label: "الاختبارات الناجحة", value: `${stats.quizzesPassed}`, color: "var(--gold-2)" },
+                            { label: "النقاط المكتسبة", value: `${stats.points}`, color: "var(--gold-2)" },
+                            { label: "سلسلة المواظبة", value: `${stats.streak} يوم 🔥`, color: "#f97316" },
+                            { label: "الكورسات المسجّل بها", value: `${stats.coursesCount}`, color: "#8b5cf6" },
+                          ].map(item => (
+                            <div key={item.label} className="flex items-center justify-between" style={{ padding: "12px 16px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                              <span style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 17, color: item.color }}>{item.value}</span>
+                              <span style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{item.label}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
-                      <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, color: "var(--ink)", margin: "0 0 12px" }}>نشاطك — آخر ٢٨ يوماً</h3>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
-                        {stats.activity.map((v, i) => (
-                          <div key={i} style={{ aspectRatio: "1", borderRadius: 5, background: v === 0 ? "var(--border)" : v >= 4 ? "var(--brand)" : v >= 2 ? "var(--brand-soft)" : "rgba(14,110,98,.2)" }} title={`${v} جلسة`} />
-                        ))}
+                      <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "22px" }}>
+                        <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, color: "var(--ink)", margin: "0 0 12px" }}>نشاطك — آخر ٢٨ يوماً</h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
+                          {stats.activity.map((v, i) => (
+                            <div key={i} style={{ aspectRatio: "1", borderRadius: 5, background: v === 0 ? "var(--border)" : v >= 4 ? "var(--brand)" : v >= 2 ? "var(--brand-soft)" : "rgba(14,110,98,.2)" }} title={`${v} جلسة`} />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
               </div>
             )}
 
@@ -688,7 +690,7 @@ export default function AccountPage() {
                   <button onClick={exportExcel} disabled={!results || results.length === 0}
                     className="flex items-center gap-1.5 cursor-pointer border-none rounded-[10px] text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
                     style={{ padding: "8px 16px", background: "#10b981", fontWeight: 700, fontSize: 13 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
                     تحميل ملف إكسيل
                   </button>
                   <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>📝 نتائج الاختبارات</h2>
@@ -742,7 +744,7 @@ export default function AccountPage() {
                       <table className="w-full text-xs sm:text-sm" style={{ borderCollapse: "collapse", minWidth: 700 }}>
                         <thead>
                           <tr style={{ background: "var(--bg)", borderBottom: "2px solid var(--border)" }}>
-                            {["#","اسم الامتحان","عدد الأسئلة","النتيجة","الدرجة","محلولة","صحيحة","الإجابات","وقت البداية","وقت النهاية"].map(h => (
+                            {["#", "اسم الامتحان", "عدد الأسئلة", "النتيجة", "الدرجة", "محلولة", "صحيحة", "الإجابات", "وقت البداية", "وقت النهاية"].map(h => (
                               <th key={h} className="text-right" style={{ padding: "11px 14px", fontSize: 11.5, fontWeight: 700, color: "var(--ink-3)", whiteSpace: "nowrap" }}>{h}</th>
                             ))}
                           </tr>
@@ -759,10 +761,12 @@ export default function AccountPage() {
                               </td>
                               <td style={{ padding: "12px 14px", color: "var(--ink-2)", fontSize: 13, textAlign: "center" }}>{r.totalQ}</td>
                               <td style={{ padding: "12px 14px", textAlign: "center" }}>
-                                <span style={{ padding: "4px 10px", borderRadius: 8, fontSize: 13, fontWeight: 800,
+                                <span style={{
+                                  padding: "4px 10px", borderRadius: 8, fontSize: 13, fontWeight: 800,
                                   background: r.pct >= 80 ? "var(--brand-soft)" : r.pct >= 50 ? "var(--gold-soft)" : "var(--danger-soft)",
                                   color: r.pct >= 80 ? "var(--brand)" : r.pct >= 50 ? "var(--gold-2)" : "var(--danger)",
-                                  fontFamily: "var(--font-head)" }}>
+                                  fontFamily: "var(--font-head)"
+                                }}>
                                   {r.pct}%
                                 </span>
                               </td>
@@ -834,8 +838,8 @@ export default function AccountPage() {
                       <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 24, color: "var(--ink)", margin: "0 0 8px" }}>نتيجة الامتحان الخاص</h2>
                       {(() => {
                         const correct = (wrongExam ?? []).filter(q => wrongExamAnswers[q.questionId] === q.correctAnswer).length;
-                        const total   = (wrongExam ?? []).length;
-                        const pct     = Math.round((correct / Math.max(total, 1)) * 100);
+                        const total = (wrongExam ?? []).length;
+                        const pct = Math.round((correct / Math.max(total, 1)) * 100);
                         return <>
                           <div style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 40, color: pct >= 70 ? "var(--brand)" : "var(--danger)" }}>{pct}%</div>
                           <p style={{ fontSize: 15, color: "var(--ink-2)" }}>{correct} إجابة صحيحة من {total}</p>
@@ -861,7 +865,7 @@ export default function AccountPage() {
                             <span style={{ color: "var(--ink-3)", marginLeft: 6 }}>س{i + 1}.</span> {q.question}
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {(["A","B","C","D"] as const).map(opt => {
+                            {(["A", "B", "C", "D"] as const).map(opt => {
                               const chosen = wrongExamAnswers[q.questionId] === opt;
                               return (
                                 <button key={opt} onClick={() => setWrongExamAnswers(prev => ({ ...prev, [q.questionId]: opt }))}
@@ -991,24 +995,24 @@ export default function AccountPage() {
             {/* ════ ACHIEVEMENTS ════ */}
             {section === "achievements" && (
               !stats ? <div className="flex items-center justify-center py-12 gap-2 rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /></div>
-              : (
-                <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", padding: "22px" }}>
-                  <div className="flex items-center justify-between mb-5">
-                    <span style={{ padding: "5px 12px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700, fontSize: 13 }}>{stats.achievementsUnlocked} / {stats.achievements.length} مفتوح</span>
-                    <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>🏆 الإنجازات</h2>
+                : (
+                  <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", padding: "22px" }}>
+                    <div className="flex items-center justify-between mb-5">
+                      <span style={{ padding: "5px 12px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700, fontSize: 13 }}>{stats.achievementsUnlocked} / {stats.achievements.length} مفتوح</span>
+                      <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>🏆 الإنجازات</h2>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+                      {stats.achievements.map(a => (
+                        <div key={a.id} className="text-center rounded-[14px]" style={{ padding: "18px 10px", border: `1px solid ${a.unlocked ? "var(--brand)" : "var(--border)"}`, background: a.unlocked ? "var(--brand-soft)" : "var(--surface-2)", opacity: a.unlocked ? 1 : 0.5 }}>
+                          <div style={{ fontSize: 32, marginBottom: 6 }}>{ACH_ICON[a.icon] ?? "🏅"}</div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ink)", marginBottom: 3 }}>{a.title}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{a.description}</div>
+                          {a.unlocked && <div style={{ marginTop: 6, fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>✓ مفتوح</div>}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
-                    {stats.achievements.map(a => (
-                      <div key={a.id} className="text-center rounded-[14px]" style={{ padding: "18px 10px", border: `1px solid ${a.unlocked ? "var(--brand)" : "var(--border)"}`, background: a.unlocked ? "var(--brand-soft)" : "var(--surface-2)", opacity: a.unlocked ? 1 : 0.5 }}>
-                        <div style={{ fontSize: 32, marginBottom: 6 }}>{ACH_ICON[a.icon] ?? "🏅"}</div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ink)", marginBottom: 3 }}>{a.title}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{a.description}</div>
-                        {a.unlocked && <div style={{ marginTop: 6, fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>✓ مفتوح</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
+                )
             )}
 
             {/* ════ IQ DASHBOARD ════ */}
@@ -1021,25 +1025,25 @@ export default function AccountPage() {
                   <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>🔒 الأمان والأجهزة</h2>
                 </div>
                 {!devices ? <div className="flex items-center justify-center py-12 gap-2" style={{ color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /></div>
-                : (
-                  <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                    {devices.length === 0 && <div className="py-8 text-center" style={{ color: "var(--ink-3)" }}>لا توجد أجهزة مسجّلة.</div>}
-                    {devices.map(d => {
-                      const ua = d.userAgent ?? ""; const icon = /mobile|android|iphone/i.test(ua) ? "📱" : "🖥️";
-                      const browser = ua.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/)?.[0]?.split("/")[0] ?? "متصفح";
-                      return (
-                        <div key={d.id} className="flex items-center gap-3" style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                          <span style={{ fontSize: 26 }}>{icon}</span>
-                          <div className="flex-1">
-                            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>{d.label || browser}</div>
-                            {d.ipAddress && <div style={{ fontSize: 11.5, color: "var(--ink-3)", direction: "ltr", textAlign: "right" }}>IP: {d.ipAddress}</div>}
-                            <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>آخر نشاط: {new Date(d.lastSeenAt).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })}</div>
+                  : (
+                    <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                      {devices.length === 0 && <div className="py-8 text-center" style={{ color: "var(--ink-3)" }}>لا توجد أجهزة مسجّلة.</div>}
+                      {devices.map(d => {
+                        const ua = d.userAgent ?? ""; const icon = /mobile|android|iphone/i.test(ua) ? "📱" : "🖥️";
+                        const browser = ua.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/)?.[0]?.split("/")[0] ?? "متصفح";
+                        return (
+                          <div key={d.id} className="flex items-center gap-3" style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                            <span style={{ fontSize: 26 }}>{icon}</span>
+                            <div className="flex-1">
+                              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>{d.label || browser}</div>
+                              {d.ipAddress && <div style={{ fontSize: 11.5, color: "var(--ink-3)", direction: "ltr", textAlign: "right" }}>IP: {d.ipAddress}</div>}
+                              <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>آخر نشاط: {new Date(d.lastSeenAt).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })}</div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
               </div>
             )}
           </div>
