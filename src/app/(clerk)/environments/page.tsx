@@ -9,7 +9,8 @@ import { ProfileGuard } from "@/components/auth/ProfileGuard";
 import { fetchMeWithRetry, type MeUser } from "@/lib/fetch-me";
 import { getIQData, getIQLevel, LEVEL_COLORS, type IQData } from "@/lib/iq-system";
 
-const SUBJECTS = [
+// ─── Playgrounds/Sandboxes ──────────────────────────────────────────────────
+const PLAYGROUNDS = [
   {
     id: "programming/python",
     name: "بيئة Python",
@@ -48,6 +49,82 @@ const SUBJECTS = [
   },
 ];
 
+// ─── Cognitive IQ Games ─────────────────────────────────────────────────────
+const GAMES = [
+  {
+    id: "math",
+    name: "الرياضيات",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>,
+    color: "from-blue-500 to-cyan-500",
+    shadow: "shadow-cyan-500/20",
+    description: "ألعاب الحساب السريع وتوصيل الأنماط الرياضية المعقدة",
+    available: true,
+  },
+  {
+    id: "physics",
+    name: "الفيزياء",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+    color: "from-purple-500 to-pink-500",
+    shadow: "shadow-purple-500/20",
+    description: "ألعاب توصيل الدوائر الكهربية وقياس الزوايا الفيزيائية",
+    available: true,
+  },
+  {
+    id: "chemistry",
+    name: "الكيمياء",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>,
+    color: "from-emerald-400 to-teal-500",
+    shadow: "shadow-emerald-500/20",
+    description: "تحديات تركيب العناصر الكيميائية وحل المعادلات المعملية",
+    available: true,
+  },
+  {
+    id: "biology",
+    name: "الأحياء",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    color: "from-teal-400 to-emerald-600",
+    shadow: "shadow-teal-500/20",
+    description: "ألعاب تصنيف الكائنات الحية وتحديات الخلايا والوراثة",
+    available: true,
+  },
+  {
+    id: "programming",
+    name: "البرمجة",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
+    color: "from-orange-400 to-red-500",
+    shadow: "shadow-orange-500/20",
+    description: "حلبة التحدي البرمجي لمهارات المنطق وحل المشكلات",
+    available: true,
+  },
+  {
+    id: "languages",
+    name: "اللغات",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>,
+    color: "from-rose-400 to-pink-600",
+    shadow: "shadow-rose-500/20",
+    description: "تحديات مرادفات الكلمات والقواعد اللغوية التفاعلية",
+    available: true,
+  },
+  {
+    id: "history",
+    name: "التاريخ",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    color: "from-amber-400 to-orange-500",
+    shadow: "shadow-amber-500/20",
+    description: "بناء الخطوط الزمنية وتوصيل الأحداث التاريخية الهامة",
+    available: true,
+  },
+  {
+    id: "geography",
+    name: "الجغرافيا",
+    icon: <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    color: "from-indigo-400 to-blue-600",
+    shadow: "shadow-indigo-500/20",
+    description: "مطابقة الخرائط وأعلام الدول والمعالم الجغرافية الكبرى",
+    available: true,
+  },
+];
+
 export default function EnvironmentsPage() {
   const [user, setUser] = useState<MeUser | null>(null);
   const [iqData, setIqData] = useState<IQData | null>(null);
@@ -59,22 +136,22 @@ export default function EnvironmentsPage() {
 
   return (
     <ProfileGuard>
-      <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300">
+      <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300 font-sans">
         <Navbar user={user ? { name: user.name, role: user.role } : null} />
         <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
           {/* Header */}
           <motion.div
-            className="mb-16 text-center"
+            className="mb-12 text-center"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold mb-6 border border-indigo-100 dark:border-indigo-500/20">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-              بيئات التعلم
+              بيئات التعلم والذكاء
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">بيئات الكورسات</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">اختر المادة للدخول إلى بيئة كورسات تفاعلية متخصصة مصممة لاحتياجاتك</p>
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">بيئات التعلم والتحدي</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">ادخل إلى المحررات البرمجية التطويرية أو تسلَّى بألعاب الذكاء المعرفي التفاعلية</p>
           </motion.div>
 
           {/* IQ Brain Card — full width hero */}
@@ -84,7 +161,7 @@ export default function EnvironmentsPage() {
             const pct = Math.min(100, ((iqData.overallIQ - 200) / 1800) * 100);
             return (
               <motion.div
-                className="mb-8"
+                className="mb-12"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
@@ -162,36 +239,51 @@ export default function EnvironmentsPage() {
             );
           })()}
 
-          {/* Subject Cards Grid */}
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {SUBJECTS.map((subject, index) => (
-              <motion.div
-                key={subject.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-              >
-                {subject.available ? (
-                  <Link
-                    href={`/environments/${subject.id}`}
-                    className="block h-full group"
-                  >
+          {/* ════════ SECTION 1: DEVELOPER PLAYGROUNDS ════════ */}
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-3">
+              <span className="text-2xl">💻</span>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white">بيئات التطوير والمحررات البرمجية</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {PLAYGROUNDS.map((subject, index) => (
+                <motion.div
+                  key={subject.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={{ y: -5 }}
+                >
+                  <Link href={`/environments/${subject.id}`} className="block h-full group">
                     <SubjectCard subject={subject} />
                   </Link>
-                ) : (
-                  <div className="h-full group cursor-not-allowed">
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* ════════ SECTION 2: COGNITIVE IQ GAMES ════════ */}
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-3">
+              <span className="text-2xl">🎮</span>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white">ألعاب التحدي والذكاء المعرفي (IQ)</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {GAMES.map((subject, index) => (
+                <motion.div
+                  key={subject.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={{ y: -5 }}
+                >
+                  <Link href={`/environments/${subject.id}`} className="block h-full group">
                     <SubjectCard subject={subject} />
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </motion.div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -199,52 +291,40 @@ export default function EnvironmentsPage() {
   );
 }
 
-function SubjectCard({ subject }: { subject: typeof SUBJECTS[0] }) {
+function SubjectCard({ subject }: { subject: any }) {
   return (
     <div
-      className={`relative h-[280px] bg-white dark:bg-[#151B2B] rounded-[2rem] border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 ${
-        subject.available
-          ? "hover:border-indigo-500/30 dark:hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10"
-          : "opacity-80 grayscale-[30%]"
-      }`}
+      className="relative p-6 bg-white dark:bg-[#151B2B] rounded-[2rem] border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:border-indigo-500/30 dark:hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 text-right group flex flex-col justify-between"
+      style={{ minHeight: 270 }}
     >
       {/* Top Gradient Glow */}
-      <div className={`absolute top-0 inset-x-0 h-32 bg-gradient-to-b ${subject.color} opacity-10 dark:opacity-5`}></div>
-      <div className={`absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br ${subject.color} rounded-full blur-[50px] opacity-20 group-hover:opacity-40 transition-opacity`}></div>
+      <div className={`absolute top-0 inset-x-0 h-24 bg-gradient-to-b ${subject.color} opacity-10 dark:opacity-5`} />
+      <div className={`absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br ${subject.color} rounded-full opacity-20 group-hover:opacity-40 transition-opacity`} style={{ filter: "blur(50px)" }} />
 
-      {/* Content */}
-      <div className="relative h-full flex flex-col justify-between p-8">
-        
-        {/* Top Section */}
-        <div className="flex justify-between items-start">
-          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-lg ${subject.shadow} group-hover:scale-110 transition-transform duration-300`}>
-            {subject.icon}
-          </div>
-          
-          {/* Status Pill */}
-          {subject.available ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-500/20">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              متاح الآن
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold rounded-full border border-gray-100 dark:border-gray-700">
-              قريباً
-            </div>
-          )}
+      {/* Top row */}
+      <div className="relative z-10 flex justify-between items-start mb-4">
+        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-lg ${subject.shadow} group-hover:scale-110 transition-transform duration-300`}>
+          {subject.icon}
         </div>
-
-        {/* Bottom Section */}
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-cyan-400 transition-all">
-            {subject.name}
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">
-            {subject.description}
-          </p>
+        
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-500/20">
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          متاح الآن
         </div>
       </div>
 
+      {/* Bottom row */}
+      <div className="relative z-10 mt-auto flex flex-col gap-1.5">
+        <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-cyan-400 transition-all">
+          {subject.name}
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
+          {subject.description}
+        </p>
+      </div>
+      
+      {/* Bottom accent border line */}
+      <div className={`absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r ${subject.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300`} />
     </div>
   );
 }

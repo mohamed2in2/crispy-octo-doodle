@@ -219,6 +219,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { startedAt: "desc" },
   });
 
+  if (activeSession) {
+    const activeUsedWatchCount = await prisma.videoWatchSession.count({
+      where: { studentId: session.id, videoId, usedWatchSlot: true },
+    });
+
+    const embedResult = await resolveEmbedUrl(video);
+
     const profile = await prisma.teacherProfile.findUnique({
       where: { teacherId: course.teacherId },
       select: { slug: true },
