@@ -25,6 +25,8 @@ interface WatchSessionData {
   remainingWatches: number;
   totalWatches: number;
   usedWatches: number;
+  teacherSlug?: string;
+  studentPlan?: string;
 }
 
 function formatCountdown(expiresAt: string) {
@@ -150,6 +152,8 @@ export default function VideoWatchPage() {
           remainingWatches: verifyData.remainingWatches,
           totalWatches: verifyData.totalWatches,
           usedWatches: verifyData.usedWatches,
+          teacherSlug: verifyData.teacherSlug,
+          studentPlan: verifyData.studentPlan,
         });
 
         // Get secure embed URL (read-only, doesn't consume a watch)
@@ -239,6 +243,8 @@ export default function VideoWatchPage() {
         remainingWatches: watchData.remainingWatches,
         totalWatches: watchData.totalWatches,
         usedWatches: watchData.usedWatches,
+        teacherSlug: watchData.teacherSlug,
+        studentPlan: watchData.studentPlan,
       });
 
       setIframeSrc(watchData.embedUrl || "");
@@ -509,27 +515,49 @@ export default function VideoWatchPage() {
             )}
 
             {/* Bottom bar */}
-            <div className="bg-slate-950/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex items-center justify-between gap-4">
+            <div className="bg-slate-950/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="text-white font-bold tracking-wide">{session.video.title}</p>
                 <p className="text-sky-400/80 text-xs mt-1 font-medium">
                   {session.video.courseTitle} • جلستك صالحة لمدة 4 ساعات
                 </p>
               </div>
-              {/* Provider badge */}
-              <div className={`shrink-0 flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border ${
-                session.video.videoProvider === "bunny"
-                  ? "border-orange-500/20 bg-orange-500/10 text-orange-400"
-                  : session.video.videoProvider === "youtube"
-                  ? "border-red-500/20 bg-red-500/10 text-red-400"
-                  : "border-blue-500/20 bg-blue-500/10 text-blue-400"
-              }`}>
-                <span>
-                  {session.video.videoProvider === "bunny" ? "🐰" : session.video.videoProvider === "youtube" ? "▶️" : "🔐"}
-                </span>
-                <span>
-                  {session.video.videoProvider === "bunny" ? "Bunny" : session.video.videoProvider === "youtube" ? "YouTube" : "VdoCipher"}
-                </span>
+              <div className="flex items-center gap-3">
+                {session.teacherSlug && (
+                  <Link
+                    href={
+                      session.studentPlan === "lesson"
+                        ? `/homeworks/teacher/${session.teacherSlug}?type=all&course=all&search=${encodeURIComponent(session.video.title)}`
+                        : `/homeworks/teacher/${session.teacherSlug}`
+                    }
+                    target="_blank"
+                    className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg hover:shadow-sky-500/20 active:scale-95 flex items-center gap-1.5 shrink-0"
+                  >
+                    <span>📝</span>
+                    <span>
+                      {session.studentPlan === "lesson"
+                        ? "واجب الدرس"
+                        : session.studentPlan === "folder"
+                        ? "واجبات المجلد"
+                        : "واجبات الكورس"}
+                    </span>
+                  </Link>
+                )}
+                {/* Provider badge */}
+                <div className={`shrink-0 flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border ${
+                  session.video.videoProvider === "bunny"
+                    ? "border-orange-500/20 bg-orange-500/10 text-orange-400"
+                    : session.video.videoProvider === "youtube"
+                    ? "border-red-500/20 bg-red-500/10 text-red-400"
+                    : "border-blue-500/20 bg-blue-500/10 text-blue-400"
+                }`}>
+                  <span>
+                    {session.video.videoProvider === "bunny" ? "🐰" : session.video.videoProvider === "youtube" ? "▶️" : "🔐"}
+                  </span>
+                  <span>
+                    {session.video.videoProvider === "bunny" ? "Bunny" : session.video.videoProvider === "youtube" ? "YouTube" : "VdoCipher"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

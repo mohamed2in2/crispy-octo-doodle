@@ -56,6 +56,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const course = video.folder.course;
   const total = video.maxWatchesPerUser;
 
+  const profile = await prisma.teacherProfile.findUnique({
+    where: { teacherId: course.teacherId },
+    select: { slug: true },
+  });
+  const teacherSlug = profile?.slug ?? "";
+
+  let studentPlan = "course";
+  const hasVideoAccess = await prisma.accessCode.findFirst({
+    where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+  }) || await prisma.videoPurchase.findUnique({
+    where: { studentId_videoId: { studentId: session.id, videoId } },
+  });
+
+  if (hasVideoAccess) {
+    studentPlan = "lesson";
+  } else {
+    const folderId = video.folderId;
+    const hasFolderAccess = await prisma.accessCode.findFirst({
+      where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+    }) || await prisma.folderPurchase.findUnique({
+      where: { studentId_folderId: { studentId: session.id, folderId } },
+    });
+
+    if (hasFolderAccess) {
+      studentPlan = "folder";
+    }
+  }
+
   return NextResponse.json({
     videoId,
     sessionToken,
@@ -66,6 +94,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     remainingWatches: Math.max(0, total - usedWatchCount),
     totalWatches: total,
     usedWatches: usedWatchCount,
+    teacherSlug,
+    studentPlan,
     video: {
       id: video.id,
       title: video.title,
@@ -189,12 +219,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { startedAt: "desc" },
   });
 
-  if (activeSession) {
-    const activeUsedWatchCount = await prisma.videoWatchSession.count({
-      where: { studentId: session.id, videoId, usedWatchSlot: true },
+    const profile = await prisma.teacherProfile.findUnique({
+      where: { teacherId: course.teacherId },
+      select: { slug: true },
+    });
+    const teacherSlug = profile?.slug ?? "";
+
+    let studentPlan = "course";
+    const hasVideoAccess = await prisma.accessCode.findFirst({
+      where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+    }) || await prisma.videoPurchase.findUnique({
+      where: { studentId_videoId: { studentId: session.id, videoId } },
     });
 
-    const embedResult = await resolveEmbedUrl(video);
+    if (hasVideoAccess) {
+      studentPlan = "lesson";
+    } else {
+      const folderId = video.folderId;
+      const hasFolderAccess = await prisma.accessCode.findFirst({
+        where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+      }) || await prisma.folderPurchase.findUnique({
+        where: { studentId_folderId: { studentId: session.id, folderId } },
+      });
+
+      if (hasFolderAccess) {
+        studentPlan = "folder";
+      }
+    }
 
     return NextResponse.json({
       sessionToken: activeSession.sessionToken,
@@ -207,6 +258,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       embedUrl: embedResult.embedUrl,
       provider: embedResult.provider,
       reused: true,
+      teacherSlug,
+      studentPlan,
     });
   }
 
@@ -250,6 +303,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       isPg ? { isolationLevel: "Serializable" } : undefined
     );
 
+    const profile = await prisma.teacherProfile.findUnique({
+      where: { teacherId: course.teacherId },
+      select: { slug: true },
+    });
+    const teacherSlug = profile?.slug ?? "";
+
+    let studentPlan = "course";
+    const hasVideoAccess = await prisma.accessCode.findFirst({
+      where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+    }) || await prisma.videoPurchase.findUnique({
+      where: { studentId_videoId: { studentId: session.id, videoId } },
+    });
+
+    if (hasVideoAccess) {
+      studentPlan = "lesson";
+    } else {
+      const folderId = video.folderId;
+      const hasFolderAccess = await prisma.accessCode.findFirst({
+        where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+      }) || await prisma.folderPurchase.findUnique({
+        where: { studentId_folderId: { studentId: session.id, folderId } },
+      });
+
+      if (hasFolderAccess) {
+        studentPlan = "folder";
+      }
+    }
+
     const embedResult = await resolveEmbedUrl(video);
     return NextResponse.json({
       sessionToken,
@@ -261,6 +342,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       usedWatches: used + 1,
       embedUrl: embedResult.embedUrl,
       provider: embedResult.provider,
+      teacherSlug,
+      studentPlan,
     });
   } catch (e) {
     if (e instanceof Error && e.message === QUOTA_EXCEEDED) {

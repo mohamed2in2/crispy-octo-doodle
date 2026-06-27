@@ -17,6 +17,7 @@ import {
   IconClipboard, IconChevronLeft, IconSettings, IconTag, IconBook, IconUsers,
   IconKey, IconShield, IconClock, IconEye,
 } from "@/components/admin/AdminIcons";
+import { HomeworkManagerSection, LiveReviewPanel } from "@/components/admin/TeacherHomeworkComponents";
 
 function fileToResizedDataUrl(file: File, max = 600): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -108,6 +109,8 @@ const SECTION_TITLES: Record<string, string> = {
   students: "المتعلمين",
   requests: "طلبات المتعلمين",
   feedback: "ملاحظات المتعلمين",
+  homework: "إدارة الواجبات",
+  review: "مراجعة الإجابات",
 };
 
 export default function TeacherDashboardPage() {
@@ -153,6 +156,8 @@ export default function TeacherDashboardPage() {
   const [videoQuestions, setVideoQuestions] = useState<Record<string, any[]>>({});
   const [loadingQuestions, setLoadingQuestions] = useState<Record<string, boolean>>({});
   const [addQuestionStates, setAddQuestionStates] = useState<Record<string, any>>({});
+  const [reviewPanelState, setReviewPanelState] = useState<any>(null);
+  const [homeworkManagement, setHomeworkManagement] = useState<any>(null);
 
   // In-app confirm dialog (replaces window.confirm)
   const [confirmState, setConfirmState] = useState<
@@ -1718,6 +1723,22 @@ export default function TeacherDashboardPage() {
           {activeSection === "quiz-results" && <TeacherQuizResults />}
           {activeSection === "requests" && <TeacherRequests />}
           {activeSection === "feedback" && <TeacherFeedback />}
+
+          {/* ════════ HOMEWORK MANAGEMENT ════════ */}
+          {activeSection === "homework" && (
+            <HomeworkManagerSection
+              courses={courses}
+              folders={folders}
+              selectedCourse={selectedCourse}
+              onSelectCourse={(c) => selectCourse(c, "courses")}
+              notify={notify}
+            />
+          )}
+
+          {/* ════════ LIVE REVIEW PANEL ════════ */}
+          {activeSection === "review" && (
+            <LiveReviewPanel notify={notify} />
+          )}
         </main>
       </div>
 

@@ -50,12 +50,25 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const { courseId, prefix } = body;
+    const accessType: "TERM" | "FOLDER" | "VIDEO" = ["TERM","FOLDER","VIDEO"].includes(body.accessType) ? body.accessType : "TERM";
+    const folderId: string | null = body.folderId || null;
+    const videoId: string | null = body.videoId || null;
     const count = Math.min(Math.max(1, Math.floor(Number(body.count) || 1)), 200);
 
     if (!courseId) return NextResponse.json({ error: "courseId مطلوب" }, { status: 400 });
 
     const course = await prisma.course.findFirst({ where: { id: courseId, teacherId: session.id } });
     if (!course) return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
+
+    // Validate folder/video ownership
+    if (accessType === "FOLDER" && folderId) {
+      const folder = await prisma.folder.findFirst({ where: { id: folderId, courseId } });
+      if (!folder) return NextResponse.json({ error: "المجلد غير موجود في هذا الكورس" }, { status: 404 });
+    }
+    if (accessType === "VIDEO" && videoId) {
+      const video = await prisma.video.findFirst({ where: { id: videoId, folder: { courseId } } });
+      if (!video) return NextResponse.json({ error: "الدرس غير موجود في هذا الكورس" }, { status: 404 });
+    }
 
     const cleanPrefix = prefix ? String(prefix).trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) : "";
 
@@ -68,22 +81,27 @@ export async function POST(req: NextRequest) {
         attempts++;
         const hex = crypto.randomBytes(4).toString("hex").toUpperCase();
         code = cleanPrefix ? `${cleanPrefix}-${hex}` : hex;
-        // Check local batch and DB
         if (!createdCodes.some(c => c.code === code)) {
           const dbExists = await prisma.accessCode.findUnique({ where: { code }, select: { id: true } });
-          if (!dbExists) {
-            exists = false;
-          }
+          if (!dbExists) exists = false;
         }
       }
-      if (exists) {
-        return NextResponse.json({ error: "تعذر إنشاء كود فريد — حاول مجدداً" }, { status: 409 });
-      }
-      const created = await prisma.accessCode.create({ data: { code, courseId } });
+      if (exists) return NextResponse.json({ error: "تعذر إنشاء كود فريد — حاول مجدداً" }, { status: 409 });
+
+      const created = await prisma.accessCode.create({
+        data: {
+          code,
+          courseId,
+          accessType,
+          folderId: accessType === "FOLDER" ? folderId : null,
+          videoId:  accessType === "VIDEO"  ? videoId  : null,
+        },
+      });
       createdCodes.push(created);
     }
 
     return NextResponse.json({ codes: createdCodes }, { status: 201 });
+
   } catch (error) {
     console.error("[admin/codes] error:", error);
     return NextResponse.json(

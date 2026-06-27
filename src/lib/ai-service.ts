@@ -210,3 +210,105 @@ export function validateStudyPlan(plan: unknown): StudyPlanItem[] {
     })
     .slice(0, 10); // Limit to 10 items
 }
+
+// ── Terminal / Homework AI Evaluator ─────────────────────────────────────────
+
+/**
+ * Semantically compare student terminal output to teacher's expected output.
+ * Handles cases where a different function/method produces the same result.
+ *
+ * @returns { passed: boolean, explanation: string }
+ */
+export async function evaluateTerminalWithAI(
+  codeTemplate: string,
+  submittedOutput: string,
+  expectedOutput: string,
+  language: string
+): Promise<{ passed: boolean; explanation: string }> {
+  const { primary, backup } = await resolvePlanProviders();
+
+  const systemPrompt = `You are a strict programming teacher evaluating a student's terminal output.
+Your job: compare the student's actual output to the expected output and decide if they are semantically equivalent.
+Rules:
+- Ignore whitespace, newlines, and letter casing differences.
+- If the student achieved the CORRECT result using a DIFFERENT function, loop, or approach, they should still PASS.
+- Only fail if the output is factually incorrect or the logic is fundamentally wrong.
+Respond with ONLY valid JSON: { "passed": true/false, "explanation": "brief Arabic explanation" }`;
+
+  const userPrompt = `Language: ${language}
+Code template given to student:
+${codeTemplate || "(none)"}
+
+Expected output:
+${expectedOutput}
+
+Student's submitted output:
+${submittedOutput}
+
+Does the student's output match or is semantically equivalent to the expected output?`;
+
+  async function callForVerdict(provider: ResolvedProvider): Promise<{ passed: boolean; explanation: string } | null> {
+    try {
+      const base = provider.baseUrl.replace(/\/+$/, "");
+      let text = "";
+
+      if (provider.kind === "anthropic") {
+        const res = await fetch(base, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": provider.key, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({ model: provider.model, max_tokens: 256, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = await res.json() as { content?: Array<{ text?: string }> };
+        text = d.content?.[0]?.text || "";
+      } else if (provider.kind === "gemini") {
+        const res = await fetch(`${base}/${provider.model}:generateContent?key=${provider.key}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }], generationConfig: { maxOutputTokens: 256 } }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+        text = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else {
+        // OpenAI-compatible
+        const res = await fetch(`${base}/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${provider.key}` },
+          body: JSON.stringify({ model: provider.model, max_tokens: 256, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] }),
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+        text = d.choices?.[0]?.message?.content || "";
+      }
+
+      // Extract JSON from response
+      const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const candidate = (fenced ? fenced[1] : text).trim();
+      const start = candidate.indexOf("{");
+      const end = candidate.lastIndexOf("}");
+      const parsed = JSON.parse(candidate.slice(start, end + 1)) as { passed: boolean; explanation: string };
+      if (typeof parsed.passed !== "boolean") throw new Error("Invalid verdict format");
+      return parsed;
+    } catch (err) {
+      console.error(`Terminal AI evaluator error (${provider.name}):`, err instanceof Error ? err.message : err);
+      return null;
+    }
+  }
+
+  if (primary) {
+    const result = await callForVerdict(primary);
+    if (result) return result;
+  }
+  if (backup) {
+    const result = await callForVerdict(backup);
+    if (result) return result;
+  }
+
+  // Both providers failed — cannot safely determine; trigger human review
+  throw new Error("AI evaluation unavailable");
+}
+

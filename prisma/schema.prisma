@@ -60,6 +60,8 @@ model User {
   teacherHomeworks     Homework[]           @relation("TeacherHomework")
   iqData               String?              // JSON blob: IQData from iq-system.ts
   overallIQ            Int                  @default(1000)
+  folderPurchases      FolderPurchase[]
+  videoPurchases       VideoPurchase[]
 
   @@index([role])
   @@index([educationalStage])
@@ -199,18 +201,26 @@ model TeacherProfile {
 }
 
 model Folder {
-  id        String     @id @default(cuid())
-  name      String
-  order     Int        @default(0)
-  courseId  String
+  id              String          @id @default(cuid())
+  name            String
+  order           Int             @default(0)
+  courseId        String
   // Scheduled unlock: null = available now; a future date locks the whole folder
   // (and all its videos) until then. Honored in every student content read path.
-  publishAt DateTime?
-  createdAt DateTime   @default(now())
-  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  materials Material[]
-  quizzes   Quiz[]
-  videos    Video[]
+  publishAt       DateTime?
+  /// Per-folder price for monthly subscription purchases (0 = free with course enrolment).
+  price           Float?          @default(0)
+  /// When false the teacher blocks wholesale folder purchase — only individual video purchase allowed.
+  isPurchasable   Boolean         @default(true)
+  /// Per-folder homework URL (old-style external link, kept for compat).
+  homeworkUrl     String?
+  createdAt       DateTime        @default(now())
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials       Material[]
+  quizzes         Quiz[]
+  videos          Video[]
+  folderPurchases FolderPurchase[]
+  accessCodes     AccessCode[]
 
   @@index([courseId])
 }
@@ -230,11 +240,16 @@ model Video {
   publishAt          DateTime?
   order              Int                 @default(0)
   folderId        String
+  /// Individual lesson purchase price (0 = not individually purchasable unless set).
+  price           Float?              @default(0)
   createdAt       DateTime            @default(now())
   progress        Progress[]
   folder          Folder              @relation(fields: [folderId], references: [id], onDelete: Cascade)
   watchSessions   VideoWatchSession[]
   questions       VideoQuestion[]
+  videoPurchases  VideoPurchase[]
+  accessCodes     AccessCode[]
+  homeworks       Homework[]
 
   @@index([folderId])
 }
@@ -299,17 +314,26 @@ model QuizQuestion {
 }
 
 model AccessCode {
-  id        String    @id @default(cuid())
-  code      String    @unique
-  courseId  String
-  studentId String?
-  isActive  Boolean   @default(true)
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  student   User?     @relation("StudentCodes", fields: [studentId], references: [id])
+  id         String    @id @default(cuid())
+  code       String    @unique
+  courseId   String
+  /// Scope: null = whole course (TERM), set = specific folder or video
+  folderId   String?
+  videoId    String?
+  studentId  String?
+  isActive   Boolean   @default(true)
+  /// TERM = full course | FOLDER = one folder | VIDEO = one lesson
+  accessType String    @default("TERM")  // TERM | FOLDER | VIDEO
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  course     Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  folder     Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  video      Video?    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  student    User?     @relation("StudentCodes", fields: [studentId], references: [id])
 
   @@index([courseId])
+  @@index([folderId])
+  @@index([videoId])
   @@index([studentId])
   @@index([isActive])
 }
@@ -696,27 +720,40 @@ model MoneyCode {
 
 // ── Homework ─────────────────────────────────────────────────────────────────
 
-/// Teacher-created homework. type=link → just a URL. type=exam → MCQ with optional image URLs.
-/// Images are stored as external URLs only — no file uploads, zero storage cost.
+/// Teacher-created homework.
+/// type=link     → just an external URL to open
+/// type=exam     → MCQ questions with optional image URLs per option
+/// type=terminal → student pastes terminal output; whitespace-insensitive comparison + AI semantic fallback
+/// type=upload   → student uploads a source file (.py, .js, .zip) to an isolated directory
 model Homework {
   id               String              @id @default(cuid())
   teacherId        String
   courseId         String?             // optional: link to a course
+  /// Link to a specific lesson/video this homework belongs to
+  videoId          String?
   title            String
   description      String?
-  type             String              @default("link") // "link" | "exam"
+  type             String              @default("link") // "link" | "exam" | "terminal" | "upload"
   linkUrl          String?             // for type=link
+  // Terminal type fields
+  expectedOutput   String?             // teacher's expected output (whitespace-normalized on compare)
+  codeTemplate     String?             // optional starter code shown to student
+  codeLanguage     String?             @default("python") // python | javascript | cpp | other
+  // Upload type
+  allowedFileTypes String?             // comma-separated: "pdf,py,js,zip" — null = any
   dueAt            DateTime?
   isPublished      Boolean             @default(false)
   timeLimitMinutes Int                 @default(30)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   teacher          User                @relation("TeacherHomework", fields: [teacherId], references: [id], onDelete: Cascade)
+  video            Video?              @relation(fields: [videoId], references: [id], onDelete: SetNull)
   questions        HomeworkQuestion[]
   submissions      HomeworkSubmission[]
 
   @@index([teacherId])
   @@index([courseId])
+  @@index([videoId])
   @@index([isPublished])
 }
 
@@ -737,19 +774,76 @@ model HomeworkQuestion {
 }
 
 model HomeworkSubmission {
-  id          String   @id @default(cuid())
-  homeworkId  String
-  studentId   String
-  answers     String   // JSON: { questionId: selectedOption }
-  score       Float?
-  totalQ      Int?
-  completedAt DateTime @default(now())
-  homework    Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  homeworkId      String
+  studentId       String
+  /// MCQ answers JSON: { questionId: "A"|"B"|"C"|"D" } — null for non-exam types
+  answers         String?         // nullable now
+  score           Float?
+  totalQ          Int?
+  /// Submitted terminal output (for type=terminal)
+  submittedOutput String?
+  /// Uploaded file path (for type=upload)
+  fileUrl         String?
+  fileName        String?
+  /// pending | passed | failed | review_requested
+  status          String          @default("pending")
+  completedAt     DateTime        @default(now())
+  homework        Homework        @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student         User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  review          HomeworkReview?
 
   @@unique([homeworkId, studentId])
   @@index([studentId])
   @@index([homeworkId])
+  @@index([status])
+}
+
+/// Live Agent Review: teacher manually overrides a flagged submission verdict.
+model HomeworkReview {
+  id             String             @id @default(cuid())
+  submissionId   String             @unique
+  submission     HomeworkSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  teacherId      String
+  /// "passed" | "failed"
+  verdict        String?
+  note           String?
+  reviewedAt     DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([teacherId])
+}
+
+// ── Per-folder and per-video purchases ────────────────────────────────────────
+
+/// Records when a student purchases a specific folder (monthly sub model).
+model FolderPurchase {
+  id        String   @id @default(cuid())
+  studentId String
+  folderId  String
+  price     Float    @default(0)
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, folderId])
+  @@index([studentId])
+  @@index([folderId])
+}
+
+/// Records when a student purchases a specific video/lesson.
+model VideoPurchase {
+  id        String   @id @default(cuid())
+  studentId String
+  videoId   String
+  price     Float    @default(0)
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, videoId])
+  @@index([studentId])
+  @@index([videoId])
 }
 
 model LeaderboardCache {
