@@ -26,7 +26,7 @@ const DEMO_YT_IDS = [
   "yQP4UJhNn0I", // Physics mechanics
 ];
 
-const SUBJECTS = ["الرياضيات", "العلوم", "اللغة الإنجليزية", "الفيزياء", "الكيمياء"];
+const SUBJECTS = ["برمجه عملي", "نظري", "مشاريع"];
 const STAGES = ["prep_1", "prep_2", "prep_3", "sec_1", "sec_2", "sec_3"];
 
 const pick = <T,>(arr: T[], i: number) => arr[i % arr.length];

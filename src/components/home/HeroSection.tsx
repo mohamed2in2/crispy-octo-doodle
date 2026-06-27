@@ -15,7 +15,7 @@ import { useCanHover } from "@/lib/motion";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-const ROTATING_SUBJECTS = ["الرياضيات", "الفيزياء", "الكيمياء", "البرمجة"];
+const ROTATING_SUBJECTS = ["برمجه عملي", "برمجه نظري", "مشاريع برمجه"];
 
 const GRADE_SHORTCUTS = [
   { stage: "sec_1", label: "الأول الثانوي" },
@@ -29,7 +29,7 @@ const stagger: Variants = {
 };
 
 const rise: Variants = {
-  hidden:  { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 22 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
 };
 
@@ -43,12 +43,12 @@ const DEFAULT_SUBTITLE =
 
 export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
   const canHover = useCanHover();
-  const reduced  = useReducedMotion();
+  const reduced = useReducedMotion();
 
-  const spotX       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
-  const spotY       = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  const spotX = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
+  const spotY = useSpring(0, { stiffness: 140, damping: 26, mass: 0.6 });
   const spotOpacity = useSpring(0, { stiffness: 120, damping: 30 });
-  const spotlight   = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(14,110,98,0.13), transparent 70%)`;
+  const spotlight = useMotionTemplate`radial-gradient(640px circle at ${spotX}px ${spotY}px, rgba(14,110,98,0.13), transparent 70%)`;
 
   const trackSpotlight = (e: React.PointerEvent<HTMLElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -73,7 +73,7 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
     return () => window.clearInterval(id);
   }, [reduced]);
 
-  const subject          = ROTATING_SUBJECTS[subjectIndex];
+  const subject = ROTATING_SUBJECTS[subjectIndex];
   const spotlightEnabled = canHover && !reduced;
 
   return (
@@ -141,8 +141,8 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
                 <motion.span
                   key={subject}
                   initial={{ y: "65%", opacity: 0 }}
-                  animate={{ y: "0%",  opacity: 1 }}
-                  exit={{   y: "-65%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  exit={{ y: "-65%", opacity: 0 }}
                   transition={{ duration: 0.5, ease: EASE }}
                   className="col-start-1 row-start-1 whitespace-nowrap px-1"
                   style={{ color: "var(--brand)" }}
@@ -237,7 +237,7 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
 
 function MagneticArea({ children, className }: { children: React.ReactNode; className?: string }) {
   const canHover = useCanHover();
-  const reduced  = useReducedMotion();
+  const reduced = useReducedMotion();
   const x = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
   const y = useSpring(0, { stiffness: 320, damping: 22, mass: 0.6 });
 
