@@ -5,13 +5,31 @@ const { execSync } = require('child_process');
 const envPath = path.join(__dirname, '..', '.env');
 let dbUrl = process.env.DATABASE_URL || '';
 
+console.log('🔍 Running prisma-generate.js script...');
+console.log('  __dirname:', __dirname);
+console.log('  envPath:', envPath);
+console.log('  fs.existsSync(envPath):', fs.existsSync(envPath));
+console.log('  Initial process.env.DATABASE_URL:', process.env.DATABASE_URL ? '(set)' : '(not set)');
+
 if (!dbUrl && fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf8');
-  const match = envContent.match(/^DATABASE_URL=(.*)$/m);
-  if (match) {
-    dbUrl = match[1].replace(/["']/g, '').trim();
+  const lines = envContent.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#') || !trimmed) continue;
+    const match = trimmed.match(/^DATABASE_URL\s*=\s*(.*)$/);
+    if (match) {
+      dbUrl = match[1].replace(/["']/g, '').trim();
+      console.log('  Matched active DATABASE_URL in .env:', dbUrl ? '(value matched)' : '(empty match)');
+      break;
+    }
+  }
+  if (!dbUrl) {
+    console.log('  No active DATABASE_URL found in .env file');
   }
 }
+
+console.log('  Final dbUrl to check:', dbUrl);
 
 const schemaPath = path.join(__dirname, '..', 'prisma', 'schema.prisma');
 let schema = fs.readFileSync(schemaPath, 'utf8');
@@ -24,6 +42,8 @@ if (dbUrl.startsWith('postgres')) {
   console.log('🔄 Detected SQLite connection string, ensuring schema provider is sqlite...');
   schema = schema.replace(/provider\s*=\s*"(?:sqlite|postgresql)"/, 'provider = "sqlite"');
   fs.writeFileSync(schemaPath, schema);
+} else {
+  console.log('⚠️ Could not identify database provider type from dbUrl. Schema provider unchanged.');
 }
 
 try {
