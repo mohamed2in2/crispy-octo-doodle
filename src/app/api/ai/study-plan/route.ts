@@ -186,6 +186,11 @@ export async function PUT(req: NextRequest) {
     const body = await req.json() as { id: string; status: string };
     const { id, status } = body;
 
+    const ALLOWED_STATUSES = ["pending", "completed", "skipped"];
+    if (!status || !ALLOWED_STATUSES.includes(status)) {
+      return NextResponse.json({ error: "حالة غير صالحة" }, { status: 400 });
+    }
+
     // Verify ownership
     const plan = await (prisma as any).dailyStudyPlan.findUnique({
       where: { id },

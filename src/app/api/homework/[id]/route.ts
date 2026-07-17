@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkHomeworkAccess } from "@/lib/authorization";
 
 /** GET /api/homework/[id] — student fetches homework details (answers hidden) */
 export async function GET(
@@ -33,6 +34,12 @@ export async function GET(
   });
 
   if (!homework) return NextResponse.json({ error: "الواجب غير موجود" }, { status: 404 });
+
+  // Access check: ensures student is enrolled or teacher owns the course
+  const hasAccess = await checkHomeworkAccess(session.id, session.role, homeworkId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الواجب" }, { status: 403 });
+  }
 
   // Student: only published
   if (session.role === "student" && !homework.isPublished)

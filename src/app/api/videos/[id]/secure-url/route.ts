@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { resolveEmbedUrl } from "@/lib/video-provider";
 import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
 import { prisma } from "@/lib/prisma";
+import { checkVideoAccess } from "@/lib/authorization";
 
 function scheduledResponse(folderPublishAt: Date | null, videoPublishAt: Date | null) {
   return NextResponse.json(
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  const session = await getStudentSession();
+  const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
@@ -73,9 +74,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (token) {
     const watchSession = await prisma.videoWatchSession.findUnique({
       where: { sessionToken: token },
-      include: {
-        video: { include: { folder: { select: { course: { select: { id: true, teacherId: true } } } } } },
-      },
     });
 
     if (!watchSession) {
@@ -101,44 +99,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
   }
 
-  const course = video.folder.course;
-  const isSuperadmin = session.role === "superadmin";
-  const isAdmin = session.role === "admin";
-  const canAccessAsTeacher = session.role === "teacher" && course.teacherId === session.id;
-  
-  let canAccessAsStudent =
-    session.role === "student"
-      ? await prisma.accessCode.findFirst({
-          where: { courseId: course.id, studentId: session.id, isActive: true },
-          select: { id: true },
-        })
-      : null;
-
-  if (session.role === "student" && !canAccessAsStudent) {
-    const planEnroll = await prisma.planEnrollment.findFirst({
-      where: {
-        studentId: session.id,
-        expiresAt: { gt: new Date() },
-        plan: {
-          lessons: {
-            some: {
-              sources: {
-                some: {
-                  videoId: id
-                }
-              }
-            }
-          }
-        }
-      },
-      select: { id: true }
-    });
-    if (planEnroll) {
-      canAccessAsStudent = { id: planEnroll.id };
-    }
-  }
-
-  if (!isSuperadmin && !isAdmin && !canAccessAsTeacher && !canAccessAsStudent) {
+  const hasAccess = await checkVideoAccess(session.id, session.role, id);
+  if (!hasAccess) {
     return NextResponse.json(
       { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس من صفحة الكورسات أولاً." },
       { status: 403 }

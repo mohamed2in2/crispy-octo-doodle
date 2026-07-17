@@ -38,34 +38,61 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "هذا الكود غير فعال" }, { status: 400 });
       }
 
-      const alreadyEnrolled = await prisma.accessCode.findFirst({
-        where: { courseId: accessCode.courseId, studentId: session.id },
-      });
-      if (alreadyEnrolled) {
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const alreadyEnrolled = await tx.accessCode.findFirst({
+            where: { courseId: accessCode.courseId, studentId: session.id },
+          });
+          if (alreadyEnrolled) {
+            return {
+              alreadyEnrolled: true,
+              courseId: accessCode.courseId,
+              message: "أنت مسجل بالفعل في هذا الكورس",
+            };
+          }
+
+          const updateResult = await tx.accessCode.updateMany({
+            where: { id: accessCode.id, studentId: null, isActive: true },
+            data: { studentId: session.id, usedAt: new Date() },
+          });
+
+          if (updateResult.count === 0) {
+            throw new Error("ALREADY_USED_OR_INACTIVE");
+          }
+
+          const course = await tx.course.findUnique({
+            where: { id: accessCode.courseId },
+            select: { id: true, title: true },
+          });
+
+          return {
+            alreadyEnrolled: false,
+            courseId: accessCode.courseId,
+            courseTitle: course?.title,
+          };
+        });
+
+        if (result.alreadyEnrolled) {
+          return NextResponse.json({
+            success: true,
+            courseId: result.courseId,
+            message: result.message,
+          });
+        }
+
         return NextResponse.json({
           success: true,
-          courseId: accessCode.courseId,
-          message: "أنت مسجل بالفعل في هذا الكورس",
+          type: "course",
+          courseId: result.courseId,
+          courseTitle: result.courseTitle,
+          message: "تم تفعيل الكود وإضافة الكورس إلى مكتبتك",
         });
+      } catch (err: any) {
+        if (err.message === "ALREADY_USED_OR_INACTIVE") {
+          return NextResponse.json({ error: "هذا الكود مستخدم بالفعل أو غير فعال" }, { status: 400 });
+        }
+        throw err;
       }
-
-      await prisma.accessCode.update({
-        where: { id: accessCode.id },
-        data: { studentId: session.id, usedAt: new Date(), isActive: true },
-      });
-
-      const course = await prisma.course.findUnique({
-        where: { id: accessCode.courseId },
-        select: { id: true, title: true },
-      });
-
-      return NextResponse.json({
-        success: true,
-        type: "course",
-        courseId: accessCode.courseId,
-        courseTitle: course?.title,
-        message: "تم تفعيل الكود وإضافة الكورس إلى مكتبتك",
-      });
     }
 
     // Check Plan Access Code
@@ -78,90 +105,120 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "هذا الكود غير فعال" }, { status: 400 });
       }
 
-      const student = await prisma.user.findUnique({
-        where: { id: session.id },
-        select: { educationalStage: true }
-      });
-
-      const plan = await prisma.plan.findUnique({ 
-        where: { id: planCode.planId }, 
-        select: { id: true, title: true, durationDays: true, educationalStage: true } 
-      });
-
-      if (!plan) {
-        return NextResponse.json({ error: "الخطة غير موجودة" }, { status: 404 });
-      }
-
-      // Stage check (Gap 11)
-      if (student?.educationalStage && plan.educationalStage && student.educationalStage !== plan.educationalStage) {
-        return NextResponse.json({ error: "هذا الكود مخصص لمرحلة دراسية مختلفة" }, { status: 400 });
-      }
-
-      const alreadyEnrolled = await prisma.planEnrollment.findUnique({
-        where: { planId_studentId: { planId: planCode.planId, studentId: session.id } },
-      });
-
-      if (alreadyEnrolled) {
-        const now = new Date();
-        const isExpired = alreadyEnrolled.expiresAt < now;
-        
-        if (isExpired) {
-          // Re-enroll / Renew expired plan (Gap 25)
-          await prisma.planAccessCode.update({
-            where: { id: planCode.id },
-            data: { usedById: session.id, usedAt: now, isActive: false },
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const student = await tx.user.findUnique({
+            where: { id: session.id },
+            select: { educationalStage: true }
           });
 
+          const plan = await tx.plan.findUnique({ 
+            where: { id: planCode.planId }, 
+            select: { id: true, title: true, durationDays: true, educationalStage: true } 
+          });
+
+          if (!plan) throw new Error("PLAN_NOT_FOUND");
+
+          if (student?.educationalStage && plan.educationalStage && student.educationalStage !== plan.educationalStage) {
+            throw new Error("STAGE_MISMATCH");
+          }
+
+          const alreadyEnrolled = await tx.planEnrollment.findUnique({
+            where: { planId_studentId: { planId: planCode.planId, studentId: session.id } },
+          });
+
+          const now = new Date();
+
+          if (alreadyEnrolled) {
+            const isExpired = alreadyEnrolled.expiresAt < now;
+            if (isExpired) {
+              const updateResult = await tx.planAccessCode.updateMany({
+                where: { id: planCode.id, usedById: null, isActive: true },
+                data: { usedById: session.id, usedAt: now, isActive: false },
+              });
+              if (updateResult.count === 0) {
+                throw new Error("ALREADY_USED_OR_INACTIVE");
+              }
+
+              const durationDays = plan.durationDays ?? 365;
+              await tx.planEnrollment.update({
+                where: { id: alreadyEnrolled.id },
+                data: {
+                  unlockedAt: now,
+                  expiresAt: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
+                  pricePaid: 0,
+                }
+              });
+
+              return {
+                renewed: true,
+                planId: planCode.planId,
+                planTitle: plan.title,
+              };
+            }
+
+            return {
+              alreadyEnrolled: true,
+              planId: planCode.planId,
+            };
+          }
+
+          const updateResult = await tx.planAccessCode.updateMany({
+            where: { id: planCode.id, usedById: null, isActive: true },
+            data: { usedById: session.id, usedAt: now, isActive: false },
+          });
+          if (updateResult.count === 0) {
+            throw new Error("ALREADY_USED_OR_INACTIVE");
+          }
+
           const durationDays = plan.durationDays ?? 365;
-          await prisma.planEnrollment.update({
-            where: { id: alreadyEnrolled.id },
+          await tx.planEnrollment.create({
             data: {
-              unlockedAt: now,
-              expiresAt: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
+              planId: planCode.planId,
+              studentId: session.id,
               pricePaid: 0,
+              expiresAt: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
             }
           });
 
+          return {
+            renewed: false,
+            planId: planCode.planId,
+            planTitle: plan.title,
+          };
+        });
+
+        if (result.alreadyEnrolled) {
+          return NextResponse.json({
+            success: true,
+            planId: result.planId,
+            message: "أنت مسجل بالفعل في هذه الخطة",
+          });
+        }
+
+        if (result.renewed) {
           return NextResponse.json({
             success: true,
             type: "plan",
-            planId: planCode.planId,
-            planTitle: plan.title,
+            planId: result.planId,
+            planTitle: result.planTitle,
             message: "تم تجديد اشتراكك في هذه الخطة بنجاح وتفعيل المحتوى",
           });
         }
 
         return NextResponse.json({
           success: true,
-          planId: planCode.planId,
-          message: "أنت مسجل بالفعل في هذه الخطة",
+          type: "plan",
+          planId: result.planId,
+          planTitle: result.planTitle,
+          message: "تم تفعيل الكود وإضافة الخطة إلى مكتبتك",
         });
+      } catch (err: any) {
+        if (err.message === "PLAN_NOT_FOUND") return NextResponse.json({ error: "الخطة غير موجودة" }, { status: 404 });
+        if (err.message === "STAGE_MISMATCH") return NextResponse.json({ error: "هذا الكود مخصص لمرحلة دراسية مختلفة" }, { status: 400 });
+        if (err.message === "ALREADY_USED_OR_INACTIVE") return NextResponse.json({ error: "هذا الكود مستخدم بالفعل أو غير فعال" }, { status: 400 });
+        throw err;
       }
-
-      // Mark code as used
-      await prisma.planAccessCode.update({
-        where: { id: planCode.id },
-        data: { usedById: session.id, usedAt: new Date(), isActive: false },
-      });
-
-      const durationDays = plan.durationDays ?? 365;
-      
-      await prisma.planEnrollment.create({
-        data: {
-          planId: planCode.planId,
-          studentId: session.id,
-          pricePaid: 0,
-          expiresAt: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000),
-        }
-      });
-
-      return NextResponse.json({
-        success: true,
-        type: "plan",
-        planId: planCode.planId,
-        planTitle: plan.title,
-        message: "تم تفعيل الكود وإضافة الخطة إلى مكتبتك",
-      });
     }
 
     return NextResponse.json({ error: "الكود غير صحيح" }, { status: 404 });

@@ -10,7 +10,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: quizId } = await params;
   const body = await req.json();
   const answers = (body?.answers ?? {}) as Record<string, string>;
-  const startedAt = body?.startedAt ? new Date(body.startedAt) : null;
 
   const quiz = await prisma.quiz.findUnique({
     where: { id: quizId },
@@ -67,19 +66,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const existingResult = await prisma.quizResult.findUnique({
     where: { studentId_quizId: { studentId: session.id, quizId } },
   });
-  if (existingResult && !existingResult.allowRetake) {
+
+  if (!existingResult || !existingResult.startedAt) {
+    return NextResponse.json(
+      { error: "لم يتم بدء الاختبار بشكل صحيح. يرجى بدء الاختبار من الصفحة المخصصة أولاً." },
+      { status: 400 }
+    );
+  }
+
+  if (!existingResult.allowRetake && existingResult.completedAt && (existingResult.score > 0 || existingResult.totalQ > 0)) {
+    // Only block if they have already submitted and completed it
     return NextResponse.json(
       { error: "لقد أجبت على هذا الاختبار بالفعل. تواصل مع المعلم للسماح بإعادة المحاولة." },
       { status: 409 }
     );
   }
 
+  const dbStartedAt = existingResult.startedAt;
   const limitMinutes = (quiz as any).timeLimitMinutes ?? 30;
-  if (startedAt && !Number.isNaN(startedAt.getTime())) {
-    const elapsedSeconds = Math.floor((Date.now() - startedAt.getTime()) / 1000);
-    if (elapsedSeconds > limitMinutes * 60) {
-      return NextResponse.json({ error: "انتهى وقت الاختبار" }, { status: 400 });
-    }
+  const elapsedSeconds = Math.floor((Date.now() - dbStartedAt.getTime()) / 1000);
+  if (elapsedSeconds > limitMinutes * 60) {
+    return NextResponse.json({ error: "انتهى وقت الاختبار" }, { status: 400 });
   }
 
   const breakdown = quiz.questions.map((question: any) => {
@@ -104,8 +111,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const result = await prisma.quizResult.upsert({
     where: { studentId_quizId: { studentId: session.id, quizId } },
-    update: { score, totalQ, completedAt: new Date(), allowRetake: false, startedAt: startedAt ?? undefined },
-    create: { studentId: session.id, quizId, score, totalQ, startedAt: startedAt ?? undefined },
+    update: { score, totalQ, completedAt: new Date(), allowRetake: false, startedAt: dbStartedAt },
+    create: { studentId: session.id, quizId, score, totalQ, startedAt: dbStartedAt },
   });
 
   // Save per-question answers (enables "view answers" + "wrong questions exam")

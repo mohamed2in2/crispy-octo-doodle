@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveEmbedUrl } from "@/lib/video-provider";
 import { isScheduledLocked, unlockAtISO } from "@/lib/publish";
 import { getConfigNumberClamped } from "@/lib/config";
+import { checkVideoAccess } from "@/lib/authorization";
 
 // Verify an existing watch session (used when loading the watch page on refresh)
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -236,6 +237,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // Verify access via centralized checkVideoAccess
+  const hasAccess = await checkVideoAccess(session.id, session.role, videoId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
+  }
+
   // Reuse an existing active session for this student + video
   const activeSession = await prisma.videoWatchSession.findFirst({
     where: { studentId: session.id, videoId, endedAt: null, expiresAt: { gt: now } },
@@ -315,41 +322,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       studentPlan,
     });
   }
-
-  // Verify enrollment
-  const hasAccess = await prisma.accessCode.findFirst({
-    where: { courseId: course.id, studentId: session.id, isActive: true },
-    select: { id: true },
-  });
   
-  let hasPlanAccess = false;
-  if (!hasAccess) {
-    const planEnrollment = await prisma.planEnrollment.findFirst({
-      where: {
-        studentId: session.id,
-        expiresAt: { gt: now },
-        plan: {
-          lessons: {
-            some: {
-              sources: {
-                some: {
-                  videoId: video.id
-                }
+  const planEnrollment = await prisma.planEnrollment.findFirst({
+    where: {
+      studentId: session.id,
+      expiresAt: { gt: now },
+      plan: {
+        lessons: {
+          some: {
+            sources: {
+              some: {
+                videoId: video.id
               }
             }
           }
         }
-      },
-      select: { id: true }
-    });
-    if (planEnrollment) {
-      hasPlanAccess = true;
-    }
-  }
-
-  if (!hasAccess && !hasPlanAccess) {
-    return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
-  }
+      }
+    },
+    select: { id: true }
+  });
+  const hasPlanAccess = !!planEnrollment;
 
   const sessionToken = crypto.randomUUID();
   const expiresAt = new Date(now.getTime() + WATCH_DURATION_HOURS * 60 * 60 * 1000);

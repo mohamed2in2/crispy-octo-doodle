@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkHomeworkAccess } from "@/lib/authorization";
 import path from "path";
 import fs from "fs/promises";
 
@@ -16,6 +17,12 @@ export async function POST(
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 
   const { id: homeworkId } = await params;
+
+  // Enforce access control check (verify student is enrolled in the homework's course)
+  const hasAccess = await checkHomeworkAccess(session.id, session.role, homeworkId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الواجب" }, { status: 403 });
+  }
 
   const hw = await prisma.homework.findUnique({
     where: { id: homeworkId },
@@ -54,6 +61,17 @@ export async function POST(
 
   // Save to isolated directory (NOT inside public/ — no HTTP serving)
   const dir = path.join(UPLOAD_BASE, homeworkId, session.id);
+  
+  // Clean up existing files in the directory to prevent orphaned files
+  try {
+    const files = await fs.readdir(dir);
+    for (const f of files) {
+      await fs.unlink(path.join(dir, f));
+    }
+  } catch (e) {
+    // Directory might not exist yet, ignore
+  }
+
   await fs.mkdir(dir, { recursive: true });
 
   const safeFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

@@ -8,12 +8,33 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { id: videoId } = await params;
 
-  const watchSession = await prisma.videoWatchSession.findFirst({
-    where: { videoId, studentId: session.id },
-    orderBy: { startedAt: "desc" },
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    select: { durationMinutes: true, isFree: true }
   });
-  if (!watchSession) {
-    return NextResponse.json({ error: "لا توجد جلسة مشاهدة لهذا الفيديو" }, { status: 403 });
+  if (!video) return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
+
+  if (!video.isFree) {
+    const watchSession = await prisma.videoWatchSession.findFirst({
+      where: { videoId, studentId: session.id, endedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { startedAt: "desc" },
+    });
+    if (!watchSession) {
+      return NextResponse.json({ error: "لا توجد جلسة مشاهدة نشطة لهذا الفيديو" }, { status: 403 });
+    }
+
+    const progress = await prisma.progress.findUnique({
+      where: { studentId_videoId: { studentId: session.id, videoId } },
+      select: { watchedSecondsTotal: true }
+    });
+
+    const requiredSeconds = (video.durationMinutes * 60) * 0.8;
+    if ((progress?.watchedSecondsTotal ?? 0) < requiredSeconds) {
+      return NextResponse.json(
+        { error: "يجب مشاهدة 80% من الفيديو على الأقل لإكماله" },
+        { status: 400 }
+      );
+    }
   }
 
   await prisma.progress.upsert({

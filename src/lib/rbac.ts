@@ -21,7 +21,8 @@ export type Permission =
   | "view_staff_accounts"
   | "manage_staff_accounts"
   | "view_error_logs"
-  | "bulk_delete_users";
+  | "bulk_delete_users"
+  | "reset_student_devices";
 
 /** Permission matrix — what each admin role may do */
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
@@ -42,6 +43,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "manage_staff_accounts",
     "view_error_logs",
     "bulk_delete_users",
+    "reset_student_devices",
   ],
   admin: [
     "view_students",
@@ -55,6 +57,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "reset_teacher_password",
     "view_logs",
     "view_staff_accounts",
+    "reset_student_devices",
   ],
   staff: [
     "view_students",

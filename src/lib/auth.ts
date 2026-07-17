@@ -202,7 +202,7 @@ async function getJwtSession(): Promise<SessionUser | null> {
     where: { id: payload.id },
   });
 
-  if (!user) {
+  if (!user || !user.isActive || user.isDeleted) {
     return null;
   }
 

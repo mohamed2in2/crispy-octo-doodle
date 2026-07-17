@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getStudentSession } from "@/lib/auth";
+import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Run transaction: deduct balance, create enrollment
     try {
       await prisma.$transaction(async (tx) => {
+        // Acquire transaction-scoped advisory lock to serialize purchases for the user
+        await acquireAdvisoryLock(`purchase-plan-${session.id}`, tx);
         if (effectivePrice > 0) {
           const student = await tx.user.findUnique({
             where: { id: session.id },

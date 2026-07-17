@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { evaluateTerminalWithAI } from "@/lib/ai-service";
+import { checkHomeworkAccess } from "@/lib/authorization";
 import path from "path";
 import fs from "fs/promises";
 
@@ -33,6 +34,12 @@ export async function POST(
 
   if (!hw || !hw.isPublished)
     return NextResponse.json({ error: "الواجب غير موجود" }, { status: 404 });
+
+  // Enforce enrollment validation
+  const hasAccess = await checkHomeworkAccess(session.id, session.role, homeworkId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الواجب" }, { status: 403 });
+  }
 
   // Prevent re-submission
   const existing = await prisma.homeworkSubmission.findUnique({
@@ -126,7 +133,7 @@ export async function POST(
   return NextResponse.json({ submission, status });
 }
 
-/** GET /api/homework/[id]/submit — student checks their own submission */
+/** GET /api/homework/[id]/submit — student checks their own submission (teachers/admins check query param) */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -136,8 +143,18 @@ export async function GET(
 
   const { id: homeworkId } = await params;
 
+  const hasAccess = await checkHomeworkAccess(session.id, session.role, homeworkId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الواجب" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const targetStudentId = (session.role === "teacher" || session.role === "admin" || session.role === "superadmin")
+    ? (searchParams.get("studentId") ?? session.id)
+    : session.id;
+
   const submission = await prisma.homeworkSubmission.findUnique({
-    where: { homeworkId_studentId: { homeworkId, studentId: session.id } },
+    where: { homeworkId_studentId: { homeworkId, studentId: targetStudentId } },
     include: { review: true },
   });
 

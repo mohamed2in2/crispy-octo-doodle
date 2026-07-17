@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkVideoAccess } from "@/lib/authorization";
 
 /**
  * Resume-playback position for a (student, video) pair. Stored on Progress so it
@@ -20,9 +21,14 @@ const lastPingMap = new Map<string, number>();
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getStudentSession();
-  if (!session) return NextResponse.json({ seconds: 0 });
+  if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const { id: videoId } = await params;
+  const hasAccess = await checkVideoAccess(session.id, session.role, videoId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الفيديو" }, { status: 403 });
+  }
+
   const progress = await prisma.progress.findUnique({
     where: { studentId_videoId: { studentId: session.id, videoId } },
     select: { lastPositionSeconds: true, watched: true },
@@ -39,6 +45,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const { id: videoId } = await params;
+  const hasAccess = await checkVideoAccess(session.id, session.role, videoId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "غير مصرح لك بالوصول لهذا الفيديو" }, { status: 403 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as {
     seconds?: number;
     deltaWatchedSeconds?: number;

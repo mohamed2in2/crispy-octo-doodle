@@ -274,6 +274,15 @@ async function executeAction(
           return { type: action.type, status: "failed", error: "بيانات ناقصة" };
         }
 
+        // Validate course enrollment if courseId is provided
+        if (p.courseId) {
+          const { checkCourseEnrollment } = await import("@/lib/authorization");
+          const isEnrolled = await checkCourseEnrollment(studentId, p.courseId);
+          if (!isEnrolled) {
+            return { type: action.type, status: "failed", error: "غير مسجل في هذا الكورس" };
+          }
+        }
+
         // Build AI response with chat context for staff
         let aiResponse: string | null = null;
         if (p.chatHistory || p.studentInfo) {
@@ -309,6 +318,13 @@ async function executeAction(
         };
         if (!p?.courseId || !p?.content) {
           return { type: action.type, status: "failed", error: "بيانات ناقصة" };
+        }
+
+        // Validate course enrollment
+        const { checkCourseEnrollment } = await import("@/lib/authorization");
+        const isEnrolled = await checkCourseEnrollment(studentId, p.courseId);
+        if (!isEnrolled) {
+          return { type: action.type, status: "failed", error: "غير مسجل في هذا الكورس" };
         }
 
         const course = await prisma.course.findUnique({

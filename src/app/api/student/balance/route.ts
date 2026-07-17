@@ -35,40 +35,64 @@ export async function POST(req: NextRequest) {
 
   const normalized = code.trim().toUpperCase();
 
-  const moneyCode = await prisma.moneyCode.findUnique({ where: { code: normalized } });
-  if (!moneyCode) return NextResponse.json({ error: "الكود غير صحيح" }, { status: 404 });
-  if (moneyCode.isUsed) return NextResponse.json({ error: "هذا الكود مستخدم بالفعل" }, { status: 400 });
-  if (moneyCode.expiresAt && moneyCode.expiresAt < new Date()) {
-    return NextResponse.json({ error: "الكود منتهي الصلاحية" }, { status: 400 });
+  try {
+    const creditedAmount = await prisma.$transaction(async (tx) => {
+      const moneyCode = await tx.moneyCode.findUnique({ where: { code: normalized } });
+      if (!moneyCode) {
+        throw new Error("NOT_FOUND");
+      }
+      if (moneyCode.isUsed) {
+        throw new Error("ALREADY_USED");
+      }
+      if (moneyCode.expiresAt && moneyCode.expiresAt < new Date()) {
+        throw new Error("EXPIRED");
+      }
+
+      // Mark used conditionally - ensures that if another request updated it between findUnique and now, this updates 0 rows
+      const updateResult = await tx.moneyCode.updateMany({
+        where: { id: moneyCode.id, isUsed: false },
+        data: { isUsed: true, usedById: session.id, usedAt: new Date() },
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("ALREADY_USED");
+      }
+
+      // Atomically increment user's balance
+      await tx.user.update({
+        where: { id: session.id },
+        data: { balance: { increment: moneyCode.amount } },
+      });
+
+      // Create ledger entry
+      await tx.balanceTransaction.create({
+        data: {
+          userId: session.id,
+          type: "credit_code",
+          amount: moneyCode.amount,
+          note: `كود: ${normalized}`,
+        },
+      });
+
+      return moneyCode.amount;
+    });
+
+    return NextResponse.json({
+      success: true,
+      credited: creditedAmount,
+      message: `تم إضافة ${creditedAmount} جنيه إلى رصيدك!`,
+    });
+  } catch (error: any) {
+    if (error.message === "NOT_FOUND") {
+      return NextResponse.json({ error: "الكود غير صحيح" }, { status: 404 });
+    }
+    if (error.message === "ALREADY_USED") {
+      return NextResponse.json({ error: "هذا الكود مستخدم بالفعل" }, { status: 400 });
+    }
+    if (error.message === "EXPIRED") {
+      return NextResponse.json({ error: "الكود منتهي الصلاحية" }, { status: 400 });
+    }
+    console.error("[balance redemption] error:", error);
+    return NextResponse.json({ error: "حدث خطأ داخلي" }, { status: 500 });
   }
-
-  // Mark used + credit balance in a transaction
-  // NULL-safe balance fetch before transaction
-  const userRow = await prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } });
-  const newBalance = +((userRow?.balance ?? 0) + moneyCode.amount).toFixed(2);
-
-  await prisma.$transaction([
-    prisma.moneyCode.update({
-      where: { id: moneyCode.id },
-      data: { isUsed: true, usedById: session.id, usedAt: new Date() },
-    }),
-    prisma.user.update({
-      where: { id: session.id },
-      data: { balance: newBalance },
-    }),
-    prisma.balanceTransaction.create({
-      data: {
-        userId: session.id,
-        type: "credit_code",
-        amount: moneyCode.amount,
-        note: `كود: ${normalized}`,
-      },
-    }),
-  ]);
-
-  return NextResponse.json({
-    success: true,
-    credited: moneyCode.amount,
-    message: `تم إضافة ${moneyCode.amount} جنيه إلى رصيدك!`,
-  });
 }

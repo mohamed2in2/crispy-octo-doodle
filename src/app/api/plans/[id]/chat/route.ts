@@ -3,6 +3,7 @@ import { getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolvePlanProviders, type ResolvedProvider } from "@/lib/ai-provider";
 import { getConfigNumberClamped } from "@/lib/config";
+import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
 // GET — Fetch chat history
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -64,24 +65,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "لم تسجل في هذه الخطة بعد" }, { status: 403 });
     }
 
+    // Check if chat is enabled for this plan
+    if (!enrollment.plan.chatEnabled) {
+      return NextResponse.json({ error: "ميزة المحادثة مع المساعد الذكي معطلة لهذه الخطة" }, { status: 403 });
+    }
+
     // Expiry check (Gap 45)
     const now = new Date();
     if (enrollment.expiresAt < now) {
       return NextResponse.json({ error: "انتهت صلاحية اشتراكك في هذه الخطة" }, { status: 403 });
-    }
-
-    // Rate Limiting: 20 messages per hour (Gap 19)
-    const oneHourAgo = new Date(now.getTime() - 3600000);
-    const messageCount = await prisma.planAIChatMessage.count({
-      where: {
-        studentId: session.id,
-        enrollmentId: enrollment.id,
-        createdAt: { gte: oneHourAgo }
-      }
-    });
-
-    if (messageCount >= 20) {
-      return NextResponse.json({ error: "تجاوزت الحد الأقصى المسموح به (20 رسالة في الساعة)" }, { status: 429 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -95,15 +87,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "الرسالة طويلة جداً (الحد الأقصى 4000 حرف)" }, { status: 400 });
     }
 
-    // Save student message
-    const studentMsg = await prisma.planAIChatMessage.create({
-      data: {
-        enrollmentId: enrollment.id,
-        studentId: session.id,
-        role: "user",
-        content
+    // Rate Limiting & Save student message in an atomic transaction
+    const oneHourAgo = new Date(now.getTime() - 3600000);
+    let studentMsg;
+    try {
+      studentMsg = await prisma.$transaction(async (tx) => {
+        // Acquire advisory lock to serialize chat quota checks
+        await acquireAdvisoryLock(`chat-limit-${session.id}`, tx);
+
+        const messageCount = await tx.planAIChatMessage.count({
+          where: {
+            studentId: session.id,
+            enrollmentId: enrollment.id,
+            createdAt: { gte: oneHourAgo }
+          }
+        });
+
+        if (messageCount >= 20) {
+          throw new Error("RATE_LIMIT_EXCEEDED");
+        }
+
+        return await tx.planAIChatMessage.create({
+          data: {
+            enrollmentId: enrollment.id,
+            studentId: session.id,
+            role: "user",
+            content
+          }
+        });
+      });
+    } catch (txErr: any) {
+      if (txErr.message === "RATE_LIMIT_EXCEEDED") {
+        return NextResponse.json({ error: "تجاوزت الحد الأقصى المسموح به (20 رسالة في الساعة)" }, { status: 429 });
       }
-    });
+      throw txErr;
+    }
 
     // History windowing: get last 20 messages (Gap 33)
     const pastMessages = await prisma.planAIChatMessage.findMany({

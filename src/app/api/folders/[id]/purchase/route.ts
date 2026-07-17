@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
 /**
  * POST /api/folders/[id]/purchase
@@ -17,49 +18,80 @@ export async function POST(
 
   const { id: folderId } = await params;
 
-  const folder = await prisma.folder.findUnique({
-    where: { id: folderId },
-    include: { course: { select: { id: true, teacherId: true, title: true } } },
-  });
+  try {
+    const purchase = await prisma.$transaction(async (tx) => {
+      // Acquire transaction-scoped advisory lock to serialize purchases for the user
+      await acquireAdvisoryLock(`purchase-folder-${session.id}`, tx);
 
-  if (!folder)
-    return NextResponse.json({ error: "المجلد غير موجود" }, { status: 404 });
+      const folder = await tx.folder.findUnique({
+        where: { id: folderId },
+        include: { course: { select: { id: true, teacherId: true, title: true } } },
+      });
 
-  if (!folder.isPurchasable)
-    return NextResponse.json(
-      { error: "هذا المجلد غير متاح للشراء منفرداً — يمكنك شراء الكورس كاملاً بكود وصول" },
-      { status: 403 }
-    );
+      if (!folder) throw new Error("NOT_FOUND");
 
-  // Prevent double purchase
-  const existing = await prisma.folderPurchase.findUnique({
-    where: { studentId_folderId: { studentId: session.id, folderId } },
-  });
-  if (existing)
-    return NextResponse.json({ error: "لقد اشتريت هذا المجلد بالفعل", alreadyOwned: true });
+      if (!folder.isPurchasable) throw new Error("NOT_PURCHASABLE");
 
-  const price = folder.price ?? 0;
+      // Prevent double purchase
+      const existing = await tx.folderPurchase.findUnique({
+        where: { studentId_folderId: { studentId: session.id, folderId } },
+      });
+      if (existing) throw new Error("ALREADY_OWNED");
 
-  if (price > 0) {
-    const student = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: { balance: true },
+      const price = folder.price ?? 0;
+
+      if (price > 0) {
+        const student = await tx.user.findUnique({
+          where: { id: session.id },
+          select: { balance: true },
+        });
+        if (!student || (student.balance ?? 0) < price) {
+          throw new Error("INSUFFICIENT_BALANCE");
+        }
+
+        // Deduct balance atomically
+        await tx.user.update({
+          where: { id: session.id },
+          data: { balance: { decrement: price } },
+        });
+
+        // Add ledger entry
+        await tx.balanceTransaction.create({
+          data: {
+            userId: session.id,
+            type: "debit_course",
+            amount: -price,
+            note: `شراء مجلد: ${folder.name}`,
+          },
+        });
+      }
+
+      // Create purchase record
+      return await tx.folderPurchase.create({
+        data: { studentId: session.id, folderId, price },
+      });
     });
-    if (!student || (student.balance ?? 0) < price)
-      return NextResponse.json({ error: "رصيدك غير كافٍ", required: price }, { status: 402 });
 
-    // Deduct balance
-    await prisma.user.update({
-      where: { id: session.id },
-      data: { balance: { decrement: price } },
-    });
+    return NextResponse.json({ purchase, message: "تم شراء المجلد بنجاح" }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === "NOT_FOUND") {
+      return NextResponse.json({ error: "المجلد غير موجود" }, { status: 404 });
+    }
+    if (error.message === "NOT_PURCHASABLE") {
+      return NextResponse.json(
+        { error: "هذا المجلد غير متاح للشراء منفرداً — يمكنك شراء الكورس كاملاً بكود وصول" },
+        { status: 403 }
+      );
+    }
+    if (error.message === "ALREADY_OWNED") {
+      return NextResponse.json({ error: "لقد اشتريت هذا المجلد بالفعل", alreadyOwned: true });
+    }
+    if (error.message === "INSUFFICIENT_BALANCE") {
+      return NextResponse.json({ error: "رصيدك غير كافٍ" }, { status: 402 });
+    }
+    console.error("[folder purchase] error:", error);
+    return NextResponse.json({ error: "حدث خطأ داخلي" }, { status: 500 });
   }
-
-  const purchase = await prisma.folderPurchase.create({
-    data: { studentId: session.id, folderId, price },
-  });
-
-  return NextResponse.json({ purchase, message: "تم شراء المجلد بنجاح" }, { status: 201 });
 }
 
 /** GET /api/folders/[id]/purchase — check if student owns this folder */

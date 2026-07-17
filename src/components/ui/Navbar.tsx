@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from "react";
-import { StreakFlame } from "@/components/ui/StreakFlame";
 import { getResolvedTheme, setThemePreference, type Theme } from "@/lib/theme";
 
 interface NavbarProps {
@@ -27,12 +26,10 @@ interface SearchResult {
 }
 
 const NAV_LINKS = [
-  { href: "/",             label: "الرئيسية" },
-  { href: "/plans",        label: "الخطط الدراسية" },
-  { href: "/courses",      label: "الكورسات" },
-  { href: "/environments", label: "بيئات التعلم" },
-  { href: "/library",      label: "مكتبتي" },
-  { href: "/account",      label: "حسابي" },
+  { href: "/",        label: "الرئيسية" },
+  { href: "/library",  label: "مكتبتي" },
+  { href: "/courses",  label: "الكورسات" },
+  { href: "/plans",    label: "الخطط الدراسية" },
 ];
 
 const NOTIF_ICON: Record<string, string> = {
@@ -46,7 +43,10 @@ const NOTIF_ICON: Record<string, string> = {
 function subscribe(cb: () => void) {
   window.addEventListener("storage", cb);
   window.addEventListener("themechange", cb);
-  return () => { window.removeEventListener("storage", cb); window.removeEventListener("themechange", cb); };
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("themechange", cb);
+  };
 }
 const getSnapshot       = (): Theme => getResolvedTheme();
 const getServerSnapshot = (): Theme => "light";
@@ -57,31 +57,53 @@ export function Navbar({ user }: NavbarProps) {
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [searching, setSearching] = useState(false);
-  const [balance, setBalance] = useState<number | null>(null);
+  const [stats, setStats] = useState<{ streak: number; points: number } | null>(null);
+
   const notifRef  = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const theme  = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isDark = theme === "dark";
   const cycleTheme = () => setThemePreference(isDark ? "light" : "dark");
 
-  useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+    setProfileMenuOpen(false);
+  }, [pathname]);
 
   // Close panels on outside click
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (notifRef.current  && !notifRef.current.contains(e.target as Node))  setNotifOpen(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) setProfileMenuOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  // Keyboard shortcut CMD+K or Ctrl+K for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+        setNotifOpen(false);
+        setProfileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Load notifications when panel opens
@@ -99,7 +121,7 @@ export function Navbar({ user }: NavbarProps) {
       .finally(() => setNotifLoading(false));
   }, [notifOpen, user]);
 
-  // Fetch unread count on mount (lightweight — cached 30s)
+  // Fetch unread count on mount
   useEffect(() => {
     if (!user) return;
     fetch("/api/notifications", { credentials: "include" })
@@ -108,12 +130,14 @@ export function Navbar({ user }: NavbarProps) {
       .catch(() => {});
   }, [user]);
 
-  // Fetch balance for students
+  // Fetch student points and streak
   useEffect(() => {
     if (!user || user.role !== "student") return;
-    fetch("/api/student/balance", { credentials: "include" })
+    fetch("/api/student/stats", { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
-      .then((d: { balance?: number } | null) => { if (d) setBalance(d.balance ?? 0); })
+      .then((d: { streak?: number; points?: number } | null) => {
+        if (d) setStats({ streak: d.streak ?? 0, points: d.points ?? 0 });
+      })
       .catch(() => {});
   }, [user]);
 
@@ -171,7 +195,7 @@ export function Navbar({ user }: NavbarProps) {
           </span>
         </Link>
 
-        {/* Desktop nav — lg breakpoint prevents layout crowding on tablet */}
+        {/* Desktop nav */}
         <nav className="hidden lg:flex items-center gap-1 justify-self-center" role="navigation">
           {NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href} aria-current={isActive(link.href) ? "page" : undefined} className="no-underline whitespace-nowrap transition-colors"
@@ -184,29 +208,93 @@ export function Navbar({ user }: NavbarProps) {
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-[6px] sm:gap-[10px] justify-self-end">
-          <StreakFlame role={user?.role} />
-
-          {/* Balance badge — students only */}
-          {user?.role === "student" && balance !== null && (
-            <Link href="/account" aria-label="رصيدي" title="رصيدي"
-              className="flex items-center gap-1.5 rounded-[10px] border border-[var(--gold-2)] no-underline transition-all hover:scale-105"
-              style={{ padding: "5px 11px", background: "var(--gold-soft)" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3m.08 4h.01"/>
+        <div className="flex items-center gap-[8px] sm:gap-[12px] justify-self-end">
+          
+          {/* Notification bell */}
+          <div ref={notifRef} className="lg:relative">
+            <button type="button" onClick={() => { setNotifOpen((o) => !o); setSearchOpen(false); setProfileMenuOpen(false); }}
+              aria-label="الإشعارات" aria-expanded={notifOpen}
+              className="relative px-3 h-[38px] flex items-center justify-center gap-1.5 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
               </svg>
-              <span style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 14, color: "var(--gold-2)", whiteSpace: "nowrap" }}>{balance} ج</span>
-            </Link>
-          )}
+              {unreadCount > 0 && (
+                <span className="text-[12px] font-black text-[var(--danger)]" style={{ fontFamily: "var(--font-head)" }}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] lg:right-0 lg:left-auto right-3 left-3 lg:w-[320px] w-auto"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+                <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>
+                      قراءة الكل
+                    </button>
+                  )}
+                  <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, margin: 0, color: "var(--ink)" }}>الإشعارات</h3>
+                </div>
+
+                <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                  {notifLoading && (
+                    <div className="flex items-center justify-center gap-2 py-8" style={{ color: "var(--ink-3)" }}>
+                      <div className="w-4 h-4 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
+                      <span style={{ fontSize: 13 }}>جارٍ التحميل...</span>
+                    </div>
+                  )}
+
+                  {!notifLoading && notifications.length === 0 && (
+                    <div className="py-10 text-center">
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
+                      <p style={{ fontSize: 13.5, color: "var(--ink-3)", margin: 0 }}>لا توجد إشعارات بعد</p>
+                    </div>
+                  )}
+
+                  {!notifLoading && notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => { if (n.link) router.push(n.link); setNotifOpen(false); }}
+                      className={`flex items-start gap-3 transition-colors ${n.link ? "cursor-pointer" : ""}`}
+                      style={{
+                        padding: "14px 18px",
+                        borderBottom: "1px solid var(--border)",
+                        background: n.isRead ? "transparent" : "var(--brand-soft)",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = n.isRead ? "transparent" : "var(--brand-soft)"; }}
+                    >
+                      <span style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{NOTIF_ICON[n.type] ?? "🔔"}</span>
+                      <div style={{ flex: 1, textAlign: "right" }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{n.title}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{n.body}</div>
+                        <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>
+                          {new Date(n.createdAt).toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </div>
+                      {!n.isRead && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand)", flexShrink: 0, marginTop: 4 }} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Search */}
           <div ref={searchRef} className="lg:relative">
-            <button type="button" onClick={() => { setSearchOpen((o) => !o); setNotifOpen(false); }}
+            <button type="button" onClick={() => { setSearchOpen((o) => !o); setNotifOpen(false); setProfileMenuOpen(false); }}
               aria-label="بحث"
-              className="w-11 h-11 sm:w-[38px] sm:h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-              </svg>
+              className="h-[38px] flex items-center justify-between gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-all cursor-pointer px-2 sm:px-3 w-10 sm:w-[135px]">
+              <div className="flex items-center gap-1.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                </svg>
+                <span className="hidden sm:inline text-[13px] text-[var(--ink-3)] font-medium">بحث...</span>
+              </div>
+              <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-0.5 rounded border border-[var(--border)] bg-[var(--surface)] px-1.5 font-mono text-[10px] font-bold text-[var(--ink-3)]">
+                ⌘K
+              </kbd>
             </button>
 
             {searchOpen && (
@@ -297,116 +385,97 @@ export function Navbar({ user }: NavbarProps) {
             )}
           </div>
 
-          {/* Theme toggle */}
-          <button type="button" onClick={cycleTheme} aria-label={isDark ? "وضع فاتح" : "وضع داكن"}
-            className="flex w-[38px] h-[38px] items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
-            {isDark ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-              </svg>
-            )}
-          </button>
-
-          {/* Leaderboard cup — hidden on mobile */}
-          <Link href="/leaderboard" aria-label="لوحة الشرف" title="لوحة الشرف"
-            className="hidden sm:flex w-[38px] h-[38px] items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--gold-soft)] text-[var(--gold-2)] hover:bg-[var(--gold-2)] hover:text-white transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17a2 2 0 0 1-.7 1.5L8 20h8l-1.3-1.5a2 2 0 0 1-.7-1.5v-2.3M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-            </svg>
-          </Link>
-
-          {/* Notification bell */}
-          <div ref={notifRef} className="lg:relative">
-            <button type="button" onClick={() => { setNotifOpen((o) => !o); setSearchOpen(false); }}
-              aria-label="الإشعارات" aria-expanded={notifOpen}
-              className="relative w-[38px] h-[38px] flex items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-2)] hover:bg-[var(--border)] transition-colors cursor-pointer">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-[5px] -left-[5px] min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center border-2 border-[var(--surface)]"
-                  style={{ background: "var(--danger)", color: "#fff", fontSize: 10.5, fontWeight: 800 }}>
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {notifOpen && (
-              <div className="absolute top-full mt-2 rounded-[16px] overflow-hidden z-[var(--z-dropdown)] lg:right-0 lg:left-auto right-3 left-3 lg:w-[320px] w-auto"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
-                <div className="flex items-center justify-between" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer" }}>
-                      قراءة الكل
-                    </button>
-                  )}
-                  <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, margin: 0, color: "var(--ink)" }}>الإشعارات</h3>
-                </div>
-
-                <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                  {notifLoading && (
-                    <div className="flex items-center justify-center gap-2 py-8" style={{ color: "var(--ink-3)" }}>
-                      <div className="w-4 h-4 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
-                      <span style={{ fontSize: 13 }}>جارٍ التحميل...</span>
-                    </div>
-                  )}
-
-                  {!notifLoading && notifications.length === 0 && (
-                    <div className="py-10 text-center">
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
-                      <p style={{ fontSize: 13.5, color: "var(--ink-3)", margin: 0 }}>لا توجد إشعارات بعد</p>
-                    </div>
-                  )}
-
-                  {!notifLoading && notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => { if (n.link) router.push(n.link); setNotifOpen(false); }}
-                      className={`flex items-start gap-3 transition-colors ${n.link ? "cursor-pointer" : ""}`}
-                      style={{
-                        padding: "14px 18px",
-                        borderBottom: "1px solid var(--border)",
-                        background: n.isRead ? "transparent" : "var(--brand-soft)",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = n.isRead ? "transparent" : "var(--brand-soft)"; }}
-                    >
-                      <span style={{ fontSize: 22, lineHeight: 1, marginTop: 2 }}>{NOTIF_ICON[n.type] ?? "🔔"}</span>
-                      <div style={{ flex: 1, textAlign: "right" }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{n.title}</div>
-                        <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{n.body}</div>
-                        <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>
-                          {new Date(n.createdAt).toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                      </div>
-                      {!n.isRead && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand)", flexShrink: 0, marginTop: 4 }} />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* User / auth */}
+          {/* User profile / auth */}
           {user ? (
-            <div className="hidden sm:flex items-center gap-[10px]">
-              <Link href={`/student/${user.role === "student" ? "me" : ""}`}
-                className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-2)] no-underline"
-                style={{ padding: "5px 12px 5px 6px" }}>
+            <div ref={profileMenuRef} className="relative">
+              <button type="button" onClick={() => { setProfileMenuOpen((o) => !o); setNotifOpen(false); setSearchOpen(false); }}
+                className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-2)] no-underline cursor-pointer hover:bg-[var(--border)] transition-colors h-[38px]"
+                style={{ padding: "4px 12px 4px 6px" }}>
                 <span className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                   style={{ background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 800, fontSize: 14 }}>
                   {user.name?.[0] ?? "م"}
                 </span>
-                <b style={{ fontSize: 14, color: "var(--ink)", fontWeight: 600 }}>{user.name}</b>
-              </Link>
-              <button type="button" onClick={handleLogout} className="cursor-pointer hover:opacity-80 transition-opacity"
-                style={{ padding: "9px 15px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 700, color: "var(--danger)", background: "var(--danger-soft)" }}>
-                خروج
+                <b style={{ fontSize: 14, color: "var(--ink)", fontWeight: 600 }} className="hidden sm:inline">{user.name}</b>
+                <span className="text-[10px] text-[var(--ink-3)] transition-transform duration-200" style={{ transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0)" }}>
+                  ▼
+                </span>
               </button>
+
+              {profileMenuOpen && (
+                <div className="absolute left-0 mt-2 w-[220px] rounded-[16px] overflow-hidden z-[var(--z-dropdown)]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}
+                  dir="rtl">
+                  <div style={{ padding: "6px" }}>
+                    <div className="px-3 py-2 border-b border-[var(--border)] mb-1 sm:hidden">
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{user.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-3)" }}>{user.role === "student" ? "طالب" : "معلم"}</div>
+                    </div>
+
+                    <Link href="/account" onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-3 no-underline rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)]"
+                      style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                      <span style={{ fontSize: 16 }}>👤</span>
+                      <span>حسابي</span>
+                    </Link>
+
+                    {user.role === "student" && (
+                      <>
+                        <Link href="/student/me" onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-3 no-underline rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)]"
+                          style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                          <span style={{ fontSize: 16 }}>📊</span>
+                          <span>بيانات التعلم</span>
+                        </Link>
+
+                        <Link href="/leaderboard" onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-3 no-underline rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)]"
+                          style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                          <span style={{ fontSize: 16 }}>🏆</span>
+                          <span>الإنجازات</span>
+                        </Link>
+
+                        <div className="flex items-center gap-3 rounded-[10px] text-[var(--ink)]"
+                          style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                          <span style={{ fontSize: 16 }}>🔥</span>
+                          <span>سلسلة المواظبة: <strong style={{ color: "var(--brand)" }}>{stats?.streak ?? 0}</strong></span>
+                        </div>
+
+                        <div className="flex items-center gap-3 rounded-[10px] text-[var(--ink)]"
+                          style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                          <span style={{ fontSize: 16 }}>⭐</span>
+                          <span>النقاط: <strong style={{ color: "var(--gold-2)" }}>{stats?.points ?? 0}</strong></span>
+                        </div>
+                      </>
+                    )}
+
+                    <Link href="/account" onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-3 no-underline rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)]"
+                      style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
+                      <span style={{ fontSize: 16 }}>⚙️</span>
+                      <span>الإعدادات</span>
+                    </Link>
+
+                    <button type="button" onClick={cycleTheme}
+                      className="w-full flex items-center gap-3 rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)] text-right cursor-pointer"
+                      style={{ padding: "10px 12px", border: "none", background: "none", fontSize: 14.5, fontWeight: 600 }}>
+                      <span style={{ fontSize: 16 }}>{isDark ? "☀️" : "🌙"}</span>
+                      <span>{isDark ? "المظهر الفاتح" : "المظهر الداكن"}</span>
+                    </button>
+
+                    <div style={{ height: "1px", background: "var(--border)", margin: "4px 8px" }} />
+
+                    <button
+                      type="button"
+                      onClick={() => { handleLogout(); setProfileMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 rounded-[10px] transition-colors hover:bg-[var(--danger-soft)] text-[var(--danger)] text-right cursor-pointer"
+                      style={{ padding: "10px 12px", border: "none", background: "none", fontSize: 14.5, fontWeight: 700 }}
+                    >
+                      <span style={{ fontSize: 16 }}>🚪</span>
+                      <span>تسجيل الخروج</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="hidden sm:flex items-center gap-1.5">

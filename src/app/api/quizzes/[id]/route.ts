@@ -89,6 +89,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               });
             }
           }
+
+          // Reset QuizResult for retake
+          await prisma.quizResult.update({
+            where: { id: existingResult.id },
+            data: { startedAt: new Date(), allowRetake: false },
+          });
+        } else {
+          // Create initial QuizResult with startedAt
+          await prisma.quizResult.create({
+            data: {
+              studentId: session.id,
+              quizId,
+              score: 0,
+              totalQ: 0,
+              startedAt: new Date(),
+              allowRetake: false,
+            },
+          });
         }
       }
 

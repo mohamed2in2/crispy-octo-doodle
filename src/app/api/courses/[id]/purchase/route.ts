@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 
+import { acquireAdvisoryLock } from "@/lib/distributed-lock";
+
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "يجب تسجيل الدخول أولاً" }, { status: 401 });
@@ -37,52 +39,74 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "هذا الكورس مجاني — استخدم زر التسجيل المباشر" }, { status: 400 });
   }
 
-  // Check already enrolled
-  const existing = await prisma.accessCode.findFirst({
-    where: { courseId, studentId: session.id },
-    select: { id: true },
-  });
-  if (existing) return NextResponse.json({ error: "أنت مسجّل بالفعل في هذا الكورس" }, { status: 400 });
-
-  // Check balance — treat NULL as 0 (new column on existing rows may be NULL in SQLite)
-  const userRow = await prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } });
-  if (!userRow) return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
-
-  const currentBalance = userRow.balance ?? 0;  // NULL-safe
-  if (currentBalance < effectivePrice) {
-    return NextResponse.json({
-      error: `رصيدك غير كافٍ (${currentBalance} جنيه). تحتاج ${effectivePrice} جنيه. أضف رصيداً باستخدام كود الشحن.`,
-    }, { status: 400 });
-  }
-
-  const newBalance = +(currentBalance - effectivePrice).toFixed(2);
   const code = `PAY-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
 
-  // Atomic: set explicit new balance (not decrement — avoids NULL arithmetic in SQLite)
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: session.id },
-      data: { balance: newBalance },
-    }),
-    prisma.accessCode.create({
-      data: { code, courseId, studentId: session.id, isActive: true, usedAt: now },
-    }),
-    prisma.balanceTransaction.create({
-      data: {
-        userId: session.id,
-        type: "debit_course",
-        amount: -effectivePrice,
-        note: `شراء كورس: ${course.title}`,
-      },
-    }),
-  ]);
+  try {
+    const purchaseResult = await prisma.$transaction(async (tx) => {
+      // 1. Acquire advisory lock on student wallet
+      await acquireAdvisoryLock(`purchase-course-${session.id}`, tx);
 
-  return NextResponse.json({
-    success: true,
-    courseId,
-    courseTitle: course.title,
-    charged: effectivePrice,
-    newBalance,
-    message: `تم شراء «${course.title}» بنجاح! خُصم ${effectivePrice} جنيه — رصيدك الآن ${newBalance} جنيه.`,
-  });
+      // 2. Check already enrolled inside the transaction
+      const existing = await tx.accessCode.findFirst({
+        where: { courseId, studentId: session.id },
+        select: { id: true },
+      });
+      if (existing) throw new Error("ALREADY_ENROLLED");
+
+      // 3. Check balance inside the transaction
+      const student = await tx.user.findUnique({
+        where: { id: session.id },
+        select: { balance: true },
+      });
+      if (!student) throw new Error("USER_NOT_FOUND");
+
+      const currentBalance = student.balance ?? 0;
+      if (currentBalance < effectivePrice) throw new Error("INSUFFICIENT_FUNDS");
+
+      // 4. Update balance atomically using decrement
+      await tx.user.update({
+        where: { id: session.id },
+        data: { balance: { decrement: effectivePrice } },
+      });
+
+      // 5. Create AccessCode
+      await tx.accessCode.create({
+        data: { code, courseId, studentId: session.id, isActive: true, usedAt: now },
+      });
+
+      // 6. Create BalanceTransaction
+      await tx.balanceTransaction.create({
+        data: {
+          userId: session.id,
+          type: "debit_course",
+          amount: -effectivePrice,
+          note: `شراء كورس: ${course.title}`,
+        },
+      });
+
+      return {
+        newBalance: +(currentBalance - effectivePrice).toFixed(2),
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      courseId,
+      courseTitle: course.title,
+      charged: effectivePrice,
+      newBalance: purchaseResult.newBalance,
+      message: `تم شراء «${course.title}» بنجاح! خُصم ${effectivePrice} جنيه — رصيدك الآن ${purchaseResult.newBalance} جنيه.`,
+    });
+  } catch (err: any) {
+    if (err.message === "ALREADY_ENROLLED") {
+      return NextResponse.json({ error: "أنت مسجّل بالفعل في هذا الكورس" }, { status: 400 });
+    }
+    if (err.message === "USER_NOT_FOUND") {
+      return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
+    }
+    if (err.message === "INSUFFICIENT_FUNDS") {
+      return NextResponse.json({ error: "رصيدك غير كافٍ لإتمام العملية" }, { status: 400 });
+    }
+    throw err;
+  }
 }

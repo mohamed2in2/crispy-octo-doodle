@@ -36,6 +36,19 @@ export async function POST(
   if (!body.submissionId || !["passed", "failed"].includes(body.verdict))
     return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
 
+  // Verify the submission belongs to this homework
+  const submissionRecord = await prisma.homeworkSubmission.findUnique({
+    where: { id: body.submissionId },
+    select: { homeworkId: true },
+  });
+
+  if (!submissionRecord) {
+    return NextResponse.json({ error: "التسليم غير موجود" }, { status: 404 });
+  }
+  if (submissionRecord.homeworkId !== homeworkId) {
+    return NextResponse.json({ error: "التسليم لا يتطابق مع الواجب المحدد" }, { status: 400 });
+  }
+
   // Update submission status
   const submission = await prisma.homeworkSubmission.update({
     where: { id: body.submissionId },

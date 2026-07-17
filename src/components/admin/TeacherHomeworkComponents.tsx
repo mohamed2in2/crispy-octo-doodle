@@ -156,7 +156,14 @@ export function LiveReviewPanel({ notify }: { notify: (t: "success" | "error", m
                 {sub.fileUrl && (
                   <div>
                     <p className="text-xs font-bold text-[var(--ink-muted)] mb-1">ملف مرفق:</p>
-                    <p className="text-sm text-sky-500 font-mono">{sub.fileName}</p>
+                    <a
+                      href={`/api/homework/${selected.id}/file?studentId=${sub.studentId}&fileName=${encodeURIComponent(sub.fileUrl.split("/").pop() || "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-sky-500 font-mono hover:underline flex items-center gap-1"
+                    >
+                      📎 {sub.fileName || "تحميل الملف"}
+                    </a>
                   </div>
                 )}
 

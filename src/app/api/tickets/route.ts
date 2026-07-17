@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, getStudentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+import { checkCourseEnrollment } from "@/lib/authorization";
+
 // POST — student creates a support ticket
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +13,13 @@ export async function POST(req: NextRequest) {
     const { title, description, type, priority, courseId } = await req.json();
     if (!title || !description) {
       return NextResponse.json({ error: "العنوان والوصف مطلوبان" }, { status: 400 });
+    }
+
+    if (courseId) {
+      const isEnrolled = await checkCourseEnrollment(session.id, courseId);
+      if (!isEnrolled) {
+        return NextResponse.json({ error: "غير مسجل في هذا الكورس" }, { status: 403 });
+      }
     }
 
     const ticket = await prisma.supportTicket.create({
