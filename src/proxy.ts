@@ -28,9 +28,17 @@ function isProtectedCourseRoute(pathname: string) {
   return /^\/courses\/[^/]+\/learn(\/.*)?$/.test(pathname);
 }
 
+function isProtectedPlanRoute(pathname: string) {
+  return /^\/plans\/[^/]+\/learn(\/.*)?$/.test(pathname);
+}
+
 /** Public API routes under /api/courses that need no session */
 function isPublicCoursesApi(pathname: string) {
   return pathname === "/api/courses" || /^\/api\/courses(\/[^/]+\/preview)?$/.test(pathname);
+}
+
+function isPublicPlansApi(pathname: string) {
+  return pathname === "/api/plans" || /^\/api\/plans\/[^/]+$/.test(pathname);
 }
 
 function startsWithAny(pathname: string, prefixes: string[]) {
@@ -92,8 +100,20 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Learning room inside plans — auth required
+  if (isProtectedPlanRoute(pathname) && !authed) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("redirect_url", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   // Protect /api/courses/* except public preview endpoint
   if (pathname.startsWith("/api/courses") && !isPublicCoursesApi(pathname) && !authed) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  // Protect /api/plans/* except public endpoints
+  if (pathname.startsWith("/api/plans") && !isPublicPlansApi(pathname) && !authed) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 

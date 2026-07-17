@@ -5,12 +5,22 @@ import { isPhoneVerificationBypassed } from "@/lib/twilio";
 import { generateVerificationCode, sendVerificationCode } from "@/lib/whatsapp";
 import { createPhoneVerificationChallenge, setPhoneVerificationCookie } from "@/lib/auth";
 import { checkCooldown } from "@/lib/cooldown";
+import { verifyRecaptchaToken } from "@/lib/recaptcha";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, forceChannel } = await req.json();
+    const { phone, forceChannel, recaptchaToken } = await req.json();
     if (!phone || typeof phone !== "string") {
       return NextResponse.json({ error: "رقم المتعلم مطلوب" }, { status: 400 });
+    }
+
+    // ── reCAPTCHA Enterprise verification ──────────────────────────────────────
+    if (recaptchaToken) {
+      const captcha = await verifyRecaptchaToken(recaptchaToken, "send_code");
+      if (!captcha.success) {
+        console.warn("[reCAPTCHA] send-code blocked — score:", captcha.score, "reasons:", captcha.reasons);
+        return NextResponse.json({ error: "تم اكتشاف نشاط مشبوه. يرجى المحاولة مرة أخرى." }, { status: 403 });
+      }
     }
 
     let normalizedPhone: string;

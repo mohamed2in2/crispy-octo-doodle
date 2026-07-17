@@ -28,6 +28,7 @@ interface SearchResult {
 
 const NAV_LINKS = [
   { href: "/",             label: "الرئيسية" },
+  { href: "/plans",        label: "الخطط الدراسية" },
   { href: "/courses",      label: "الكورسات" },
   { href: "/environments", label: "بيئات التعلم" },
   { href: "/library",      label: "مكتبتي" },
@@ -39,6 +40,7 @@ const NOTIF_ICON: Record<string, string> = {
   exam_live:        "🎯",
   grade_resolved:   "📝",
   referral_joined:  "🎁",
+  project_graded:   "📋",
 };
 
 function subscribe(cb: () => void) {

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
 
       try {
       const session = await getSession();
-      if (!session || session.role !== "teacher") {
+      if (!session || (session.role !== "teacher" && session.role !== "superadmin")) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
       }
 
@@ -66,9 +66,9 @@ export async function GET(req: NextRequest) {
           quiz: {
             id: r.quiz.id,
             title: r.quiz.title,
-            folderName: r.quiz.folder.name,
-            courseId: r.quiz.folder.courseId,
-            courseTitle: r.quiz.folder.course.title,
+            folderName: r.quiz.folder?.name ?? "اختبار خطة",
+            courseId: r.quiz.folder?.courseId ?? "",
+            courseTitle: r.quiz.folder?.course?.title ?? "خطة دراسية",
           },
           score: r.score,
           totalQ: r.totalQ,
@@ -103,7 +103,7 @@ export async function PATCH(req: NextRequest) {
         });
       } catch (e) {}
     }
-      if (!session || session.role !== "teacher") {
+      if (!session || (session.role !== "teacher" && session.role !== "superadmin")) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
       }
 
@@ -130,8 +130,12 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "النتيجة غير موجودة" }, { status: 404 });
       }
 
-      if (result.quiz.folder.course.teacherId !== session.id) {
+      if (result.quiz.folder && session.role === "teacher" && result.quiz.folder.course.teacherId !== session.id) {
         return NextResponse.json({ error: "ليست لديك صلاحية" }, { status: 403 });
+      }
+
+      if (!result.quiz.folder && session.role !== "superadmin") {
+        return NextResponse.json({ error: "لا يمكن تعديل اختبارات الخطط إلا للمشرف العام" }, { status: 403 });
       }
 
       const updated = await prisma.quizResult.update({

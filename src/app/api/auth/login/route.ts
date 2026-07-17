@@ -5,11 +5,21 @@ import { signToken, setAuthCookie } from "@/lib/auth";
 import { normalizeEgyptPhone } from "@/lib/phone";
 import { readDeviceId, setDeviceCookie, deviceLabelFromUA } from "@/lib/devices";
 import { getStudentMaxDevices } from "@/lib/settings";
+import { verifyRecaptchaToken } from "@/lib/recaptcha";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json().catch(() => ({}))) as { phone?: string; password?: string };
-    const { phone, password } = body;
+    const body = (await req.json().catch(() => ({}))) as { phone?: string; password?: string; recaptchaToken?: string };
+    const { phone, password, recaptchaToken } = body;
+
+    // ── reCAPTCHA Enterprise verification ──────────────────────────────────────
+    if (recaptchaToken) {
+      const captcha = await verifyRecaptchaToken(recaptchaToken, "login");
+      if (!captcha.success) {
+        console.warn("[reCAPTCHA] Login blocked — score:", captcha.score, "reasons:", captcha.reasons);
+        return NextResponse.json({ error: "تم اكتشاف نشاط مشبوه. يرجى المحاولة مرة أخرى." }, { status: 403 });
+      }
+    }
 
     if (!phone || !password) {
       return NextResponse.json({ error: "رقم الهاتف وكلمة المرور مطلوبان" }, { status: 400 });

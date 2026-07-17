@@ -173,3 +173,74 @@ export interface AnimationVariants {
   visible: Record<string, unknown>;
   exit?: Record<string, unknown>;
 }
+
+// ========= PLANS (الخطط الدراسية) TYPES =========
+export type PlanStatus = "draft" | "published" | "archived";
+
+export interface PlanCard {
+  id: string;
+  title: string;
+  educationalStage: string;
+  monthIndex: number;
+  description: string | null;
+  price: number;
+  discountPrice: number | null;
+  discountExpiresAt: Date | null;
+  durationDays: number;
+  status: PlanStatus;
+  _count?: {
+    lessons: number;
+    enrollments: number;
+  };
+}
+
+export interface PlanWithLessons extends PlanCard {
+  lessons: PlanLessonWithSources[];
+}
+
+export interface PlanLessonWithSources {
+  id: string;
+  title: string;
+  order: number;
+  gatesNextLesson: boolean;
+  requiresQuiz: boolean;
+  requiresHomework: boolean;
+  hasProject: boolean;
+  sources: PlanLessonSourceData[];
+  quizzes?: { id: string; title: string }[];
+}
+
+export interface PlanLessonSourceData {
+  id: string;
+  videoId: string | null;
+  teacherId: string;
+  isDefault: boolean;
+  isManual: boolean;
+  video?: {
+    title: string;
+    vdoCipherId: string;
+    videoProvider: string;
+    providerVideoId: string;
+  } | null;
+}
+
+export interface PlanEnrollmentData {
+  id: string;
+  planId: string;
+  studentId: string;
+  pricePaid: number;
+  unlockedAt: Date;
+  expiresAt: Date;
+}
+
+export interface PlanProgressData {
+  id: string;
+  planLessonId: string;
+  chosenSourceId: string | null;
+  watched: boolean;
+  quizPassed: boolean;
+  quizScore: number | null;
+  homeworkPassed: boolean;
+  projectPassed: boolean | null;
+  projectGrade: number | null;
+}

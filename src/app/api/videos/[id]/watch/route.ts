@@ -63,24 +63,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const teacherSlug = profile?.slug ?? "";
 
   let studentPlan = "course";
-  const hasVideoAccess = await prisma.accessCode.findFirst({
-    where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
-  }) || await prisma.videoPurchase.findUnique({
-    where: { studentId_videoId: { studentId: session.id, videoId } },
+  const planEnrollmentForVideo = await prisma.planEnrollment.findFirst({
+    where: {
+      studentId: session.id,
+      expiresAt: { gt: now },
+      plan: {
+        lessons: {
+          some: {
+            sources: {
+              some: {
+                videoId
+              }
+            }
+          }
+        }
+      }
+    },
+    select: { id: true }
   });
 
-  if (hasVideoAccess) {
-    studentPlan = "lesson";
+  if (planEnrollmentForVideo) {
+    studentPlan = "plan";
   } else {
-    const folderId = video.folderId;
-    const hasFolderAccess = await prisma.accessCode.findFirst({
-      where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
-    }) || await prisma.folderPurchase.findUnique({
-      where: { studentId_folderId: { studentId: session.id, folderId } },
+    const hasVideoAccess = await prisma.accessCode.findFirst({
+      where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+    }) || await prisma.videoPurchase.findUnique({
+      where: { studentId_videoId: { studentId: session.id, videoId } },
     });
 
-    if (hasFolderAccess) {
-      studentPlan = "folder";
+    if (hasVideoAccess) {
+      studentPlan = "lesson";
+    } else {
+      const folderId = video.folderId;
+      const hasFolderAccess = await prisma.accessCode.findFirst({
+        where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+      }) || await prisma.folderPurchase.findUnique({
+        where: { studentId_folderId: { studentId: session.id, folderId } },
+      });
+
+      if (hasFolderAccess) {
+        studentPlan = "folder";
+      }
     }
   }
 
@@ -233,24 +256,47 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const teacherSlug = profile?.slug ?? "";
 
     let studentPlan = "course";
-    const hasVideoAccess = await prisma.accessCode.findFirst({
-      where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
-    }) || await prisma.videoPurchase.findUnique({
-      where: { studentId_videoId: { studentId: session.id, videoId } },
+    const isPlanStudent = await prisma.planEnrollment.findFirst({
+      where: {
+        studentId: session.id,
+        expiresAt: { gt: now },
+        plan: {
+          lessons: {
+            some: {
+              sources: {
+                some: {
+                  videoId
+                }
+              }
+            }
+          }
+        }
+      },
+      select: { id: true }
     });
 
-    if (hasVideoAccess) {
-      studentPlan = "lesson";
+    if (isPlanStudent) {
+      studentPlan = "plan";
     } else {
-      const folderId = video.folderId;
-      const hasFolderAccess = await prisma.accessCode.findFirst({
-        where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
-      }) || await prisma.folderPurchase.findUnique({
-        where: { studentId_folderId: { studentId: session.id, folderId } },
+      const hasVideoAccess = await prisma.accessCode.findFirst({
+        where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+      }) || await prisma.videoPurchase.findUnique({
+        where: { studentId_videoId: { studentId: session.id, videoId } },
       });
 
-      if (hasFolderAccess) {
-        studentPlan = "folder";
+      if (hasVideoAccess) {
+        studentPlan = "lesson";
+      } else {
+        const folderId = video.folderId;
+        const hasFolderAccess = await prisma.accessCode.findFirst({
+          where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+        }) || await prisma.folderPurchase.findUnique({
+          where: { studentId_folderId: { studentId: session.id, folderId } },
+        });
+
+        if (hasFolderAccess) {
+          studentPlan = "folder";
+        }
       }
     }
 
@@ -275,7 +321,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     where: { courseId: course.id, studentId: session.id, isActive: true },
     select: { id: true },
   });
+  
+  let hasPlanAccess = false;
   if (!hasAccess) {
+    const planEnrollment = await prisma.planEnrollment.findFirst({
+      where: {
+        studentId: session.id,
+        expiresAt: { gt: now },
+        plan: {
+          lessons: {
+            some: {
+              sources: {
+                some: {
+                  videoId: video.id
+                }
+              }
+            }
+          }
+        }
+      },
+      select: { id: true }
+    });
+    if (planEnrollment) {
+      hasPlanAccess = true;
+    }
+  }
+
+  if (!hasAccess && !hasPlanAccess) {
     return NextResponse.json({ error: "لا يوجد صلاحية للوصول لهذا الكورس" }, { status: 403 });
   }
 
@@ -317,24 +389,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const teacherSlug = profile?.slug ?? "";
 
     let studentPlan = "course";
-    const hasVideoAccess = await prisma.accessCode.findFirst({
-      where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
-    }) || await prisma.videoPurchase.findUnique({
-      where: { studentId_videoId: { studentId: session.id, videoId } },
-    });
-
-    if (hasVideoAccess) {
-      studentPlan = "lesson";
+    if (hasPlanAccess) {
+      studentPlan = "plan";
     } else {
-      const folderId = video.folderId;
-      const hasFolderAccess = await prisma.accessCode.findFirst({
-        where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
-      }) || await prisma.folderPurchase.findUnique({
-        where: { studentId_folderId: { studentId: session.id, folderId } },
+      const hasVideoAccess = await prisma.accessCode.findFirst({
+        where: { studentId: session.id, videoId, isActive: true, accessType: "VIDEO" },
+      }) || await prisma.videoPurchase.findUnique({
+        where: { studentId_videoId: { studentId: session.id, videoId } },
       });
 
-      if (hasFolderAccess) {
-        studentPlan = "folder";
+      if (hasVideoAccess) {
+        studentPlan = "lesson";
+      } else {
+        const folderId = video.folderId;
+        const hasFolderAccess = await prisma.accessCode.findFirst({
+          where: { studentId: session.id, folderId, isActive: true, accessType: "FOLDER" },
+        }) || await prisma.folderPurchase.findUnique({
+          where: { studentId_folderId: { studentId: session.id, folderId } },
+        });
+
+        if (hasFolderAccess) {
+          studentPlan = "folder";
+        }
       }
     }
 

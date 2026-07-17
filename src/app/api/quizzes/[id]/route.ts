@@ -22,16 +22,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               },
             },
           },
+          planLesson: { select: { id: true, planId: true } },
         },
       });
 
       if (!quiz) return NextResponse.json({ error: "الاختبار غير موجود" }, { status: 404 });
 
-      const canAccessAsTeacher = session.role === "teacher" && quiz.folder.course.teacherId === session.id;
-      const canAccessAsStudent = await prisma.accessCode.findFirst({
-        where: { courseId: quiz.folder.courseId, studentId: session.id, isActive: true },
-        select: { id: true },
-      });
+      const canAccessAsTeacher = session.role === "teacher" && (
+        quiz.folder?.course?.teacherId === session.id || quiz.planLessonId !== null
+      );
+      
+      let canAccessAsStudent = false;
+      if (quiz.folderId && quiz.folder) {
+        const hasCourseAccess = await prisma.accessCode.findFirst({
+          where: { courseId: quiz.folder.courseId, studentId: session.id, isActive: true },
+          select: { id: true },
+        });
+        if (hasCourseAccess) canAccessAsStudent = true;
+      } else if (quiz.planLessonId && quiz.planLesson) {
+        const hasPlanAccess = await prisma.planEnrollment.findFirst({
+          where: { planId: quiz.planLesson.planId, studentId: session.id, expiresAt: { gt: new Date() } },
+          select: { id: true },
+        });
+        if (hasPlanAccess) canAccessAsStudent = true;
+      }
 
       if (!canAccessAsTeacher && !canAccessAsStudent) {
         return NextResponse.json({ error: "لا يوجد صلاحية للوصول" }, { status: 403 });
@@ -53,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 totalQ: existingResult.totalQ,
                 completedAt: existingResult.completedAt,
               },
-              quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder.courseId, course: quiz.folder.course },
+              quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder?.courseId ?? 'plan', course: quiz.folder?.course },
             });
           }
 
@@ -71,7 +85,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   totalQ: existingResult.totalQ,
                   completedAt: existingResult.completedAt,
                 },
-                quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder.courseId, course: quiz.folder.course },
+                quiz: { id: quiz.id, title: quiz.title, courseId: quiz.folder?.courseId ?? 'plan', course: quiz.folder?.course },
               });
             }
           }
@@ -92,8 +106,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           timeLimitMinutes: (quiz as any).timeLimitMinutes,
           questions,
           folderId: quiz.folderId,
-          courseId: quiz.folder.courseId,
-          course: quiz.folder.course,
+          courseId: quiz.folder?.courseId ?? 'plan',
+          course: quiz.folder?.course,
         },
         timeLimitMinutes: (quiz as any).timeLimitMinutes,
       });

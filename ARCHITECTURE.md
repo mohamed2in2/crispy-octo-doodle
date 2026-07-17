@@ -591,7 +591,7 @@ npm run db:generate
 ### Seeding Database    tg
 ```bash
 npm run db:seed
-``
+```
 
 ### Development Server
 ```bash

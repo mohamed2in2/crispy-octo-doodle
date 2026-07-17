@@ -246,7 +246,7 @@ async function executeAction(
           data: {
             studentId,
             quizId: p.quizId,
-            courseId: result.quiz.folder.courseId,
+            courseId: result.quiz.folder?.courseId ?? "plan",
             requestedBy: "student",
             currentScore: result.score,
             requestedScore: p.requestedScore ?? null,

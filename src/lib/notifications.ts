@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-type NotificationType = "streak_milestone" | "exam_live" | "grade_resolved" | "referral_joined";
+type NotificationType = "streak_milestone" | "exam_live" | "grade_resolved" | "referral_joined" | "project_graded";
 
 interface NotificationPayload {
   userId: string;
@@ -72,6 +72,21 @@ export async function notifyGradeResolved(
     body: approved
       ? `تم قبول طلب تعديل درجتك في "${quizTitle}". تحقق من نتائجك.`
       : `رفض المعلم طلب تعديل درجتك في "${quizTitle}".`,
+    link: "/library",
+  });
+}
+
+/** Notify student when a project has been graded. */
+export async function notifyProjectGraded(
+  studentId: string,
+  lessonTitle: string,
+  grade: number
+): Promise<void> {
+  await createNotification({
+    userId: studentId,
+    type: "project_graded",
+    title: `تم تقييم مشروعك في درس ${lessonTitle} 🎉`,
+    body: `حصلت على درجة ${grade}% في مشروعك الأخير. تحقق من التقييم الآن.`,
     link: "/library",
   });
 }

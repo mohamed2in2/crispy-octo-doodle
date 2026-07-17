@@ -44,9 +44,9 @@ interface QuizResultEntry {
   quiz: {
     id: string;
     title: string;
-    folder: {
+    folder?: {
       course: { id: string; title: string };
-    };
+    } | null;
   };
 }
 
@@ -135,9 +135,9 @@ export function StudentDetailModal({ studentId, onClose, onStudentModified, user
 
   const resultsByCourse = data?.quizResults.reduce<Record<string, CourseGroup>>(
     (acc, r) => {
-      const courseId = r.quiz.folder.course.id;
+      const courseId = r.quiz.folder?.course?.id ?? 'plan';
       if (!acc[courseId]) {
-        acc[courseId] = { courseTitle: r.quiz.folder.course.title, results: [] };
+        acc[courseId] = { courseTitle: r.quiz.folder?.course?.title ?? "خطة دراسية", results: [] };
       }
       acc[courseId].results.push(r);
       return acc;

@@ -246,6 +246,28 @@ export async function GET(req: NextRequest) {
       at: f.createdAt.toISOString(),
     });
   }
+  // Surfacing grading queue (Gap 30)
+  const teacherLessonIds = (await prisma.planLessonSource.findMany({
+    where: { teacherId: session.id },
+    select: { planLessonId: true }
+  })).map(s => s.planLessonId);
+
+  const pendingGradingCount = await prisma.planProjectSubmission.count({
+    where: {
+      status: "pending",
+      planLessonId: { in: teacherLessonIds }
+    }
+  });
+  if (pendingGradingCount > 0) {
+    issues.push({
+      kind: "grading",
+      severity: "high",
+      title: "مشاريع معلقة بانتظار التقييم",
+      detail: `توجد عدد ${pendingGradingCount} مشروع معلق يتطلب مراجعتك وتقييمك.`,
+      at: null,
+    });
+  }
+
   // Data-health warnings
   for (const c of courses) {
     if (!c.thumbnailUrl || !/^https?:\/\//i.test(c.thumbnailUrl)) {

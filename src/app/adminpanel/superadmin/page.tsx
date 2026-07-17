@@ -19,6 +19,7 @@ import { SiteTextSection } from "@/components/admin/superadmin/SiteTextSection";
 import { AdvancedSettingsSection } from "@/components/admin/superadmin/AdvancedSettingsSection";
 import { AccessGate } from "@/components/admin/superadmin/AccessGate";
 import { WalletSection } from "@/components/admin/superadmin/WalletSection";
+import { PlansSection } from "@/components/admin/superadmin/PlansSection";
 import { IconMenu, IconTrash } from "@/components/admin/AdminIcons";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -76,6 +77,7 @@ interface Teacher {
 
 const SECTION_TITLES: Record<string, string> = {
   overview: "نظرة عامة",
+  plans: "الخطط الدراسية",
   students: "إدارة المتعلمين",
   teachers: "إدارة المعلمين",
   create: "إنشاء حساب مدرس",
@@ -412,6 +414,8 @@ export default function SuperadminPage() {
             </div>
           )}
 
+
+          {activeSection === "plans" && <PlansSection userRole={userRole} />}
 
           {activeSection === "wallet" && <WalletSection />}
 

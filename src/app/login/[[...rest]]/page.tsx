@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { useRecaptcha } from "@/lib/use-recaptcha";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { execute: executeRecaptcha } = useRecaptcha();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +31,14 @@ export default function LoginPage() {
         return raw;
       };
 
+      // Generate a reCAPTCHA token before calling the login API.
+      const recaptchaToken = await executeRecaptcha("login");
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatForSend(phone), password }),
+        body: JSON.stringify({ phone: formatForSend(phone), password, recaptchaToken }),
       });
 
       const data = await response.json().catch(() => ({}));

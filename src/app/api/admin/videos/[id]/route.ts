@@ -2,6 +2,7 @@ import { logAdminAction } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { triggerPlanSyncForCourse } from "@/lib/plan-lesson-matcher";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -27,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const video = await prisma.video.findFirst({
     where: { id: videoId, folder: { course: { teacherId: session.id } } },
+    include: { folder: { select: { courseId: true } } }
   });
   if (!video) return NextResponse.json({ error: "الفيديو غير موجود" }, { status: 404 });
 
@@ -53,5 +55,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.video.update({ where: { id: videoId }, data });
+
+  // Fire and forget auto-matcher sync if title changed
+  if (data.title) {
+    triggerPlanSyncForCourse(video.folder.courseId).catch(console.error);
+  }
+
   return NextResponse.json({ video: updated });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/ui/Navbar";
 import { useToast } from "@/components/ui/Toast";
@@ -217,6 +217,8 @@ export default function CourseLearningPage() {
   const { error: toastError } = useToast();
   const params = useParams<{ id: string }>();
   const courseId = params.id;
+  const searchParams = useSearchParams();
+  const paramVideoId = searchParams.get("videoId");
 
   const [course, setCourse] = useState<CourseData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -336,17 +338,27 @@ export default function CourseLearningPage() {
         setMarkThreshold(courseJson.markCompleteThreshold);
       }
       setCourse(c);
-      const firstVideo = c.folders.flatMap((f) => f.videos)[0];
-      if (firstVideo) setActiveVideoId((prev) => prev ?? firstVideo.id);
+      
+      const allVideos = c.folders.flatMap((f) => f.videos);
+      const videoFromParam = allVideos.find((v) => v.id === paramVideoId);
+      const initialVideoId = videoFromParam ? videoFromParam.id : allVideos[0]?.id;
+
+      if (initialVideoId) {
+        setActiveVideoId((prev) => prev ?? initialVideoId);
+      }
+
       const init: Record<string, boolean> = {};
-      c.folders.forEach((f, i) => { init[f.id] = i !== 0; });
+      c.folders.forEach((f) => {
+        const containsActive = f.videos.some((v) => v.id === initialVideoId);
+        init[f.id] = !containsActive;
+      });
       setCollapsed((prev) => Object.keys(prev).length > 0 ? prev : init);
     } catch (err) {
       setPageError(err instanceof Error ? err.message : "حدث خطأ أثناء تحميل الكورس");
     } finally {
       setLoading(false);
     }
-  }, [courseId, router]);
+  }, [courseId, router, paramVideoId]);
 
   useEffect(() => {
     fetch("/api/auth/me")

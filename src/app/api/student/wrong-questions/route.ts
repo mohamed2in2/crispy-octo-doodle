@@ -55,7 +55,7 @@ export async function GET() {
   // Group by subject for the filter UI
   const bySubject: Record<string, typeof unique> = {};
   for (const a of unique) {
-    const subj = a.result.quiz.folder.course.subject ?? "عام";
+    const subj = a.result.quiz.folder?.course?.subject ?? "عام";
     if (!bySubject[subj]) bySubject[subj] = [];
     bySubject[subj].push(a);
   }

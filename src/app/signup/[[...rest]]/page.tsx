@@ -7,6 +7,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import { useRecaptcha } from "@/lib/use-recaptcha";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function SignupPage() {
 
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+  const { execute: executeRecaptcha } = useRecaptcha();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -87,10 +89,13 @@ export default function SignupPage() {
     setSuccess("");
 
     try {
+      // Get a reCAPTCHA token for the send_code action.
+      const recaptchaToken = await executeRecaptcha("send_code");
+
       const response = await fetch("/api/auth/phone/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formatForSend(form.phone), forceChannel: forceSms ? "sms" : undefined }),
+        body: JSON.stringify({ phone: formatForSend(form.phone), forceChannel: forceSms ? "sms" : undefined, recaptchaToken }),
       });
 
       const data = await response.json().catch(() => ({}));

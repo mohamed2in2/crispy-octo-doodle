@@ -32,18 +32,68 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         { status: 403 }
       );
     }
+    let hasPlanAccess = false;
+    let allowedVideoIds: string[] = [];
+
     if (role === "student") {
       const access = await prisma.accessCode.findFirst({
         where: { courseId: id, studentId: session.id },
       });
       if (!access) {
-        return NextResponse.json(
-          { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم.", code: "NOT_ENROLLED" },
-          { status: 403 }
-        );
+        const enrolledPlans = await prisma.planEnrollment.findMany({
+          where: {
+            studentId: session.id,
+            expiresAt: { gt: new Date() },
+          },
+          include: {
+            plan: {
+              include: {
+                lessons: {
+                  include: {
+                    sources: {
+                      include: {
+                        video: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        const videoIds: string[] = [];
+        for (const enroll of enrolledPlans) {
+          for (const lesson of enroll.plan.lessons) {
+            for (const src of lesson.sources) {
+              if (src.videoId) {
+                videoIds.push(src.videoId);
+              }
+            }
+          }
+        }
+
+        if (videoIds.length > 0) {
+          const matchingVideosCount = await prisma.video.count({
+            where: {
+              id: { in: videoIds },
+              folder: { courseId: id }
+            }
+          });
+          if (matchingVideosCount > 0) {
+            hasPlanAccess = true;
+            allowedVideoIds = videoIds;
+          }
+        }
+
+        if (!hasPlanAccess) {
+          return NextResponse.json(
+            { error: "لا يوجد صلاحية للوصول. فعّل كود الكورس أو تواصل مع المعلم.", code: "NOT_ENROLLED" },
+            { status: 403 }
+          );
+        }
       }
     }
-    // admin / superadmin fall through — full read access.
 
     const course = await prisma.course.findFirst({
       where: { id, teacher: { isDeleted: false } },
@@ -81,22 +131,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (!course) return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
 
+    const foldersToMap = (role === "student" && hasPlanAccess)
+      ? course.folders
+          .map((folder) => {
+            const videos = folder.videos.filter((v) => allowedVideoIds.includes(v.id));
+            if (videos.length === 0) return null;
+            return {
+              ...folder,
+              videos,
+            };
+          })
+          .filter(Boolean) as any[]
+      : course.folders;
+
     const safeCourse = {
       ...course,
       homeworkUrl: course.homeworkUrl,
       maxWatchCount: course.maxWatchCount,
-      folders: course.folders.map((folder) => ({
+      folders: (foldersToMap as any[]).map((folder: any) => ({
         ...folder,
-        // folder.publishAt is kept so the learn page can compute the unlock time.
-        videos: folder.videos.map((video) => ({
+        videos: (folder.videos || []).map((video: any) => ({
           ...video,
-          // publishAt kept (used by the learn page); sensitive provider IDs stripped.
           vdoCipherId: undefined,
           providerVideoId: undefined,
-          usedWatches: video.watchSessions.length,
+          usedWatches: video.watchSessions?.length || 0,
           watchSessions: undefined,
         })),
-        quizzes: folder.quizzes.map((quiz) => {
+        quizzes: (folder.quizzes || []).map((quiz: any) => {
           const q = quiz as unknown as {
             id: string;
             title: string;

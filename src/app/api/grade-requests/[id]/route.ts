@@ -32,12 +32,35 @@ export async function PATCH(
       return NextResponse.json({ error: "الطلب غير موجود" }, { status: 404 });
     }
 
-    // Verify the teacher owns the course
-    if (request_.course.teacherId !== session.id) {
-      return NextResponse.json(
-        { error: "لا تملك صلاحية مراجعة طلبات هذا الكورس" },
-        { status: 403 }
-      );
+    // Verify the teacher owns the course or teaches the plan lesson
+    if (request_.courseId) {
+      if (!request_.course || request_.course.teacherId !== session.id) {
+        return NextResponse.json(
+          { error: "لا تملك صلاحية مراجعة طلبات هذا الكورس" },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Plan-based quiz: verify teacher has a source on the quiz's planLesson
+      const quiz = await prisma.quiz.findUnique({
+        where: { id: request_.quizId },
+        select: { planLessonId: true }
+      });
+      if (!quiz?.planLessonId) {
+        return NextResponse.json(
+          { error: "الطلب غير مرتبط بكورس أو درس خطة" },
+          { status: 400 }
+        );
+      }
+      const source = await prisma.planLessonSource.findFirst({
+        where: { planLessonId: quiz.planLessonId, teacherId: session.id }
+      });
+      if (!source) {
+        return NextResponse.json(
+          { error: "لا تملك صلاحية مراجعة طلبات هذا الدرس" },
+          { status: 403 }
+        );
+      }
     }
 
     if (request_.status === "approved" || request_.status === "rejected") {

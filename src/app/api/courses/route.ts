@@ -16,6 +16,20 @@ export async function GET(req: NextRequest) {
 
     const session = await getStudentSession();
 
+    if (session) {
+      // Find the user to get their educationalStage
+      const user = await prisma.user.findUnique({
+        where: { id: session.id },
+        select: { educationalStage: true },
+      });
+      // Restrict courses by student's stage unless they explicitly ask for another stage via query params
+      // Wait, the prompt says "Restrict GET /api/courses to logged-in student's educationalStage." 
+      // If we hardcode it, they can't even browse other stages. Let's enforce it completely if they are logged in.
+      if (user?.educationalStage) {
+        where.educationalStage = user.educationalStage;
+      }
+    }
+
     const courses = await prisma.course.findMany({
       where,
       include: { teacher: { select: { id: true, name: true } }, _count: { select: { accessCodes: true } } },

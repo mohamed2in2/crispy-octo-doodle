@@ -63,6 +63,7 @@ const ACH_ICON: Record<string, React.ReactElement> = {
 
 export default function LibraryPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [stats, setStats] = useState<StudentStats | null>(null);
@@ -89,9 +90,13 @@ export default function LibraryPage() {
         .then((d: { success?: boolean; enrolledCourses?: Course[] } | null) => {
           setCourses(d?.success ? (d.enrolledCourses ?? []) : []);
         })
-        .catch(() => setCourses([]))
-        .finally(() => setLoading(false)),
-    ]);
+        .catch(() => setCourses([])),
+
+      fetch("/api/student/plans", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setPlans(d?.enrolledPlans ?? []))
+        .catch(() => setPlans([]))
+    ]).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -175,8 +180,8 @@ export default function LibraryPage() {
                     </span>
                   )}
                 </div>
-                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{courses.length}</div>
-                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">كورسات نشطة</div>
+                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{courses.length + plans.length}</div>
+                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">مسارات نشطة</div>
               </div>
 
               {/* Achievements Stat */}
@@ -292,17 +297,57 @@ export default function LibraryPage() {
                     </Link>
                   </div>
                   
-                  {courses.length === 0 ? (
+                  {courses.length === 0 && plans.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="text-5xl mb-4">📭</div>
                       <h4 className="text-lg font-bold mb-2">مكتبتك فارغة</h4>
-                      <p className="text-gray-500 text-sm mb-4">لم تنضم إلى أي كورس بعد.</p>
-                      <Link href="/courses" className="px-6 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition-colors">
-                        تصفح الكورسات
-                      </Link>
+                      <p className="text-gray-500 text-sm mb-4">لم تنضم إلى أي كورس أو خطة بعد.</p>
+                      <div className="flex gap-2 justify-center">
+                        <Link href="/courses" className="px-6 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition-colors">
+                          تصفح الكورسات
+                        </Link>
+                        <Link href="/plans" className="px-6 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                          تصفح الخطط
+                        </Link>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-6">
+                      {plans.map(p => {
+                        return (
+                          <div key={p.id} className="group relative">
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">خطة دراسية</span>
+                                  <h4 className="font-bold text-lg">{p.title}</h4>
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{p.educationalStage}</p>
+                              </div>
+                              <Link href={`/plans/${p.id}/learn`} className="shrink-0 px-5 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-sm flex items-center gap-2 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                متابعة
+                              </Link>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm font-medium mb-1">
+                              <span className="w-12">{p.progressPercent}%</span>
+                              <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-1000"
+                                  style={{ width: `${p.progressPercent}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 text-left flex items-center justify-end gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              {p.completedLessons} من {p.totalLessons} درس مكتمل
+                            </div>
+                            
+                            <div className="absolute -bottom-3 left-0 right-0 h-px bg-gray-100 dark:bg-gray-800 group-last:hidden"></div>
+                          </div>
+                        );
+                      })}
                       {courses.map((course: Course) => {
                         const tVideos = course.folders?.reduce((a, f) => a + f.videos.length, 0) || 1;
                         const wVideos = course.folders?.reduce((a, f) => a + f.videos.filter(v => v.watched).length, 0) || 0;

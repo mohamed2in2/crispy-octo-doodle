@@ -22,5 +22,51 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     update: { watched: true, watchedAt: new Date() },
   });
 
+  // Track plan lesson progress
+  const now = new Date();
+  const planSources = await prisma.planLessonSource.findMany({
+    where: { videoId },
+    include: {
+      planLesson: {
+        select: {
+          id: true,
+          planId: true,
+        }
+      }
+    }
+  });
+
+  for (const source of planSources) {
+    const enrollment = await prisma.planEnrollment.findFirst({
+      where: {
+        studentId: session.id,
+        planId: source.planLesson.planId,
+        expiresAt: { gt: now }
+      },
+      select: { id: true }
+    });
+
+    if (enrollment) {
+      await prisma.planLessonProgress.upsert({
+        where: {
+          enrollmentId_planLessonId: {
+            enrollmentId: enrollment.id,
+            planLessonId: source.planLessonId
+          }
+        },
+        create: {
+          enrollmentId: enrollment.id,
+          planLessonId: source.planLessonId,
+          chosenSourceId: source.id,
+          watched: true
+        },
+        update: {
+          chosenSourceId: source.id,
+          watched: true
+        }
+      });
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

@@ -76,6 +76,16 @@ async function ensureSQLiteSchema(prisma: PrismaClient) {
     operations.push('created VideoWatchSession');
   }
 
+  // Migrate old plan stages to standard codes
+  try {
+    await prisma.$executeRawUnsafe(`UPDATE "Plan" SET "educationalStage" = 'sec_1' WHERE "educationalStage" = 'FIRST_SECONDARY'`);
+    await prisma.$executeRawUnsafe(`UPDATE "Plan" SET "educationalStage" = 'sec_2' WHERE "educationalStage" = 'SECOND_SECONDARY'`);
+    await prisma.$executeRawUnsafe(`UPDATE "Plan" SET "educationalStage" = 'sec_3' WHERE "educationalStage" = 'THIRD_SECONDARY'`);
+    operations.push('migrated Plan.educationalStage to standard codes');
+  } catch (e) {
+    // Plan table might not exist in some environments yet
+  }
+
   return operations;
 }
 

@@ -105,13 +105,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const isSuperadmin = session.role === "superadmin";
   const isAdmin = session.role === "admin";
   const canAccessAsTeacher = session.role === "teacher" && course.teacherId === session.id;
-  const canAccessAsStudent =
+  
+  let canAccessAsStudent =
     session.role === "student"
       ? await prisma.accessCode.findFirst({
           where: { courseId: course.id, studentId: session.id, isActive: true },
           select: { id: true },
         })
       : null;
+
+  if (session.role === "student" && !canAccessAsStudent) {
+    const planEnroll = await prisma.planEnrollment.findFirst({
+      where: {
+        studentId: session.id,
+        expiresAt: { gt: new Date() },
+        plan: {
+          lessons: {
+            some: {
+              sources: {
+                some: {
+                  videoId: id
+                }
+              }
+            }
+          }
+        }
+      },
+      select: { id: true }
+    });
+    if (planEnroll) {
+      canAccessAsStudent = { id: planEnroll.id };
+    }
+  }
 
   if (!isSuperadmin && !isAdmin && !canAccessAsTeacher && !canAccessAsStudent) {
     return NextResponse.json(

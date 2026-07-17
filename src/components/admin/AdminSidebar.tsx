@@ -16,6 +16,7 @@ interface AdminSidebarProps {
 
 const superadminSections = [
   { id: "overview",          label: "نظرة عامة" },
+  { id: "plans",             label: "الخطط الدراسية" },
   { id: "students",          label: "المتعلمين" },
   { id: "deleted-students",  label: "المتعلمين المرشحون" },
   { id: "teachers",          label: "المعلمون" },
@@ -54,6 +55,8 @@ const teacherSections = [
   { id: "my-page",       label: "صفحتي" },
   { id: "courses",       label: "الكورسات" },
   { id: "quiz-results",  label: "نتائج الاختبارات" },
+  { id: "homework",      label: "إدارة الواجبات" },
+  { id: "review",        label: "مراجعة الواجبات" },
   { id: "create-course", label: "كورس جديد" },
   { id: "codes",         label: "أكواد الوصول" },
   { id: "students",      label: "المتعلمين" },

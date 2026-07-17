@@ -60,7 +60,7 @@ interface Device {
 /* ─── Nav sections ───────────────────────────────────────────────────────── */
 const SECTIONS = [
   { id: "profile", label: "ملف المستخدم", icon: "👤" },
-  { id: "courses", label: "كورساتي", icon: "📚" },
+  { id: "courses", label: "كورساتي وخططي", icon: "📚" },
   { id: "stats", label: "إحصائياتي", icon: "📊" },
   { id: "results", label: "نتائج الاختبارات", icon: "📝" },
   { id: "wrong", label: "امتحان من أخطائي", icon: "🎯" },
@@ -265,6 +265,7 @@ export default function AccountPage() {
   // Lazy section data
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [courses, setCourses] = useState<Course[] | null>(null);
+  const [plans, setPlans] = useState<any[] | null>(null);
   const [results, setResults] = useState<ShapedResult[] | null>(null);
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [wrongQuestions, setWrongQuestions] = useState<{ total: number; bySubject: Record<string, WrongQuestion[]>; questions: WrongQuestion[] } | null>(null);
@@ -313,11 +314,16 @@ export default function AccountPage() {
         .then(d => setStats(d ?? EMPTY_STATS))
         .catch(() => setStats(EMPTY_STATS));
     }
-    if (s === "courses" && !courses) {
+    if (s === "courses" && (!courses || !plans)) {
       fetch("/api/courses/enrolled", { credentials: "include" })
         .then(r => r.ok ? r.json() : null)
         .then(d => setCourses(d?.enrolledCourses ?? []))
         .catch(() => setCourses([]));
+        
+      fetch("/api/student/plans", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setPlans(d?.enrolledPlans ?? []))
+        .catch(() => setPlans([]));
     }
     if (s === "results" && !results) {
       fetch("/api/student/results", { credentials: "include" })
@@ -609,12 +615,27 @@ export default function AccountPage() {
             {section === "courses" && (
               <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
                 <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)" }}>
-                  <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>📚 كورساتي</h2>
+                  <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 18, color: "var(--ink)", margin: 0 }}>📚 مساراتي (كورسات وخطط)</h2>
                 </div>
-                {!courses ? <div className="flex items-center justify-center py-10 gap-2" style={{ color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /><span>جارٍ التحميل...</span></div>
-                  : courses.length === 0 ? <div className="py-10 text-center"><div style={{ fontSize: 36, marginBottom: 8 }}>📭</div><p style={{ color: "var(--ink-3)" }}>لم تسجل في أي كورس.</p><Link href="/courses" className="inline-block mt-3 no-underline rounded-[10px] text-white" style={{ padding: "9px 22px", background: "var(--brand)", fontWeight: 700 }}>تصفح الكورسات</Link></div>
+                {!courses || !plans ? <div className="flex items-center justify-center py-10 gap-2" style={{ color: "var(--ink-3)" }}><div className="w-5 h-5 border-2 border-[var(--brand)] border-t-transparent rounded-full animate-spin" /><span>جارٍ التحميل...</span></div>
+                  : (courses.length === 0 && plans.length === 0) ? <div className="py-10 text-center"><div style={{ fontSize: 36, marginBottom: 8 }}>📭</div><p style={{ color: "var(--ink-3)" }}>لم تسجل في أي كورس أو خطة.</p><div className="flex gap-2 justify-center mt-3"><Link href="/courses" className="inline-block no-underline rounded-[10px] text-white" style={{ padding: "9px 22px", background: "var(--brand)", fontWeight: 700 }}>تصفح الكورسات</Link><Link href="/plans" className="inline-block no-underline rounded-[10px]" style={{ padding: "9px 22px", background: "var(--surface-2)", color: "var(--ink)", border: "1px solid var(--border)", fontWeight: 700 }}>تصفح الخطط</Link></div></div>
                     : (
                       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {plans.length > 0 && <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--ink-2)", margin: "8px 0 4px" }}>الخطط الدراسية</h3>}
+                        {plans.map(p => (
+                          <div key={p.id} className="flex items-center gap-3" style={{ padding: "14px 16px", borderRadius: 12, background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                            <Link href={`/plans/${p.id}/learn`} className="shrink-0 no-underline rounded-[9px] text-white hover:opacity-80" style={{ padding: "8px 14px", background: "var(--brand)", fontSize: 13, fontWeight: 700 }}>▶ تعلم</Link>
+                            <div className="flex-1 min-w-0">
+                              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 3 }}>{p.title}</div>
+                              <div style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 6 }}>خطة دراسية · {p.educationalStage}</div>
+                              <div style={{ height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${p.progressPercent}%`, background: p.progressPercent === 100 ? "#10b981" : "var(--brand)", borderRadius: 3 }} />
+                              </div>
+                              <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 3 }}>{p.completedLessons} / {p.totalLessons} درس · {p.progressPercent}%</div>
+                            </div>
+                          </div>
+                        ))}
+                        {courses.length > 0 && <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--ink-2)", margin: "16px 0 4px" }}>الكورسات المستقلة</h3>}
                         {courses.map(c => {
                           const total = c.totalVideos || c.folders?.reduce((s, f) => s + f.videos.length, 0) || 1;
                           const watched = c.watchedVideos || c.folders?.reduce((s, f) => s + f.videos.filter(v => v.watched).length, 0) || 0;

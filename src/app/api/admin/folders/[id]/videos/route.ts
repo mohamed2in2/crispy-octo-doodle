@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { validateProviderId, type VideoProvider } from "@/lib/video-provider";
 import { parsePublishAt } from "@/lib/publish";
 import { getConfigNumber, getConfigNumberClamped } from "@/lib/config";
+import { triggerPlanSyncForCourse } from "@/lib/plan-lesson-matcher";
 
 const MAX_TITLE_LENGTH = 100;
 const VALID_PROVIDERS: VideoProvider[] = ["vdocipher", "bunny", "youtube"];
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Verify folder exists and belongs to teacher's course
     const folder = await prisma.folder.findFirst({
       where: { id: folderId, course: { teacherId: session.id } },
+      include: { course: { select: { id: true } } }
     });
     if (!folder) {
       return NextResponse.json({ error: "المحاضرة غير موجودة" }, { status: 404 });
@@ -117,6 +119,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
 
+    // Fire and forget auto-matcher sync
+    triggerPlanSyncForCourse(folder.course.id).catch(console.error);
+
     return NextResponse.json({ video }, { status: 201 });
   } catch (error) {
     console.error("Failed to create video:", error);
@@ -154,6 +159,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     // Verify folder exists and belongs to teacher
     const folder = await prisma.folder.findFirst({
       where: { id: folderId, course: { teacherId: session.id } },
+      include: { course: { select: { id: true } } }
     });
     if (!folder) {
       return NextResponse.json({ error: "المحاضرة غير موجودة" }, { status: 404 });
@@ -166,6 +172,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     await prisma.progress.deleteMany({ where: { videoId } });
     await prisma.video.delete({ where: { id: videoId } });
+
+    // Fire and forget auto-matcher sync
+    triggerPlanSyncForCourse(folder.course.id).catch(console.error);
 
     return NextResponse.json({ success: true, message: "تم حذف الفيديو بنجاح" });
   } catch (error) {

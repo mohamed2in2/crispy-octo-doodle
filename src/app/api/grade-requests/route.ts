@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       data: {
         studentId: session.id,
         quizId,
-        courseId: result.quiz.folder.courseId,
+        courseId: result.quiz.folder?.courseId ?? null,
         requestedBy: "student",
         currentScore: result.score,
         requestedScore: requestedScore ?? null,

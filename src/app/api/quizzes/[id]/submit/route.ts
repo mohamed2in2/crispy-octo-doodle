@@ -17,20 +17,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       questions: { orderBy: { order: "asc" } },
       folder: { select: { courseId: true, course: { select: { teacherId: true } } } },
+      planLesson: { select: { id: true, planId: true } },
     },
   });
 
   if (!quiz) return NextResponse.json({ error: "الاختبار غير موجود" }, { status: 404 });
 
-  const canAccessAsTeacher = session.role === "teacher" && quiz.folder.course.teacherId === session.id;
-  const canAccessAsStudent = await prisma.accessCode.findFirst({
-    where: {
-      courseId: quiz.folder.courseId,
-      studentId: session.id,
-      isActive: true,
-    },
-    select: { id: true },
-  });
+  const canAccessAsTeacher = session.role === "teacher" && (
+    (quiz.folder?.course?.teacherId === session.id) ||
+    (quiz.planLessonId !== null)
+  );
+
+  let canAccessAsStudent = false;
+  let planEnrollmentId: string | null = null;
+
+  if (quiz.folderId && quiz.folder) {
+    const hasCourseAccess = await prisma.accessCode.findFirst({
+      where: {
+        courseId: quiz.folder.courseId,
+        studentId: session.id,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    if (hasCourseAccess) canAccessAsStudent = true;
+  } else if (quiz.planLessonId && quiz.planLesson) {
+    const enrollment = await prisma.planEnrollment.findFirst({
+      where: {
+        planId: quiz.planLesson.planId,
+        studentId: session.id,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    if (enrollment) {
+      canAccessAsStudent = true;
+      planEnrollmentId = enrollment.id;
+    }
+  }
 
   if (!canAccessAsTeacher && !canAccessAsStudent) {
     return NextResponse.json({ error: "لا يوجد صلاحية للوصول" }, { status: 403 });
@@ -123,6 +147,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // Update Plan Lesson Progress
+  if (planEnrollmentId && quiz.planLessonId) {
+    await prisma.planLessonProgress.upsert({
+      where: {
+        enrollmentId_planLessonId: {
+          enrollmentId: planEnrollmentId,
+          planLessonId: quiz.planLessonId
+        }
+      },
+      create: {
+        enrollmentId: planEnrollmentId,
+        planLessonId: quiz.planLessonId,
+        quizPassed: passed,
+        quizScore: score
+      },
+      update: {
+        quizPassed: passed,
+        quizScore: score
+      }
+    });
+  }
+
   return NextResponse.json({
     result,
     correct,
@@ -131,6 +177,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     passed,
     breakdown,
     quizTitle: quiz.title,
-    courseId: quiz.folder.courseId,
+    courseId: quiz.folder?.courseId ?? 'plan',
   });
 }
