@@ -37,17 +37,17 @@ export async function verifyRecaptchaToken(
   expectedAction: string,
   scoreThreshold = 0.5
 ): Promise<RecaptchaResult> {
+  // Allow bypass in dev/testing mode when explicitly set or bypass is enabled
+  if (process.env.RECAPTCHA_BYPASS === "true") {
+    return { success: true, score: 1, reasons: ["BYPASS"] };
+  }
+
   const apiKey = process.env.RECAPTCHA_API_KEY;
 
   // If no API key is configured, skip verification gracefully (dev / CI).
   if (!apiKey) {
     console.warn("[reCAPTCHA] RECAPTCHA_API_KEY is not set — skipping verification.");
     return { success: true, score: 1, reasons: ["SKIPPED_NO_API_KEY"] };
-  }
-
-  // Also allow bypass in dev mode when explicitly set
-  if (process.env.RECAPTCHA_BYPASS === "true") {
-    return { success: true, score: 1, reasons: ["BYPASS"] };
   }
 
   const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${PROJECT_ID}/assessments?key=${apiKey}`;

@@ -4,8 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
-import { auth } from "@/lib/firebase";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 
 type Step = "phone" | "reset" | "done";
 
@@ -24,9 +22,6 @@ export default function ForgotPasswordPage() {
   const [sentChannel, setSentChannel] = useState<"whatsapp" | "sms" | null>(null);
   const [success, setSuccess] = useState("");
 
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
-
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
@@ -34,19 +29,6 @@ export default function ForgotPasswordPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
-
-  useEffect(() => {
-    return () => {
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          console.error("Error clearing recaptcha verifier:", e);
-        }
-        recaptchaVerifierRef.current = null;
-      }
-    };
-  }, []);
 
   const formatPhone = (p: string) => {
     const digits = p.replace(/\D/g, "");
@@ -83,44 +65,18 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      if (data?.channel === "whatsapp") {
-        setIsBypassed(false);
-        setDevCode(null);
-        setSentChannel("whatsapp");
-        setSuccess("تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب وليس الرسائل النصية (SMS).");
-        setStep("reset");
-        setCooldown(60);
-        return;
-      }
-
-      if (!auth) {
-        setError("فشل تهيئة Firebase Authentication");
-        return;
-      }
-
-      // Initialize Recaptcha Verifier on demand if it doesn't exist
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-        });
-      }
-
-      const formattedPhone = formatPhone(phone);
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        recaptchaVerifierRef.current
-      );
-
-      confirmationResultRef.current = confirmationResult;
       setIsBypassed(false);
       setDevCode(null);
-      setSentChannel("sms");
-      setSuccess("تم إرسال رمز التحقق عبر الرسائل النصية (SMS) لعدم توفر خدمة واتساب حالياً. يرجى التحقق من الرسائل النصية على هاتفك.");
+      setSentChannel(data?.channel === "whatsapp" ? "whatsapp" : "sms");
+      setSuccess(
+        data?.channel === "whatsapp"
+          ? "تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب."
+          : "تم إرسال رمز التحقق عبر الرسائل النصية (SMS). يرجى التحقق من الرسائل النصية على هاتفك."
+      );
       setStep("reset");
       setCooldown(60);
     } catch (err: any) {
-      console.error("Firebase Auth forgot-password error:", err);
+      console.error("forgot-password sendCode error:", err);
       const errCode = err?.code ? ` [${err.code}]` : "";
       setError((err?.message || "تعذر إرسال كود التحقق. حاول مرة أخرى.") + errCode);
     } finally {
@@ -141,37 +97,11 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
-      let firebaseToken = "bypass";
-
-      if (!isBypassed) {
-        if (sentChannel === "whatsapp") {
-          firebaseToken = "whatsapp";
-        } else {
-          if (!confirmationResultRef.current) {
-            setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
-            setLoading(false);
-            return;
-          }
-
-          try {
-            const userCredential = await confirmationResultRef.current.confirm(code);
-            const firebaseUser = userCredential.user;
-            firebaseToken = await firebaseUser.getIdToken();
-          } catch (err: any) {
-            console.error("Firebase verify code confirm error:", err);
-            setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: formatPhone(phone),
-          firebaseToken,
           verificationCode: code,
           newPassword,
         }),

@@ -6,12 +6,11 @@ import {
   clearPhoneVerificationCookie,
   verifyPhoneVerificationCookie,
 } from "@/lib/auth";
-import { verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
-import { isPhoneVerificationBypassed } from "@/lib/twilio";
+import { isPhoneVerificationBypassed } from "@/lib/aws-sms";
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, firebaseToken, verificationCode, newPassword } = await req.json();
+    const { phone, verificationCode, newPassword } = await req.json();
 
     if (!phone || !newPassword) {
       return NextResponse.json(
@@ -30,36 +29,18 @@ export async function POST(req: NextRequest) {
     const normalized = normalizeEgyptPhone(String(phone));
 
     if (!isPhoneVerificationBypassed()) {
-      if (firebaseToken && firebaseToken !== "bypass" && firebaseToken !== "whatsapp") {
-        const firebaseUser = await verifyFirebaseIdToken(String(firebaseToken));
-        if (!firebaseUser || !firebaseUser.phoneNumber) {
-          return NextResponse.json(
-            { error: "الكود غير صحيح أو انتهت صلاحيته" },
-            { status: 400 }
-          );
-        }
-
-        const normalizedFirebasePhone = normalizeEgyptPhone(firebaseUser.phoneNumber);
-        if (normalizedFirebasePhone !== normalized) {
-          return NextResponse.json(
-            { error: "رقم الهاتف لا يتطابق مع الرقم الذي تم التحقق منه" },
-            { status: 400 }
-          );
-        }
-      } else {
-        if (!verificationCode) {
-          return NextResponse.json(
-            { error: "رمز التحقق مطلوب" },
-            { status: 400 }
-          );
-        }
-        const isValid = await verifyPhoneVerificationCookie(normalized, String(verificationCode));
-        if (!isValid) {
-          return NextResponse.json(
-            { error: "الكود غير صحيح أو انتهت صلاحيته" },
-            { status: 400 }
-          );
-        }
+      if (!verificationCode) {
+        return NextResponse.json(
+          { error: "رمز التحقق مطلوب" },
+          { status: 400 }
+        );
+      }
+      const isValid = await verifyPhoneVerificationCookie(normalized, String(verificationCode));
+      if (!isValid) {
+        return NextResponse.json(
+          { error: "الكود غير صحيح أو انتهت صلاحيته" },
+          { status: 400 }
+        );
       }
     }
 

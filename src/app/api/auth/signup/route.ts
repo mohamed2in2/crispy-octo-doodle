@@ -8,8 +8,7 @@ import {
   verifyPhoneVerificationCookie,
 } from "@/lib/auth";
 import { normalizeEgyptPhone } from "@/lib/phone";
-import { isPhoneVerificationBypassed } from "@/lib/twilio";
-import { verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
+import { isPhoneVerificationBypassed } from "@/lib/aws-sms";
 
 function normalizeStage(value: string) {
   return value.trim();
@@ -22,7 +21,7 @@ function generateReferralCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, password, phone, parentPhone, age, educationalStage, firebaseToken, verificationCode, referralCode } = await req.json();
+    const { name, password, phone, parentPhone, age, educationalStage, verificationCode, referralCode } = await req.json();
 
     if (!name || !password || !phone || !parentPhone || !age || !educationalStage) {
       return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
@@ -36,24 +35,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isPhoneVerificationBypassed()) {
-      if (firebaseToken && firebaseToken !== "bypass" && firebaseToken !== "whatsapp") {
-        const firebaseUser = await verifyFirebaseIdToken(String(firebaseToken));
-        if (!firebaseUser || !firebaseUser.phoneNumber) {
-          return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
-        }
-
-        const normalizedFirebasePhone = normalizeEgyptPhone(firebaseUser.phoneNumber);
-        if (normalizedFirebasePhone !== normalizedPhone) {
-          return NextResponse.json({ error: "رقم الهاتف لا يتطابق مع الرقم الذي تم التحقق منه" }, { status: 400 });
-        }
-      } else {
-        if (!verificationCode) {
-          return NextResponse.json({ error: "رمز التحقق مطلوب" }, { status: 400 });
-        }
-        const isValid = await verifyPhoneVerificationCookie(normalizedPhone, String(verificationCode));
-        if (!isValid) {
-          return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
-        }
+      if (!verificationCode) {
+        return NextResponse.json({ error: "رمز التحقق مطلوب" }, { status: 400 });
+      }
+      const isValid = await verifyPhoneVerificationCookie(normalizedPhone, String(verificationCode));
+      if (!isValid) {
+        return NextResponse.json({ error: "رمز التحقق غير صحيح أو منتهي الصلاحية" }, { status: 400 });
       }
     }
 

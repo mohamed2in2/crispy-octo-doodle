@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { EDUCATIONAL_STAGES } from "@/types";
-import { auth } from "@/lib/firebase";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { useRecaptcha } from "@/lib/use-recaptcha";
 
 export default function SignupPage() {
@@ -35,9 +33,6 @@ export default function SignupPage() {
   const [isBypassed, setIsBypassed] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [sentChannel, setSentChannel] = useState<"whatsapp" | "sms" | null>(null);
-
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const { execute: executeRecaptcha } = useRecaptcha();
 
   useEffect(() => {
@@ -47,19 +42,6 @@ export default function SignupPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
-
-  useEffect(() => {
-    return () => {
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          console.error("Error clearing recaptcha verifier:", e);
-        }
-        recaptchaVerifierRef.current = null;
-      }
-    };
-  }, []);
 
   const canSendCode = useMemo(() => form.phone.trim().length >= 9, [form.phone]);
 
@@ -114,42 +96,17 @@ export default function SignupPage() {
         return;
       }
 
-      if (data?.channel === "whatsapp") {
-        setIsBypassed(false);
-        setCodeSent(true);
-        setSentChannel("whatsapp");
-        setSuccess("تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب وليس الرسائل النصية (SMS).");
-        setCooldown(60);
-        return;
-      }
-
-      if (!auth) {
-        setError("فشل تهيئة Firebase Authentication");
-        return;
-      }
-
-      // Initialize Recaptcha Verifier on demand if it doesn't exist
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-        });
-      }
-
-      const formattedPhone = formatForSend(form.phone);
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        recaptchaVerifierRef.current
-      );
-
-      confirmationResultRef.current = confirmationResult;
       setIsBypassed(false);
       setCodeSent(true);
-      setSentChannel("sms");
-      setSuccess("تم إرسال رمز التحقق عبر الرسائل النصية (SMS) لعدم توفر خدمة واتساب حالياً. يرجى التحقق من الرسائل النصية على هاتفك.");
+      setSentChannel(data?.channel === "whatsapp" ? "whatsapp" : "sms");
+      setSuccess(
+        data?.channel === "whatsapp"
+          ? "تم إرسال رمز التحقق إلى حساب WhatsApp الخاص بك. يرجى التحقق من تطبيق واتساب."
+          : "تم إرسال رمز التحقق عبر الرسائل النصية (SMS). يرجى التحقق من الرسائل النصية على هاتفك."
+      );
       setCooldown(60);
     } catch (err: any) {
-      console.error("Firebase Auth sendCode error:", err);
+      console.error("sendCode error:", err);
       const errCode = err?.code ? ` [${err.code}]` : "";
       setError((err?.message || "تعذر إرسال كود التحقق. حاول مرة أخرى.") + errCode);
     } finally {
@@ -176,31 +133,6 @@ export default function SignupPage() {
     }
 
     try {
-      let firebaseToken = "bypass";
-
-      if (!isBypassed) {
-        if (sentChannel === "whatsapp") {
-          firebaseToken = "whatsapp";
-        } else {
-          if (!confirmationResultRef.current) {
-            setError("لم يتم العثور على رمز التحقق النشط. أعد إرسال الكود.");
-            setSigningUp(false);
-            return;
-          }
-
-          try {
-            const userCredential = await confirmationResultRef.current.confirm(form.verificationCode);
-            const firebaseUser = userCredential.user;
-            firebaseToken = await firebaseUser.getIdToken();
-          } catch (err: any) {
-            console.error("Firebase verify code confirm error:", err);
-            setError("رمز التحقق غير صحيح أو منتهي الصلاحية.");
-            setSigningUp(false);
-            return;
-          }
-        }
-      }
-
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         credentials: "include",
@@ -212,7 +144,6 @@ export default function SignupPage() {
           age: form.age,
           educationalStage: form.educationalStage,
           password: form.password,
-          firebaseToken,
           verificationCode: form.verificationCode,
           referralCode: refCode || undefined,
         }),

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
-import { isPhoneVerificationBypassed, verifyCode as twilioVerifyCode } from "@/lib/twilio";
+import { isPhoneVerificationBypassed } from "@/lib/aws-sms";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { normalizeEgyptPhone } from "@/lib/phone";
@@ -136,16 +136,6 @@ export async function verifyPhoneVerificationCookie(phone: string, code: string)
 
     if (isPhoneVerificationBypassed()) {
       return true;
-    }
-
-    // If the challenge indicates a Verify flow, delegate to Twilio Verify check
-    if (challenge.method === "verify") {
-      try {
-        return await twilioVerifyCode(normalizedPhone, code.trim());
-      } catch (e) {
-        console.error("Twilio verifyCode check failed:", e);
-        return false;
-      }
     }
 
     if (!challenge.codeHash) return false;

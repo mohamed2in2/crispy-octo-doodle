@@ -130,25 +130,32 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
   }
 }
 
+import { sendVerificationSms } from "./aws-sms";
+
 /**
- * Orchestrator: Try to send via WhatsApp, and fall back to SMS on failure.
+ * Orchestrator: Try to send via WhatsApp, and fall back to SMS on failure (or directly if forceChannel === 'sms').
  * Returns which channel was used.
  */
 export async function sendVerificationCode(
   phone: string,
-  code: string
+  code: string,
+  forceChannel?: "sms" | "whatsapp"
 ): Promise<{ channel: "whatsapp" | "sms" }> {
+  if (forceChannel === "sms") {
+    await sendVerificationSms(phone, code);
+    return { channel: "sms" };
+  }
+
   try {
     await sendOtpWhatsApp(phone, code);
     return { channel: "whatsapp" };
   } catch (err: any) {
-    // Log details server-side safely (no sensitive data in logs)
     console.error("WhatsApp delivery failed, falling back to SMS:", {
       message: err.message,
       status: err.status,
-      // Error payload might contain developer details, log only basic info if needed
       errorPayload: err.errorPayload ? JSON.stringify(err.errorPayload).substring(0, 500) : undefined,
     });
+    await sendVerificationSms(phone, code);
     return { channel: "sms" };
   }
 }
