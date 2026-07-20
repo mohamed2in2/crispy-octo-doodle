@@ -351,7 +351,8 @@ j:/crispy-octo-doodle-1/
 │   │   └── motion.ts                  # Framer Motion / format helpers
 │   ├── generated/prisma/              # Generated Prisma client (provider: prisma-client)
 │   └── types/
-│       └── index.ts                   # TypeScript definitions, SUBJECTS, EDUCATIONAL_STAGES
+│       └── index.ts                 
+ll  # TypeScript definitions, SUBJECTS, EDUCATIONAL_STAGES
 ├── prisma/
 │   ├── schema.prisma                  # Database schema (SQLite)
 │   ├── dev.db                         # Dev SQLite database
