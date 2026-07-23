@@ -17,6 +17,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "الرسالة مطلوبة" }, { status: 400 });
     }
 
+    // Admin123 command check for live AI statistics & model telemetry
+    if (message.trim().toLowerCase() === "admin123") {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const todayConversations = await prisma.aIConversation.findMany({
+        where: { createdAt: { gte: startOfToday } },
+        select: { studentId: true },
+      });
+      const uniqueUsersToday = new Set(todayConversations.map((c) => c.studentId)).size;
+      const totalMessagesToday = todayConversations.length;
+
+      const { CostManager } = await import("@/ai/admin/cost_analytics/CostManager");
+      const { Telemetry } = await import("@/ai/telemetry/Telemetry");
+      const { ConfigManager } = await import("@/ai/config/AIConfig");
+
+      const costMgr = CostManager.getInstance();
+      const telemetry = Telemetry.getInstance();
+      const config = ConfigManager.getInstance().getConfig();
+
+      const metrics = telemetry.getMetrics();
+      const providerCosts = costMgr.getCostByProvider();
+      const totalCostUsd = costMgr.getTotalCostUsd();
+
+      const activeModel = config.primaryProvider === "gemini" ? "Google Gemini Pool (Primary)" : config.primaryProvider;
+      const geminiRequests = metrics.requestsByProvider["gemini"] || 0;
+      const geminiCost = providerCosts["gemini"] || 0;
+
+      const deepseekRequests = (metrics.requestsByProvider["deepseek_v4_flash"] || 0) + (metrics.requestsByProvider["deepseek"] || 0);
+      const deepseekCost = (providerCosts["deepseek_v4_flash"] || 0) + (providerCosts["deepseek"] || 0);
+
+      const mockRequests = metrics.requestsByProvider["mock"] || 0;
+
+      const statsText = `📊 **تقرير الإحصائيات الفوري للنظام (Admin123 Live Stats)**\n\n` +
+        `🤖 **النموذج المتحدث الحالي (Talking Model)**: \`${activeModel}\`\n` +
+        `🔄 **سلسلة التراجع التلقائي (Fallback Chain)**: \`Gemini Pool ➔ DeepSeek V4 Flash ➔ Mock\`\n` +
+        `👥 **عدد مستخدمي الذكاء الاصطناعي اليوم (Users Today)**: ${uniqueUsersToday} مستخدم\n` +
+        `💬 **إجمالي رسائل المحادثة اليوم (Messages Today)**: ${totalMessagesToday} رسالة\n\n` +
+        `━━━━━━━━━━━━━━━━\n\n` +
+        `💸 **تكاليف واستخدام المزودين (Today's Provider Costs & Usage)**:\n` +
+        `• 💰 **إجمالي التكلفة اليومية الكلية**: \`$${totalCostUsd.toFixed(6)} USD\`\n` +
+        `• 🟢 **Google Gemini Pool**: ${geminiRequests} طلبات | تكلفة: \`$${geminiCost.toFixed(6)} USD\`\n` +
+        `• 🔵 **DeepSeek V4 Flash**: ${deepseekRequests} طلبات | تكلفة: \`$${deepseekCost.toFixed(6)} USD\` (مفعل كـ Fallback اقتصادي)\n` +
+        `• 🟡 **Mock / Fallback**: ${mockRequests} طلبات\n\n` +
+        `━━━━━━━━━━━━━━━━\n\n` +
+        `🛡️ **حالة الميزانية والأمان (Budget & Safety Limits)**:\n` +
+        `• 📊 **الاستهلاك مقابل الميزانية**: \`$${totalCostUsd.toFixed(4)} / $50.00 Max USD\`\n` +
+        `• ⚡ **إجمالي التوكنز المستهلكة**: ${metrics.totalTokensUsed} tokens\n` +
+        `• ⏳ **متوسط سرعة الاستجابة**: ${Math.round(metrics.averageLatencyMs)} ms\n` +
+        `• ⚙️ **حد حفظ المحادثة الأقصى**: 15 رسالة فقط`;
+
+      return NextResponse.json({
+        message: statsText,
+        actions: [],
+        source: "admin_stats",
+      });
+    }
+
     // Build full student context
     let context;
     try {
@@ -26,11 +84,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "يرجى المحاولة مرة أخرى لاحقاً.", actions: [], source: "error" });
     }
 
-    // Get conversation history (last 10 messages)
+    // Get conversation history (last 15 messages)
     const history = await prisma.aIConversation.findMany({
       where: { studentId: session.id },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: 15,
       select: { id: true, role: true, content: true },
     });
     const chatHistory: ChatMessage[] = history
@@ -168,14 +226,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Prune old messages: keep only last 10
+    // Prune old messages: keep only last 15
     const allMessages = await prisma.aIConversation.findMany({
       where: { studentId: session.id },
       orderBy: { createdAt: "desc" },
       select: { id: true },
     });
-    if (allMessages.length > 10) {
-      const idsToDelete = allMessages.slice(10).map((m) => m.id);
+    if (allMessages.length > 15) {
+      const idsToDelete = allMessages.slice(15).map((m) => m.id);
       await prisma.aIConversation.deleteMany({
         where: { id: { in: idsToDelete } },
       });
@@ -205,7 +263,7 @@ export async function GET() {
     const history = await prisma.aIConversation.findMany({
       where: { studentId: session.id },
       orderBy: { createdAt: "asc" },
-      take: 10,
+      take: 15,
       select: {
         id: true,
         role: true,

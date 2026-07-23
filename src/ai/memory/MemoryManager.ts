@@ -8,7 +8,7 @@ export interface MemoryMessage {
 export class MemoryManager {
   private static instance: MemoryManager;
   private sessionStore: Map<string, MemoryMessage[]> = new Map();
-  private maxHistoryPerSession = 20;
+  private maxHistoryPerSession = 15;
 
   public static getInstance(): MemoryManager {
     if (!MemoryManager.instance) {

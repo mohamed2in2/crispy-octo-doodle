@@ -64,11 +64,11 @@ export class PlatformContextInjector {
         order: lessonData?.order || baseContext.lesson.order,
       },
       lessonProgress: {
-        watched: true,
-        completionPercentage: courseData?.progressPercentage || baseContext.lessonProgress.completionPercentage,
+        watched: !!courseData,
+        completionPercentage: courseData?.progressPercentage || 0,
       },
-      weakChapters: profileData?.weakSubjects || baseContext.weakChapters,
-      strongChapters: profileData?.strongSubjects || baseContext.strongChapters,
+      weakChapters: courseData ? (profileData?.weakSubjects || []) : [],
+      strongChapters: courseData ? (profileData?.strongSubjects || []) : [],
       studyPlan: {
         id: profileData?.currentPlanId || baseContext.studyPlan.id,
         targetGoals: profileData?.goals || baseContext.studyPlan.targetGoals,

@@ -420,7 +420,7 @@ export class AIEngine {
     // Record answer in similar question detector cache & daily budget spent
     if (validation.isValid) {
       SimilarQuestionDetector.getInstance().recordAnswer(request.userMessage, formattedResponse.renderedContent);
-      DailyBudgetManager.getInstance().recordSpent(request.studentId || "anon", 0.0005);
+      DailyBudgetManager.getInstance().recordSpent(request.studentId || "anon", genResult?.outputTokens ? (genResult.inputTokens * 0.00000015 + genResult.outputTokens * 0.0000006) : 0.0005);
     }
 
     // Save turn to memory session
