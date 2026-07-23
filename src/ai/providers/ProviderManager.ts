@@ -13,8 +13,8 @@ export class ProviderManager {
 
   constructor(primaryId?: string, fallbacks?: string[]) {
     const config = ConfigManager.getInstance().getConfig();
-    this.primaryProviderId = primaryId || config.primaryProvider || "mock";
-    this.fallbackChain = fallbacks || config.fallbackProviders || ["deepseek_v4_flash", "gemini", "mock"];
+    this.primaryProviderId = primaryId || config.primaryProvider || "gemini";
+    this.fallbackChain = fallbacks || config.fallbackProviders || ["gemini", "deepseek_v4_flash", "deepseek", "mock"];
 
     // Register built-in default providers
     this.registerProvider(new MockProvider());

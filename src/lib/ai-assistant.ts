@@ -578,12 +578,12 @@ export async function chatWithAI(
     { role: "user", content: userMessage },
   ];
 
-  // 1. Try Claude (primary)
-  let result = await callPrimary(messages);
+  // 1. Try Gemini first
+  let result = await callBackup(messages);
   if (result) return result;
 
-  // 2. Try Gemini via old callBackup (uses AI_BACKUP_API_KEY)
-  result = await callBackup(messages);
+  // 2. Try Primary / DeepSeek
+  result = await callPrimary(messages);
   if (result) return result;
 
   // 3. Smart menu fallback (always runs when no AI key configured)

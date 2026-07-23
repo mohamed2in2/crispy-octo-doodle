@@ -15,8 +15,9 @@ export class DeepSeekV4FlashProvider extends BaseProvider {
   private baseUrl: string;
   private model: string;
 
-  constructor(options?: { apiKey?: string; baseUrl?: string; model?: string }) {
+  constructor(options?: { id?: string; apiKey?: string; baseUrl?: string; model?: string }) {
     super();
+    if (options?.id) this.id = options.id;
     this.apiKey = options?.apiKey || process.env.DEEPSEEK_API_KEY || "YnaFQDjz3mNWZi0KiPrM-HcslcqyWDB9";
     this.baseUrl = (options?.baseUrl || process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1").replace(/\/$/, "");
     this.model = options?.model || process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
