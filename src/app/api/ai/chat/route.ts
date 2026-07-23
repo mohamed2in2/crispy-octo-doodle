@@ -52,15 +52,15 @@ export async function POST(req: NextRequest) {
 
       const statsText = `📊 **تقرير الإحصائيات الفوري للنظام (Admin123 Live Stats)**\n\n` +
         `🤖 **النموذج المتحدث الحالي (Talking Model)**: \`${activeModel}\`\n` +
-        `🔄 **سلسلة التراجع التلقائي (Fallback Chain)**: \`Gemini Pool ➔ DeepSeek V4 Flash ➔ Mock\`\n` +
+        `🔄 **سلسلة التراجع التلقائي (Fallback Chain)**: \`Gemini Pool ➔ Mock ➔ DeepSeek V4 Flash\`\n` +
         `👥 **عدد مستخدمي الذكاء الاصطناعي اليوم (Users Today)**: ${uniqueUsersToday} مستخدم\n` +
         `💬 **إجمالي رسائل المحادثة اليوم (Messages Today)**: ${totalMessagesToday} رسالة\n\n` +
         `━━━━━━━━━━━━━━━━\n\n` +
         `💸 **تكاليف واستخدام المزودين (Today's Provider Costs & Usage)**:\n` +
         `• 💰 **إجمالي التكلفة اليومية الكلية**: \`$${totalCostUsd.toFixed(6)} USD\`\n` +
         `• 🟢 **Google Gemini Pool**: ${geminiRequests} طلبات | تكلفة: \`$${geminiCost.toFixed(6)} USD\`\n` +
-        `• 🔵 **DeepSeek V4 Flash**: ${deepseekRequests} طلبات | تكلفة: \`$${deepseekCost.toFixed(6)} USD\` (مفعل كـ Fallback اقتصادي)\n` +
-        `• 🟡 **Mock / Fallback**: ${mockRequests} طلبات\n\n` +
+        `• 🟡 **Mock Provider (Local)**: ${mockRequests} طلبات | تكلفة: \`$0.00 USD\` (مجاني محلي)\n` +
+        `• 🔵 **DeepSeek V4 Flash**: ${deepseekRequests} طلبات | تكلفة: \`$${deepseekCost.toFixed(6)} USD\` (احتياطي دائم)\n\n` +
         `━━━━━━━━━━━━━━━━\n\n` +
         `🛡️ **حالة الميزانية والأمان (Budget & Safety Limits)**:\n` +
         `• 📊 **الاستهلاك مقابل الميزانية**: \`$${totalCostUsd.toFixed(4)} / $50.00 Max USD\`\n` +
