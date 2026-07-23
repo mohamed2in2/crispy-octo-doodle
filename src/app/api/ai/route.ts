@@ -8,7 +8,7 @@ const PRIMARY_MODEL = process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-2024102
 const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || process.env.GEMINI_API_KEY || "";
 const BACKUP_BASE_RAW = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
 const BACKUP_BASE_URL = BACKUP_BASE_RAW.replace(/\/+$/, "");
-const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
+const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-2.0-flash-lite";
 
 async function callPrimary(messages: { role: string; content: string }[]) {
   const sys = messages.find((m) => m.role === "system")?.content || "";
