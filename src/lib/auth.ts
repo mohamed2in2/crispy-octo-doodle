@@ -73,9 +73,10 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
   const days = await getConfigNumberClamped("jwt_expiry_days", 1, 365); // matches the JWT expiry
+  const isSecure = process.env.NODE_ENV === "production" && process.env.SECURE_COOKIES === "true";
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * days,
     path: "/",
@@ -105,9 +106,10 @@ export async function createPhoneVerificationChallenge(phone: string, code?: str
 
 export async function setPhoneVerificationCookie(token: string) {
   const cookieStore = await cookies();
+  const isSecure = process.env.NODE_ENV === "production" && process.env.SECURE_COOKIES === "true";
   cookieStore.set(PHONE_VERIFY_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "strict",
     maxAge: 60 * 3,
     path: "/",

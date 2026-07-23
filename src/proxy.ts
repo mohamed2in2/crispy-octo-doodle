@@ -8,18 +8,21 @@ const ADMIN_PANEL_PREFIXES = [
   "/adminpanel/teacher",
 ];
 
-/** Student/user routes — require a valid session; redirect to /login on failure */
-const PROTECTED_PREFIXES = [
+/** Student/user page routes — require a valid session; redirect to /login on failure */
+const PROTECTED_PAGE_PREFIXES = [
   "/dashboard",
   "/library",
   "/quizzes",
   "/codes",
   "/complete-profile",
   "/account",
+];
+
+/** Protected API routes — require a valid session; return 401 JSON on failure */
+const PROTECTED_API_PREFIXES = [
   "/api/library",
   "/api/quizzes",
   "/api/progress",
-  "/api/auth/me",
   "/api/auth/complete-profile",
 ];
 
@@ -59,7 +62,6 @@ async function hasValidSession(req: NextRequest) {
   }
   const token = req.cookies.get("auth_token")?.value;
   if (!token) {
-    console.log(`[Middleware] No auth_token cookie present for path: ${req.nextUrl.pathname}`);
     return false;
   }
   try {
@@ -67,7 +69,6 @@ async function hasValidSession(req: NextRequest) {
     await jwtVerify(token, secret);
     return true;
   } catch (err: any) {
-    console.error(`[Middleware] JWT verification failed for path ${req.nextUrl.pathname}:`, err?.message || err);
     return false;
   }
 }
@@ -85,6 +86,11 @@ export default async function proxy(req: NextRequest) {
 
   // Admin panel login page — always public
   if (isAdminLoginPage(pathname)) return pass();
+
+  // Always allow public access to login and signup
+  if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
+    return pass();
+  }
 
   const authed = await hasValidSession(req);
 
@@ -117,16 +123,16 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
-  // Student routes: redirect to /login if no session
-  if (startsWithAny(pathname, PROTECTED_PREFIXES) && !authed) {
+  // Protect other API endpoints (return 401 JSON, NEVER redirect to /login HTML)
+  if (startsWithAny(pathname, PROTECTED_API_PREFIXES) && !authed) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
+  // Protected page routes: redirect to /login if no session
+  if (startsWithAny(pathname, PROTECTED_PAGE_PREFIXES) && !authed) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect_url", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Redirect logged-in students away from login/signup
-  if ((pathname === "/login" || pathname === "/signup") && authed) {
-    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return pass();

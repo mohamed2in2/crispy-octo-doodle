@@ -21,6 +21,32 @@ import { AccessGate } from "@/components/admin/superadmin/AccessGate";
 import { WalletSection } from "@/components/admin/superadmin/WalletSection";
 import { PlansSection } from "@/components/admin/superadmin/PlansSection";
 import { IconMenu, IconTrash } from "@/components/admin/AdminIcons";
+import dynamic from "next/dynamic";
+
+// Lazy-load AI sections to keep main bundle lean
+const AIOverview = dynamic(() => import("@/components/admin/superadmin/ai/AIOverview"), { ssr: false });
+const AILiveMonitor = dynamic(() => import("@/components/admin/superadmin/ai/AILiveMonitor"), { ssr: false });
+const AIRequests = dynamic(() => import("@/components/admin/superadmin/ai/AIRequests"), { ssr: false });
+const AIPlayground = dynamic(() => import("@/components/admin/superadmin/ai/AIPlayground"), { ssr: false });
+const AIProviders = dynamic(() => import("@/components/admin/superadmin/ai/AIProviders"), { ssr: false });
+const AIGeminiPool = dynamic(() => import("@/components/admin/superadmin/ai/AIGeminiPool"), { ssr: false });
+const AIBudgetCenter = dynamic(() => import("@/components/admin/superadmin/ai/AIBudgetCenter"), { ssr: false });
+const AIPromptLibrary = dynamic(() => import("@/components/admin/superadmin/ai/AIPromptLibrary"), { ssr: false });
+const AIKnowledgeBase = dynamic(() => import("@/components/admin/superadmin/ai/AIKnowledgeBase"), { ssr: false });
+const AIEducationalActions = dynamic(() => import("@/components/admin/superadmin/ai/AIEducationalActions"), { ssr: false });
+const AITools = dynamic(() => import("@/components/admin/superadmin/ai/AITools"), { ssr: false });
+const AIMemoryManager = dynamic(() => import("@/components/admin/superadmin/ai/AIMemoryManager"), { ssr: false });
+const AIStudentAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AIStudentAnalytics"), { ssr: false });
+const AITeacherAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AITeacherAnalytics"), { ssr: false });
+const AIParentAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AIParentAnalytics"), { ssr: false });
+const AIProviderAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AIProviderAnalytics"), { ssr: false });
+const AICostAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AICostAnalytics"), { ssr: false });
+const AICacheAnalytics = dynamic(() => import("@/components/admin/superadmin/ai/AICacheAnalytics"), { ssr: false });
+const AIAlertsCenter = dynamic(() => import("@/components/admin/superadmin/ai/AIAlertsCenter"), { ssr: false });
+const AIAuditLogs = dynamic(() => import("@/components/admin/superadmin/ai/AIAuditLogs"), { ssr: false });
+const AIFeatureFlags = dynamic(() => import("@/components/admin/superadmin/ai/AIFeatureFlags"), { ssr: false });
+const AISettings = dynamic(() => import("@/components/admin/superadmin/ai/AISettings"), { ssr: false });
+const AISystemHealth = dynamic(() => import("@/components/admin/superadmin/ai/AISystemHealth"), { ssr: false });
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "المشرف العام",
@@ -88,6 +114,30 @@ const SECTION_TITLES: Record<string, string> = {
   errors: "مراقبة الأخطاء والتحذيرات",
   "danger-zone": "منطقة الخطر — حذف جماعي",
   instance: "Instance — لوحة المالك",
+  // AI Section
+  "ai-overview": "AI — نظرة عامة",
+  "ai-live": "AI — المراقبة الحية",
+  "ai-requests": "AI — الطلبات",
+  "ai-playground": "AI — ساحة التجربة",
+  "ai-providers": "AI — مزودي الخدمة",
+  "ai-gemini-pool": "AI — Gemini Pool",
+  "ai-budget": "AI — مركز الميزانية",
+  "ai-prompts": "AI — مكتبة البرومبت",
+  "ai-knowledge": "AI — قاعدة المعرفة",
+  "ai-actions": "AI — الأوامر التعليمية",
+  "ai-tools": "AI — الأدوات",
+  "ai-memory": "AI — إدارة الذاكرة",
+  "ai-student-analytics": "AI — تحليلات الطلاب",
+  "ai-teacher-analytics": "AI — تحليلات المعلمين",
+  "ai-parent-analytics": "AI — تحليلات الأهالي",
+  "ai-provider-analytics": "AI — تحليلات المزودين",
+  "ai-cost-analytics": "AI — تحليلات التكلفة",
+  "ai-cache-analytics": "AI — تحليلات الكاش",
+  "ai-alerts": "AI — مركز التنبيهات",
+  "ai-audit": "AI — سجلات التدقيق",
+  "ai-feature-flags": "AI — أعلام الميزات",
+  "ai-settings": "AI — الإعدادات",
+  "ai-health": "AI — صحة النظام",
 };
 
 export default function SuperadminPage() {
@@ -446,6 +496,31 @@ export default function SuperadminPage() {
               <InstanceControlSection />
             </AccessGate>
           )}
+
+          {/* ── AI Section Pages ── */}
+          {activeSection === "ai-overview" && <AIOverview />}
+          {activeSection === "ai-live" && <AILiveMonitor />}
+          {activeSection === "ai-requests" && <AIRequests />}
+          {activeSection === "ai-playground" && <AIPlayground />}
+          {activeSection === "ai-providers" && <AIProviders />}
+          {activeSection === "ai-gemini-pool" && <AIGeminiPool />}
+          {activeSection === "ai-budget" && <AIBudgetCenter />}
+          {activeSection === "ai-prompts" && <AIPromptLibrary />}
+          {activeSection === "ai-knowledge" && <AIKnowledgeBase />}
+          {activeSection === "ai-actions" && <AIEducationalActions />}
+          {activeSection === "ai-tools" && <AITools />}
+          {activeSection === "ai-memory" && <AIMemoryManager />}
+          {activeSection === "ai-student-analytics" && <AIStudentAnalytics />}
+          {activeSection === "ai-teacher-analytics" && <AITeacherAnalytics />}
+          {activeSection === "ai-parent-analytics" && <AIParentAnalytics />}
+          {activeSection === "ai-provider-analytics" && <AIProviderAnalytics />}
+          {activeSection === "ai-cost-analytics" && <AICostAnalytics />}
+          {activeSection === "ai-cache-analytics" && <AICacheAnalytics />}
+          {activeSection === "ai-alerts" && <AIAlertsCenter />}
+          {activeSection === "ai-audit" && <AIAuditLogs />}
+          {activeSection === "ai-feature-flags" && <AIFeatureFlags />}
+          {activeSection === "ai-settings" && <AISettings />}
+          {activeSection === "ai-health" && <AISystemHealth />}
 
           {deleteTargetTeacher && (
             <ConfirmActionModal

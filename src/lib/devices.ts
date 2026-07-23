@@ -20,9 +20,10 @@ export async function readDeviceId(): Promise<{ deviceId: string; isNew: boolean
 
 export async function setDeviceCookie(deviceId: string) {
   const store = await cookies();
+  const isSecure = process.env.NODE_ENV === "production" && process.env.SECURE_COOKIES === "true";
   store.set(DEVICE_COOKIE, deviceId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
     sameSite: "lax",
     maxAge: ONE_YEAR,
     path: "/",

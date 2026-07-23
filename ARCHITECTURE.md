@@ -1,9 +1,38 @@
 # Code-UP — Architecture & Implementation Guide
 
 ## Project Overview
-Code-UP is a premium Egyptian EdTech platform targeting secondary students (covering 4th Primary → 3rd Secondary) with an Arabic-first, dark-native UI, AI-powered study planning, multi-provider secure video delivery, and an access-code enrollment model managed by teachers and a superadmin.
 
-> **Last updated:** 2026-06-14. See [Recent Additions](#recent-additions-2026-06) for the latest changes (multi-provider video, per-video watch quotas, mark-complete flow, and the teacher analytics dashboard).
+Code-UP is a premium Egyptian EdTech platform targeting secondary students (4th Primary → 3rd Secondary) with an Arabic-first, dark-native UI, AI-powered educational intelligence, multi-provider secure video delivery, and an access-code enrollment model managed by teachers and a superadmin.
+
+> **Last updated:** 2026-07-23. This document reflects the full platform including **AI Engine Milestones 1–6**: Universal Tool Framework, Educational State Machine, Platform Integration Layer, AI Administration & Personalization, Production Infrastructure, and the full AI Operations & Observability Platform.
+
+---
+
+## System Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Code-UP Platform                                │
+│                                                                         │
+│  ┌──────────────┐   ┌──────────────────────────────────────────────┐   │
+│  │   Next.js    │   │               AI Engine Layer                │   │
+│  │  App Router  │◄──┤                                              │   │
+│  │  (React 19)  │   │  AIGateway → ProviderManager → Providers    │   │
+│  │              │   │       ↓              ↓                       │   │
+│  │  /app        │   │  ToolFramework  GeminiPoolManager            │   │
+│  │  /api        │   │  ContextBuilder  BudgetManager               │   │
+│  │  /components │   │  PromptBuilder   ProviderMonitor             │   │
+│  └──────┬───────┘   │  RAG / Memory    AlertCenter                 │   │
+│         │           │  StateMachine    AIOperationsConfig           │   │
+│         ▼           └──────────────────────────────────────────────┘   │
+│  ┌──────────────┐                      │                                │
+│  │  Prisma ORM  │◄─────────────────────┘                               │
+│  │  SQLite(dev) │   (AI Engine reads platform data through Tools only) │
+│  └──────────────┘                                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Core Rule:** The AI Engine **never** queries Prisma directly. Every platform capability is exposed as a Tool. The `BudgetManager` runs a pre-flight cost check on every request before it reaches a provider.
 
 ---
 
@@ -13,23 +42,23 @@ Code-UP is a premium Egyptian EdTech platform targeting secondary students (cove
 - **Framework**: Next.js 16 App Router (React 19)
 - **Styling**: Tailwind CSS 4 with a CSS-variable design-token layer (`--bg / --surface / --card / --border / --ink / --ink-muted / --accent`, plus a semantic z-index scale)
 - **Animations**: Framer Motion ^12.40
-- **Charts**: hand-rolled dependency-free SVG charts (`src/components/admin/Charts.tsx`) — no chart library
+- **Charts**: hand-rolled dependency-free SVG charts (`src/components/admin/Charts.tsx`)
 - **Language**: TypeScript
 - **Direction**: RTL (Arabic primary), `Cairo` font family
 
 ### Backend
 - **Runtime**: Node.js + Next.js API Routes
-- **Database**: **SQLite** (dev) via Prisma ORM. The Prisma client is generated to `src/generated/prisma` (provider `prisma-client`, not the legacy `prisma-client-js`).
-- **Authentication**: JWT-based via `jose`, HTTP-only cookie (`auth_token`)
+- **Database**: SQLite (dev) via Prisma ORM. Client generated to `src/generated/prisma`
+- **Authentication**: JWT-based via `jose`, HTTP-only cookie (`auth_token`), 7-day expiry
 - **Password Hashing**: bcryptjs
+- **Encryption**: AES-256-GCM for AI provider API keys (`CONFIG_ENCRYPTION_KEY`)
 
 ### Video Delivery — Multi-Provider
-Videos are no longer Bunny-only. Each video chooses a provider; a single dispatcher resolves the embed URL:
 - **VdoCipher** — server-side OTP (strongest DRM)
 - **Bunny Stream** — SHA256-signed embed token
-- **YouTube** — unlisted/private via `youtube-nocookie.com` (autoplay + modestbranding; protection is domain + referrer + client-side deterrents, no server token)
+- **YouTube** — unlisted via `youtube-nocookie.com` (domain + referrer protection)
 
-Dispatcher: `src/lib/video-provider.ts` → `resolveEmbedUrl(video)` + `validateProviderId(provider, id)`. Per-provider helpers in `src/lib/bunny.ts` and `src/lib/youtube.ts`.
+Dispatcher: `src/lib/video-provider.ts` → `resolveEmbedUrl(video)` + `validateProviderId()`.
 
 ---
 
@@ -37,332 +66,451 @@ Dispatcher: `src/lib/video-provider.ts` → `resolveEmbedUrl(video)` + `validate
 
 ### Core Models
 
-#### User
-- Multi-role system: student, teacher, superadmin
-- Authentication via email + bcrypt password
-- Tracking: Educational stage, phone, age, last login
-- Soft delete via `isActive` flag
-
-#### Course
-- Created by teachers
-- Organized into folders for structured content
-- Thumbnail support for visual representation
-- Filters by educational stage & subject
-
-#### Folder
-- Hierarchical organization within courses
-- Contains videos and quizzes
-- Sortable via `order` field
-
-#### Video
-- **Multi-provider**: `videoProvider` (`vdocipher` | `bunny` | `youtube`) + `providerVideoId`. `vdoCipherId` is kept as a legacy column for old rows.
-- `durationMinutes` — teacher-entered; drives the watch-progress bar and the mark-complete gate.
-- `maxWatchesPerUser` (default 3) — **per-video** watch quota (replaces the old course-wide `maxWatchCount`).
-- Progress tracking per student; organized by folder.
-
-#### VideoWatchSession
-- One row per watch session: `sessionToken`, `videoId`, `studentId`, `startedAt`, `expiresAt`, `endedAt`, `usedWatchSlot`.
-- 4-hour session tokens; a session consumes one of the video's `maxWatchesPerUser` slots.
-- Used to compute remaining watches and powers the analytics "views over time".
-
-#### Progress
-- `(studentId, videoId)` unique; `watched` + `watchedAt`. Set by the mark-complete endpoint (manual button, or auto on YouTube end event).
-
-#### SupportTicket / StudentFeedback / ClientError
-- Surfaced in the teacher overview "issues feed" (complaints, unresolved feedback, platform errors).
-
-#### Quiz
-- Multiple-choice format (A, B, C, D options)
-- Configurable time limit
-- Question ordering support
-- Result tracking with scores
-
-#### AccessCode
-- Unique codes for unlocking courses
-- Can be deactivated by teachers
-- Tracks student usage and timestamps
-
-#### DailyStudyPlan (AI Feature)
-- JSON-based plan content
-- Status tracking: pending → in_progress → completed
-- Per-student, per-date uniqueness
+| Model | Purpose |
+|---|---|
+| `User` | Multi-role (student / teacher / superadmin). `isOwner`, `isVirtual`, soft-delete via `isActive` |
+| `Course` | Teacher-created. `isVirtual` for demo data |
+| `Folder` | Hierarchical organization within courses. Sortable via `order` |
+| `Video` | Multi-provider: `videoProvider` + `providerVideoId`. `durationMinutes` + `maxWatchesPerUser` |
+| `VideoWatchSession` | 4-hour session token; consumes one watch slot per video |
+| `Progress` | `(studentId, videoId)` unique; `watched` + `watchedAt` |
+| `Quiz` | Multiple-choice (A/B/C/D), time limit, question ordering |
+| `AccessCode` | Unique per course; deactivatable; tracks usage |
+| `DailyStudyPlan` | JSON plan content; status: pending → in_progress → completed |
+| `PlatformConfig` | Editable platform constants with 60-second in-memory cache |
+| `AIProvider` | Superadmin-managed providers; AES-256-GCM encrypted API keys |
+| `AppSetting` | Key-value store for maintenance mode, site text, etc. |
+| `BulkDeletionRequest` | Scheduled or instant bulk account deletion with 7-day cancel window |
+| `SupportTicket` | Student-filed tickets surfaced in the teacher issues feed |
+| `StudentFeedback` | Unresolved feedback surfaced in the issues feed |
+| `ClientError` | Platform error reports surfaced in the issues feed |
 
 ---
 
-## Core Features Implementation
+## AI Engine — Complete Layer Map
 
-### 1. User Roles & Access Control
+The AI Engine lives entirely in `src/ai/` and is organized into subsystems. The platform → AI dependency always flows **down** through the Tool layer.
 
-#### Student
-- Browse and enroll in courses via access codes
-- Track progress on videos
-- Submit quizzes and view results
-- Access daily AI study plans
-- View profile and statistics
-
-#### Teacher
-- Create/manage courses and folders
-- Add videos (via Bunny Stream)
-- Create interactive quizzes
-- Generate and revoke access codes
-- View student analytics
-- See individual student progress
-
-#### Superadmin
-- Master password authentication
-- Create teacher accounts (name + password)
-- System-wide analytics
-- User management
-
-### 2. Authentication & Security
-
-**Sign-Up/Login Fields:**
-- Name, Email, Password, Phone, Age, Educational Stage
-- Passwords: bcryptjs hashing (bcryptjs v3.0.3)
-- Session: JWT tokens in HTTP-only cookies
-- Token expiry: 7 days
-
-**Token Structure:**
-```typescript
-{
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  iat: number;
-  exp: number;
-}
 ```
-
-### 3. Video Management (Multi-Provider)
-
-**Teacher Workflow (per video):**
-1. Pick a provider in the panel: VdoCipher / Bunny / YouTube.
-2. Paste the matching ID (`validateProviderId` enforces format — e.g. YouTube must be 11 chars).
-3. Optionally set **duration (minutes)** and **watches-per-student** (1/2/3/5/10/20, or custom).
-4. Video appears to enrolled students; the watch limit is editable inline later.
-
-**Playback Security (per provider):**
-- **VdoCipher**: server-side OTP, fetched on demand — strongest DRM.
-- **Bunny**: SHA256-signed embed token (`getBunnyEmbedUrl`).
-- **YouTube**: `youtube-nocookie.com` embed with `autoplay=1`, `modestbranding=1`, `rel=0`; no server token, so protection is domain + `referrerPolicy="strict-origin"` + client deterrents (right-click block, F12/Ctrl+Shift+I/U/S suppression).
-- The raw provider URL is never sent to the page until a valid watch session exists.
-
-### 3a. Watch Sessions, Quotas & Completion
-
-- `POST /api/videos/[id]/watch` opens (or reuses) a 4-hour `VideoWatchSession`, consuming one of the video's `maxWatchesPerUser` slots, and returns the resolved `embedUrl` + `provider`.
-- The learn page (`/courses/[id]/learn`, TOFAS-style split panel) plays the video **inline** with: a sequential lock (next lesson locked until the previous is watched), a course-progress ring, a per-video watch-slot bar, and a session countdown.
-- A **time-progress bar** (from `durationMinutes`) gates a green **"أنهيت المحاضرة"** button at ≥80% elapsed. Clicking it calls `POST /api/videos/[id]/complete` → marks `Progress.watched`. YouTube also auto-completes on the player `ended` event.
-
-### 4. Quiz System
-
-**Features:**
-- Multiple-choice questions (A, B, C, D)
-- Time-limited attempts (configurable per quiz)
-- Automatic scoring
-- Results tracking and analytics
-- Question ordering support
-
-**Student Workflow:**
-1. Click "Take Quiz" inside folder
-2. Read questions and select answers
-3. Submit before time expires
-4. View instant score and results
-
-### 5. Access Code System
-
-**Teacher Side:**
-- Generate unique codes per course (automatic or custom naming)
-- Deactivate codes for specific students
-- Bulk operations support (future enhancement)
-
-**Student Side:**
-- Enter code on Courses page
-- Unlock entire course and all content
-- Access granted immediately
-- Code revocation = instant access loss
-
-### 6. AI Study Assistant
-
-**Daily Plan Generation:**
+src/ai/
+├── AIEngine.ts                  # Orchestrator — assembles all subsystems
+├── index.ts                     # Barrel export
+│
+├── tools/                       # Every platform capability as a Tool
+│   ├── ToolRegistry.ts          # Registers and looks up all tools
+│   ├── ToolExecutor.ts          # Safe execution with validation + health
+│   └── [domain tools]           # StudentTool, CourseTool, QuizTool, HomeworkTool, TeacherTool…
+│
+├── providers/                   # AI provider adapters
+│   ├── BaseProvider.ts          # Abstract base: generate(), stream(), capabilities
+│   ├── ProviderManager.ts       # Selects provider: priority → fallback → mock
+│   ├── GeminiProvider.ts        # Gemini via GeminiPoolManager
+│   ├── DeepSeekV4FlashProvider.ts  # DeepSeek V4 Flash
+│   └── MockProvider.ts          # Deterministic offline provider for tests
+│
+├── gateway/
+│   └── GeminiPoolManager.ts     # Multi-key Gemini pool: score-based selection,
+│                                #   429/401/5xx handling, no secret key exposure
+│
+├── context/                     # Request context assembly
+│   ├── ContextBuilder.ts        # Assembles student + course + lesson context
+│   └── SessionContext.ts        # Per-request session tracking
+│
+├── prompts/                     # Prompt engineering layer
+│   ├── PromptBuilder.ts         # Builds system + user prompts from templates
+│   └── PromptTemplates.ts       # Per-action Arabic prompt templates
+│
+├── knowledge/                   # RAG & knowledge loading
+│   ├── KnowledgeLoader.ts       # Subject-aware knowledge injection
+│   └── SubjectKnowledge.ts      # Domain knowledge per subject
+│
+├── rag/                         # Retrieval-augmented generation
+│   ├── RAGPipeline.ts           # Retrieval → augmentation → generation
+│   └── SimilarQuestionDetector.ts  # Arabic-normalized deduplication
+│
+├── state_machine/               # Educational progress tracking
+│   ├── EducationalStateMachine.ts   # Student state: onboarding → active → mastery
+│   └── StateTransitions.ts          # Transition rules per action
+│
+├── memory/                      # Conversation & student memory
+│   ├── ConversationMemory.ts    # Per-session rolling context
+│   └── StudentMemory.ts         # Long-term student profile memory
+│
+├── router/                      # AI action routing
+│   └── AIRouter.ts              # Routes intents to the correct handler
+│
+├── intent/                      # Intent classification
+│   └── IntentClassifier.ts      # Detects what the student is trying to do
+│
+├── actions/                     # Domain-specific AI actions
+│   └── [Explain, Quiz, Plan, Homework, Exam, Report…]
+│
+├── modes/                       # Operating mode guards
+│   └── AIMode.ts                # Development / Testing / Sandbox / Staging / Production
+│
+├── telemetry/                   # Request lifecycle telemetry
+│   └── AITelemetry.ts           # Records every request, latency, token count
+│
+├── config/                      # AI engine runtime config
+│   └── AIConfig.ts              # Feature flags, limits, toggles
+│
+└── admin/                       # AI Operations Platform (Milestone 6)
+    ├── budget/
+    │   ├── BudgetPolicies.ts    # Per-dimension limit configs
+    │   ├── BudgetTracker.ts     # Incremental per-dimension spending accumulators
+    │   ├── BudgetAlerts.ts      # Threshold alerts: Warning/Economy/Degraded/Critical/Emergency
+    │   └── BudgetManager.ts     # Pre-flight cost checks + auto cost reduction
+    │
+    ├── monitoring/
+    │   ├── ProviderMonitor.ts         # 28 independent stats per provider
+    │   └── GeminiClusterDashboard.ts  # Safe Gemini pool overview (no keys exposed)
+    │
+    ├── explorer/
+    │   └── AIRequestExplorer.ts  # 10K-record searchable request log
+    │
+    ├── dashboard/
+    │   └── LiveAIDashboard.ts    # Cards + hourly graphs + heatmaps
+    │
+    ├── optimizer/
+    │   └── BudgetOptimizer.ts    # Nightly analysis + AIFinancialAdvisor midnight reports
+    │
+    ├── routing/
+    │   └── RoutingAnalytics.ts   # Explains every provider selection with reasons + confidence
+    │
+    ├── analytics/
+    │   └── AIAnalytics.ts        # StudentAIAnalytics · TeacherAnalytics · ParentAnalytics
+    │                             # CacheAnalytics · ProviderComparison
+    │
+    ├── alerts/
+    │   └── AlertCenter.ts        # Superadmin alert hub (budget/provider/security/abuse)
+    │
+    ├── config/
+    │   └── AIOperationsConfig.ts # Full runtime control — all changes auto-audited
+    │
+    └── audit_logging/
+        ├── AIAuditSystem.ts      # 5K-ring audit trail (who · ip · prev · new · reason)
+        └── AILogger.ts           # Structured AI request logger
 ```
-Input: Student's progress, enrolled courses, educational stage
-Output: JSON-based study plan with:
-  - Topics to study
-  - Estimated duration
-  - Content type (video/quiz/reading)
-  - Priority level
-```
-
-**Fallback Mechanism:**
-- Primary API: (configured in environment)
-- Backup API: (auto-switches on failure)
-- Graceful degradation: Shows default plan if both fail
-
-**Plan UI:**
-- Chat-like interface for updates
-- Drag-and-drop reordering
-- Mark items as complete
-- Regenerate option
-
-### 7. Dashboard Features
-
-#### Student Dashboard (Home/Account)
-- Profile information (read-only)
-- Statistics: courses enrolled, videos watched, quiz average
-- Recent activity
-- Study plan widget
-
-#### Teacher Dashboard (/adminpanel/teacher)
-Mobile-responsive (shared `AdminSidebar` = static rail on desktop, slide-in drawer + hamburger on mobile). SVG icon set (`AdminIcons.tsx`), design-token styling throughout.
-
-- **Overview / analytics** (`TeacherOverview.tsx` ← `/api/admin/analytics`):
-  - Personalized welcome (`أهلاً، <name> 👋`)
-  - **Period filter** (7d / 30d / 90d / all) + **manual course filter**
-  - KPI cards with period-over-period deltas: total students (+new this period), views, completed lessons, avg quiz score
-  - **Views & enrollments over time** (SVG area + dashed line chart)
-  - **Top videos** and **low-view videos** (the "needs attention" list)
-  - Per-course performance + quiz-score distribution
-  - **Issues feed**: open support tickets, unresolved feedback, recent client errors, and data-health warnings (missing course thumbnail, videos without duration, empty folders, 0-view videos)
-
-- **Course editor** (tabbed: المحتوى / الإعدادات / التسعير):
-  - Create/delete courses **and folders** (folder delete cascades content)
-  - Add videos/quizzes/materials; inline per-video watch-limit selector
-  - Settings + pricing (free/paid, discount with expiry)
-
-- **Student & code management**: view students per course, ban/unban, generate/toggle access codes.
-
-#### Superadmin Dashboard (/adminpanel/superadmin)
-- Teacher account creation (Name + Password)
-- System overview
-- User statistics
-- Course analytics
 
 ---
 
-## UI/UX Enhancements
+## AI Engine — Milestone Summary
 
-### 1. Dark Mode
-- Toggle button in Navbar
-- Persistent storage via localStorage
-- CSS custom properties for theming
-- Implemented via Tailwind dark: classes
+### Milestone 1 — Foundation
+Establishes the core AI engine scaffolding:
+- `AIEngine.ts` orchestrator
+- `BaseProvider` abstract class with `generate()`, `stream()`, `capabilities`
+- `MockProvider` for deterministic offline development
+- `ProviderManager` with priority → fallback chain
+- `AITelemetry` recording every request lifecycle
+- Feature flag system for instant enable/disable
 
-### 2. RTL Support
-- HTML: `dir="rtl"` on root
-- Language: Arabic (ar)
-- Navbar links order reversed
-- Form labels positioned correctly
-- Flexbox/Grid use `flex-row-reverse` where needed
+### Milestone 2 — Educational Intelligence
+- **EducationalStateMachine**: onboarding → active learning → mastery state transitions per student
+- **IntentClassifier**: detects student intent (explain / quiz / plan / help)
+- **ContextBuilder**: assembles full educational context (student profile, current lesson, course progress)
+- **PromptBuilder + PromptTemplates**: Arabic-first per-action prompt engineering
+- **KnowledgeLoader + SubjectKnowledge**: domain knowledge injection per Egyptian curriculum subject
+- **ConversationMemory + StudentMemory**: session-level and long-term student memory
 
-### 3. Animations (Framer Motion)
-- Hero section: Fade-in + scale animations
-- Card hover effects: Shadow & lift
-- Loading states: Skeleton screens
-- Navigation: Smooth transitions
-- Quiz feedback: Bounce animations
+### Milestone 3 — Universal Tool Framework
+The AI never touches Prisma. Every platform capability is a Tool:
 
-### 4. Responsive Design
-- Mobile-first approach
-- Breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)
-- Navbar: Hamburger menu on mobile
-- Forms: Single column on mobile, grid on desktop
-- Images: Responsive with next/image
+| Tool | Operations |
+|---|---|
+| `StudentTool` | GetStudentProfile, GetWeeklyStats, GetStudyStreak |
+| `CourseTool` | GetCurrentCourse, GetLesson, GetLessonObjectives, GetCourseProgress, GetLockedLessons |
+| `QuizTool` | GenerateQuiz, StartQuiz, SubmitQuiz, GradeQuiz, AnalyzeQuiz, RetryIncorrectQuestions |
+| `HomeworkTool` | GetHomework, SubmitHomework, AnalyzeHomework, GenerateHomework |
+| `TeacherTool` | TeacherAnalytics |
 
-### 5. Loading States
-- Skeleton loaders for cards
-- Progress bars for videos
-- Spinners for API calls
-- Placeholder animations
+Every Tool implements: `name()` · `description()` · `parameters()` · `execute()` · `validate()` · `health()`
+
+### Milestone 4 — AI Administration, Personalization & Memory
+- **AI Administration Dashboard** inside `/adminpanel/superadmin`
+- **AIAuditSystem** for every AI configuration change (who / when / prev / new / reason / IP)
+- **CostManager** tracking cost per provider / subject / action
+- **AIHealthDashboard** exposing provider health, error rates, and latency
+- **Feature Flag system** — every AI capability can be disabled instantly from the panel
+
+### Milestone 5 — Production Infrastructure
+- **Deployment modes**: Development / Testing / Sandbox / Staging / Production / Maintenance / Emergency
+- **Multi-provider orchestration**: unlimited providers, health-weighted selection
+- **RAG Pipeline**: `KnowledgeLoader` → `SimilarQuestionDetector` (Arabic normalization) → vector retrieval
+- **Prompt safety layer**: injection detection, jailbreak guards, student safety filters
+- **DeepSeek V4 Flash Provider**: integrated as the first production provider
+
+### Milestone 6 — AI Operations Platform (Full Observability)
+
+#### Budget Manager
+- **Pre-flight cost check** before every request: estimates cost → allow / reject / redirect / use-cheaper
+- **7 tracking dimensions**: Global · Provider · Subject · Grade · Student · Teacher · Action
+- **Automatic cost reduction tiers**:
+
+  | Budget Used | Mode | Automatic Action |
+  |---|---|---|
+  | ≥ 50% | Warning | Superadmin notified |
+  | ≥ 75% | Economy | Prefer cheaper provider, increase cache TTL |
+  | ≥ 90% | Degraded | Reduce response length, prefer Gemini Lite |
+  | ≥ 95% | Critical | Disable EXAM, PLAN, long reports |
+  | ≥ 100% | Emergency | Policy: reject / deepseek / gemini / cache_only |
+
+#### Provider Monitor
+Tracks **28 stats per provider** in rolling minute + hour windows:
+- Requests/tokens (daily / hourly / per-minute), latency, success rate, error breakdown (429 / 401 / 5xx / timeout), cache hit rate, fallback count, estimated cost
+
+#### Gemini Pool Manager
+- Scores every API key: `(Quota×35%) + (Health×25%) + (Latency×15%) + (MinuteUsage×15%) + (DailyUsage×10%)`
+- Always selects highest-scoring active key
+- 429 → `CoolingDown` until `retry-after` expires
+- 401 → permanent `Disabled`
+- 5xx → temporary score penalty (self-healing)
+- **Zero secret key exposure** — `getAllAccountStats()` uses `Omit<..., "secretKey">`
+
+#### AI Request Explorer
+- Stores up to **10,000 requests** in a ring buffer
+- Multi-field search: student · teacher · provider · action · subject · grade · date · cost · tokens · latency · cacheHit · fallback
+
+#### Live AI Dashboard
+- **Cards**: Requests Today · Tokens Today · Cost Today · Avg Latency · Budget Level
+- **Hourly graphs**: requests / tokens / cost / errors (last 24 h)
+- **Heatmaps**: most expensive subjects & actions
+- **Provider distribution** chart
+
+#### Budget Optimizer + AI Financial Advisor
+Nightly analysis across 4 recommendation categories:
+- `cache` — increase cache TTL, serve repeated prompts from cache
+- `prompt_compression` — reduce oversized contexts
+- `provider_routing` — route simple requests to cheaper providers
+- `action_disable` — disable expensive actions in economy mode
+
+**AI Financial Advisor** generates an Arabic midnight report:
+```
+📊 تقرير المستشار المالي للذكاء الاصطناعي — 2026-07-23
+💰 تكلفة أمس: $3.42
+💡 توفير محتمل: $1.08 (31%)
+📋 الأسباب:
+  1. 241 طلب متكرر كان يمكن تقديمه من التخزين المؤقت.
+  2. متوسط الـ prompt كان 34% أكبر من اللازم.
+✅ التوصيات:
+  1. زيادة مدة التخزين المؤقت
+  2. توجيه الطلبات البسيطة إلى Gemini
+```
+
+#### Routing Analytics
+Explains every provider selection:
+```
+Student Question → Gemini
+Reasons:
+  • معدل نجاح مرتفع (100%)        High health
+  • متوسط استجابة ممتاز (212ms)   Fastest latency
+  • أعلى نتيجة في المجموعة (97/100) Available quota
+Confidence: 99%
+```
+
+#### Analytics Suite (`AIAnalytics.ts`)
+- **StudentAIAnalytics**: questions asked, AI dependency score, favorite subject, cost per student
+- **TeacherAnalytics**: students helped, reports generated, feature usage, cost
+- **ParentAnalytics**: reports generated, read rate, improvement tracking
+- **CacheAnalytics**: hits/misses/saved tokens per tier (PromptCache / RAGCache / ResponseCache / MemoryCache)
+- **ProviderComparison**: ranked table — requests · latency · cost · success · errors · fallbacks · avg tokens
+
+#### Alert Center
+Superadmin notification hub with severity (Info / Warning / Error / Critical) and categories:
+- **Budget**: 50%/75%/90%/95%/100% threshold events
+- **Provider**: offline, degraded health
+- **Quota**: 429 spike detection
+- **Auth**: 401 → key auto-disabled notification
+- **Latency**: high response time warning
+- **Security**: prompt injection + jailbreak attempt detection
+- **Abuse**: student sending too many requests in a short window
+
+#### AI Operations Config
+Full runtime control surface — everything configurable without code changes:
+- Daily/monthly budget limits
+- Provider mode: Economy / Balanced / Quality
+- Token limits, context size, cache TTL, max retries
+- Enable/disable: specific providers, actions, subjects, grades
+- Provider priority order
+- **Every change is automatically written to the Audit Trail**
+
+#### Audit Trail (`AIAuditSystem`)
+- **5,000-record ring buffer** (up from 1K)
+- Every entry records: `who · ip · action · previousValue · newValue · reason · timestamp`
+- `filterByWho(admin)` and `filterByAction(prefix)` for panel queries
 
 ---
 
-## File Structure
+## Parent Follow-up System (متابعة ولي الأمر)
+
+Implemented as a **platform feature** — not an AI feature. Statistics come entirely from platform data; AI is only optionally used for summary sentences.
+
+```
+src/services/parent/
+├── ParentService.ts          # Parent profiles, student linking, retrieval by student ID
+├── ParentStatsCalculator.ts  # All weekly metrics from DB (lessons, videos, homework, quizzes, streak)
+├── WeeklyReportGenerator.ts  # Formatted Friday evening report (Arabic) + SMS-friendly version
+└── index.ts                  # Barrel export
+```
+
+Every Friday the report includes: per-subject scores, homework submitted/total, quiz performance, study time, current streak, weak topics, strong topics, and a next-week recommendation.
+
+---
+
+## Platform Control, Settings & Security
+
+All superadmin controls live under `/adminpanel/superadmin` with matching routes under `/api/admin/superadmin/*`.
+
+### Superadmin Accounts
+- **Four named superadmins** seeded via `scripts/seed-superadmins.mjs`: Ahmed (owner), Mohamed, Adham, Yassen. `User.isOwner` marks the single owner.
+- DB-backed bcrypt login OR env master password (`SUPERADMIN_MASTER_PASSWORD`) as break-glass.
+- **Three passwords, one job each**: `SUPERADMIN_MASTER_PASSWORD` (break-glass), `SUPERADMIN_ACTION_PASSWORD` (sensitive action confirmation), `BULK_DELETE_PASSWORD` (Danger Zone gate + instant deletion).
+
+### Maintenance Mode
+- Toggle + editable message in `AppSetting`. Public visitors see `MaintenanceScreen`. Superadmins always bypass. Gated in `layout.tsx`.
+
+### Bulk Account Deletion (Danger Zone)
+- Three scopes: all / students / teachers. Scheduled (7-day, cancellable) or instant (env-password). Soft-deletes then permanently purges after `trash_purge_days` (≥1 day, default 30).
+
+### PlatformConfig (Advanced Settings)
+- `lib/config.ts` with `getConfig / getConfigNumber / getConfigBool / setConfig` and 60-second in-memory cache.
+- Config-driven values: JWT expiry, watch-session hours, default `maxWatchesPerUser`, mark-complete %, max videos per folder, AI max tokens, trash-purge days.
+
+### AI Providers (Encrypted)
+- `AIProvider` model: name, slug, base URL, models, encrypted API key (AES-256-GCM).
+- Keys **never returned** to the client — only `hasKey: boolean`. Decryption is server-side only.
+- `/api/ai/study-plan` reads primary → backup → static default from DB.
+
+---
+
+## Environment Variables
+
+```env
+# Database
+DATABASE_URL=file:./prisma/dev.db
+
+# JWT
+JWT_SECRET=your-secret-key
+
+# Encryption (≥32 chars, STABLE — changing breaks saved AI keys)
+CONFIG_ENCRYPTION_KEY=your-32-char-minimum-encryption-key
+
+# Video providers
+VDOCIPHER_API_SECRET=...
+BUNNY_LIBRARY_ID=...
+BUNNY_API_KEY=...
+BUNNY_TOKEN_AUTHENTICATION_KEY=...
+BUNNY_CDN_HOSTNAME=iframe.mediadelivery.net
+
+# Admin passwords
+SUPERADMIN_MASTER_PASSWORD=...
+SUPERADMIN_ACTION_PASSWORD=...
+BULK_DELETE_PASSWORD=...
+
+# AI Providers — Gemini Pool
+GEMINI_KEY_1=your-first-gemini-api-key
+GEMINI_KEY_2=your-second-gemini-api-key
+GEMINI_KEY_3=your-third-gemini-api-key
+# Add GEMINI_KEY_4, GEMINI_KEY_5… for additional pool accounts
+
+# AI Providers — Other
+DEEPSEEK_API_KEY=...
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+
+# Site
+NEXT_PUBLIC_APP_NAME=Code-UP
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD=+20XXXXXXXXXX
+```
+
+---
+
+## File Structure (Key Paths)
 
 ```
 j:/crispy-octo-doodle-1/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx                 # Root layout with dark mode
-│   │   ├── page.tsx                   # Home page
-│   │   ├── signup/page.tsx            # Registration
-│   │   ├── login/page.tsx             # Login
-│   │   ├── courses/page.tsx           # Browse courses
-│   │   ├── courses/[id]/page.tsx      # Course detail
-│   │   ├── library/page.tsx           # Enrolled courses + AI assistant
-│   │   ├── account/page.tsx           # User profile & stats
+│   │   ├── layout.tsx                  # Root layout, dark mode, maintenance gate
+│   │   ├── page.tsx                    # Home (server-rendered, reads AppSetting)
+│   │   ├── courses/[id]/learn/         # TOFAS-style inline learn experience
 │   │   ├── adminpanel/
-│   │   │   ├── page.tsx               # Admin entry point
-│   │   │   ├── teacher/page.tsx       # Teacher dashboard
-│   │   │   └── superadmin/page.tsx    # Superadmin dashboard
+│   │   │   ├── teacher/               # Teacher dashboard
+│   │   │   └── superadmin/            # Superadmin dashboard + AI Operations
 │   │   └── api/
-│   │       ├── auth/                  # Auth routes
-│   │       ├── admin/                 # Admin-specific routes
-│   │       ├── courses/               # Course CRUD
-│   │       ├── quizzes/               # Quiz operations
-│   │       ├── videos/                # Video management
-│   │       ├── codes/                 # Access code operations
+│   │       ├── auth/                  # Signup / login / logout / me
+│   │       ├── courses/               # Course CRUD + watch sessions
+│   │       ├── videos/                # Watch session, secure URL, complete
+│   │       ├── quizzes/               # Quiz CRUD + submit
+│   │       ├── codes/                 # Access code redemption
 │   │       ├── progress/              # Progress tracking
-│   │       ├── ai/                    # AI study plans
-│   │       └── analytics/             # Analytics data
+│   │       ├── ai/                    # Study plans
+│   │       ├── admin/                 # Teacher routes + analytics
+│   │       └── admin/superadmin/      # Superadmin routes (maintenance, bulk-delete…)
+│   │
+│   ├── ai/                            # ── AI ENGINE ──
+│   │   ├── AIEngine.ts                # Orchestrator
+│   │   ├── providers/                 # BaseProvider, ProviderManager, Gemini, DeepSeek, Mock
+│   │   ├── gateway/                   # GeminiPoolManager
+│   │   ├── tools/                     # ToolRegistry, ToolExecutor, domain tools
+│   │   ├── context/                   # ContextBuilder, SessionContext
+│   │   ├── prompts/                   # PromptBuilder, PromptTemplates
+│   │   ├── knowledge/                 # KnowledgeLoader, SubjectKnowledge
+│   │   ├── rag/                       # RAGPipeline, SimilarQuestionDetector
+│   │   ├── state_machine/             # EducationalStateMachine, StateTransitions
+│   │   ├── memory/                    # ConversationMemory, StudentMemory
+│   │   ├── router/                    # AIRouter
+│   │   ├── intent/                    # IntentClassifier
+│   │   ├── actions/                   # Domain action handlers
+│   │   ├── modes/                     # AIMode (deployment modes)
+│   │   ├── telemetry/                 # AITelemetry
+│   │   └── admin/                     # ── AI OPERATIONS ──
+│   │       ├── budget/                # BudgetPolicies, BudgetTracker, BudgetAlerts, BudgetManager
+│   │       ├── monitoring/            # ProviderMonitor, GeminiClusterDashboard
+│   │       ├── explorer/              # AIRequestExplorer
+│   │       ├── dashboard/             # LiveAIDashboard
+│   │       ├── optimizer/             # BudgetOptimizer, AIFinancialAdvisor
+│   │       ├── routing/               # RoutingAnalytics
+│   │       ├── analytics/             # AIAnalytics (Student, Teacher, Parent, Cache, Comparison)
+│   │       ├── alerts/                # AlertCenter
+│   │       ├── config/                # AIOperationsConfig
+│   │       └── audit_logging/         # AIAuditSystem, AILogger
+│   │
+│   ├── services/
+│   │   └── parent/                    # ParentService, ParentStatsCalculator, WeeklyReportGenerator
+│   │
 │   ├── components/
-│   │   ├── ui/
-│   │   │   ├── Navbar.tsx             # Main navigation
-│   │   │   ├── Footer.tsx             # Footer with admin link
-│   │   │   ├── DarkModeToggle.tsx     # Dark mode switcher
-│   │   │   ├── Skeleton.tsx           # Loading skeletons
-│   │   │   └── Button.tsx             # Reusable button
-│   │   ├── home/
-│   │   │   ├── HeroSection.tsx        # Animated hero
-│   │   │   ├── FeaturesSection.tsx    # Platform features
-│   │   │   ├── StatsSection.tsx       # Statistics display
-│   │   │   └── CTASection.tsx         # Call-to-action
-│   │   ├── courses/
-│   │   │   ├── CourseCard.tsx         # Course display
-│   │   │   ├── CourseFilters.tsx      # Filter component
-│   │   │   └── AccessCodeInput.tsx    # Code entry field
-│   │   ├── player/
-│   │   │   └── BunnyPlayer.tsx        # Custom video player
-│   │   ├── admin/
-│   │   │   ├── AdminSidebar.tsx       # Admin nav (desktop rail + mobile drawer)
-│   │   │   ├── AdminIcons.tsx         # Shared SVG icon set + SECTION_ICONS map
-│   │   │   ├── Charts.tsx             # Dependency-free SVG charts (area/bars/dist)
-│   │   │   ├── TeacherOverview.tsx    # Analytics dashboard (KPIs, charts, issues)
-│   │   │   ├── TeacherQuizResults.tsx # Quiz scores + retakes
-│   │   │   ├── TeacherRequests.tsx    # Grade requests + tickets
-│   │   │   ├── TeacherFeedback.tsx    # Student feedback
-│   │   │   └── superadmin/            # Superadmin section components
-│   │   ├── ai/
-│   │   │   ├── StudyPlanCard.tsx      # Plan display
-│   │   │   ├── StudyPlanChat.tsx      # Chat interface
-│   │   │   └── PlanGenerator.tsx      # Plan creation UI
-│   │   └── quiz/
-│   │       ├── QuizContainer.tsx      # Quiz wrapper
-│   │       ├── QuestionCard.tsx       # Question display
-│   │       ├── AnswerSelector.tsx     # Option selection
-│   │       ├── TimerDisplay.tsx       # Quiz timer
-│   │       └── ResultsDisplay.tsx     # Score feedback
+│   │   ├── admin/                     # AdminSidebar, AdminIcons, Charts, TeacherOverview…
+│   │   ├── ai/                        # StudyPlanCard, StudyPlanChat, PlanGenerator
+│   │   ├── ui/                        # Navbar, Footer, DarkModeToggle, Skeleton, Button
+│   │   ├── courses/                   # CourseCard, CourseFilters, AccessCodeInput
+│   │   └── quiz/                      # QuizContainer, QuestionCard, AnswerSelector, TimerDisplay, ResultsDisplay
+│   │
 │   ├── lib/
 │   │   ├── auth.ts                    # JWT utilities + getSession
 │   │   ├── prisma.ts                  # DB client
 │   │   ├── video-provider.ts          # resolveEmbedUrl + validateProviderId
 │   │   ├── bunny.ts                   # Bunny signed embed URL
 │   │   ├── youtube.ts                 # YouTube nocookie embed
-│   │   └── motion.ts                  # Framer Motion / format helpers
-│   ├── generated/prisma/              # Generated Prisma client (provider: prisma-client)
-│   └── types/
-│       └── index.ts                 
-ll  # TypeScript definitions, SUBJECTS, EDUCATIONAL_STAGES
+│   │   ├── ai-provider.ts             # DB-backed encrypted AI provider config
+│   │   ├── config.ts                  # PlatformConfig with 60s cache
+│   │   ├── settings.ts                # AppSetting helpers (maintenance, site text)
+│   │   └── site-text.ts               # Editable homepage copy
+│   │
+│   └── generated/prisma/              # Generated Prisma client
+│
+├── scripts/
+│   ├── seed-superadmins.mjs           # Seeds four named superadmin accounts
+│   ├── test-gemini-parent-features.ts # Verifies Gemini pool + parent system (27 tests)
+│   └── test-milestone6-operations.ts  # Verifies AI Operations Platform (60 tests)
+│
 ├── prisma/
 │   ├── schema.prisma                  # Database schema (SQLite)
-│   ├── dev.db                         # Dev SQLite database
 │   └── migrations/                    # Database migrations
-├── public/
-│   └── images/                        # Static assets
-├── .env.local                         # Local configuration
-├── next.config.ts                     # Next.js configuration
-├── tailwind.config.ts                 # Tailwind configuration
-├── tsconfig.json                      # TypeScript configuration
+├── .env                               # Environment variables
+├── next.config.ts
+├── tailwind.config.ts
 └── ARCHITECTURE.md                    # This file
 ```
 
@@ -371,295 +519,185 @@ ll  # TypeScript definitions, SUBJECTS, EDUCATIONAL_STAGES
 ## API Endpoints Reference
 
 ### Authentication
-- `POST /api/auth/signup` - Create account
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - Clear session
-- `GET /api/auth/me` - Current user info
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/auth/signup` | Create student account |
+| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/logout` | Clear session cookie |
+| GET | `/api/auth/me` | Current user info |
 
-### Courses
-- `GET /api/courses` - List courses (with filters)
-- `GET /api/courses/[id]` - Course details with content
-- `POST /api/admin/courses` - Create course (teacher)
-- `PUT /api/admin/courses/[id]` - Update course (teacher)
-- `DELETE /api/admin/courses/[id]` - Delete course (teacher)
+### Courses & Content
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/courses` | List courses (with filters) |
+| GET | `/api/courses/[id]` | Course details with content |
+| POST | `/api/admin/courses` | Create course (teacher) |
+| PUT | `/api/admin/courses/[id]` | Update course (teacher) |
+| DELETE | `/api/admin/courses/[id]` | Delete course (teacher) |
+| GET/POST | `/api/admin/courses/[id]/folders` | List / create folders |
+| DELETE | `/api/admin/courses/[id]/folders` | Delete folder + cascade |
 
-### Videos
-- `GET  /api/videos/[id]/secure-url` - Resolve provider embed URL (dispatcher)
-- `POST /api/videos/[id]/watch` - Open/reuse a 4h watch session (consumes a per-video slot)
-- `POST /api/videos/[id]/complete` - Mark the video watched for the student
-- `POST /api/admin/folders/[id]/videos` - Add video (provider, id, duration, watch limit) (teacher)
-- `PATCH /api/admin/videos/[id]` - Update a video's `maxWatchesPerUser` / `durationMinutes` (teacher)
-- `GET  /api/courses/[id]/watch-count` - Remaining watches summary
+### Videos & Watch Sessions
+| Method | Route | Description |
+|---|---|---|
+| POST | `/api/videos/[id]/watch` | Open/reuse 4h watch session (returns embedUrl) |
+| POST | `/api/videos/[id]/complete` | Mark video watched |
+| GET | `/api/videos/[id]/secure-url` | Resolve provider embed URL |
+| GET | `/api/courses/[id]/watch-count` | Remaining watches summary |
+| POST | `/api/admin/folders/[id]/videos` | Add video (provider, id, duration, limit) |
+| PATCH | `/api/admin/videos/[id]` | Update `maxWatchesPerUser` / `durationMinutes` |
 
-### Folders
-- `GET/POST /api/admin/courses/[id]/folders` - List / create folders (teacher)
-- `DELETE   /api/admin/courses/[id]/folders` - Delete folder + cascade content (teacher)
+### Quizzes & Access Codes
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/quizzes/[id]` | Quiz questions |
+| POST | `/api/quizzes/[id]/submit` | Submit answers |
+| POST | `/api/admin/folders/[id]/quizzes` | Create quiz (teacher) |
+| POST | `/api/codes` | Redeem access code (student) |
+| POST | `/api/admin/codes` | Generate codes (teacher) |
+| PUT | `/api/admin/codes/[id]` | Deactivate code |
 
-### Quizzes
-- `GET /api/quizzes/[id]` - Quiz questions
-- `POST /api/quizzes/[id]/submit` - Submit answers
-- `POST /api/admin/folders/[id]/quizzes` - Create quiz (teacher)
+### Analytics
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/admin/analytics?period=7d\|30d\|90d\|all&courseId=` | Teacher analytics (KPIs, charts, issues feed) |
+| GET | `/api/progress` | Student progress summary |
 
-### Access Codes
-- `POST /api/codes` - Redeem code (student)
-- `POST /api/admin/codes` - Generate codes (teacher)
-- `PUT /api/admin/codes/[id]` - Deactivate code (teacher)
-
-### Progress
-- `GET /api/progress` - Student progress summary
-- `POST /api/progress` - Mark video watched
-
-### Admin
-- `GET /api/admin/teachers` - List teachers (superadmin)
-- `POST /api/admin/teachers` - Create teacher (superadmin)
-- `DELETE /api/admin/teachers/[id]` - Delete teacher (superadmin)
-- `GET /api/admin/analytics?period=7d|30d|90d|all&courseId=` - Teacher analytics (KPIs, series, top/low videos, course breakdown, quiz distribution, issues feed)
+### Superadmin
+| Method | Route | Description |
+|---|---|---|
+| GET/PATCH | `/api/admin/config` | Platform config |
+| GET/POST/PATCH/DELETE | `/api/admin/ai-providers[/[id]]` | AI provider management |
+| GET/POST | `/api/admin/superadmin/maintenance` | Maintenance mode |
+| GET/POST | `/api/admin/superadmin/site-text` | Editable homepage copy |
+| GET/POST/PATCH/DELETE | `/api/admin/superadmin/superadmins[/[id]]` | Superadmin accounts |
+| GET/POST/DELETE | `/api/admin/superadmin/bulk-deletion[/[id]]` | Bulk account deletion |
+| GET/POST | `/api/admin/superadmin/virtual-data` | Demo data generation |
+| POST | `/api/admin/superadmin/access-gate` | Password gate for Danger Zone |
+| GET | `/api/site-text` | Public site text read |
 
 ### AI Study Plans
-- `GET /api/ai/study-plan?date=YYYY-MM-DD` - Get daily plan
-- `POST /api/ai/study-plan` - Generate new plan
-- `PUT /api/ai/study-plan/[id]` - Update plan status
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/ai/study-plan?date=YYYY-MM-DD` | Get daily plan |
+| POST | `/api/ai/study-plan` | Generate new plan |
+| PUT | `/api/ai/study-plan/[id]` | Update plan status |
 
 ---
 
-## Environment Variables
+## Security Architecture
 
-```env
-# Database (SQLite in dev)
-DATABASE_URL=file:./prisma/dev.db
-
-# JWT
-JWT_SECRET=your-secret-key-here
-
-# Video providers
-# VdoCipher (server-side OTP)
-VDOCIPHER_API_SECRET=your-vdocipher-secret
-# Bunny Stream (signed embed token)
-BUNNY_LIBRARY_ID=your-library-id
-BUNNY_API_KEY=your-api-key
-BUNNY_TOKEN_AUTHENTICATION_KEY=your-token-key
-BUNNY_CDN_HOSTNAME=iframe.mediadelivery.net
-# YouTube needs no key (unlisted + nocookie embed)
-
-# AI APIs (with fallback)
-AI_PRIMARY_API_KEY=primary-key
-AI_PRIMARY_BASE_URL=https://primary-api.example.com
-AI_BACKUP_API_KEY=backup-key
-AI_BACKUP_BASE_URL=https://backup-api.example.com
-
-# Admin
-SUPERADMIN_MASTER_PASSWORD=your-master-password
-
-# Paid-course purchase contact (global WhatsApp number for the buy CTA)
-NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD=+20XXXXXXXXXX
-
-# Site
-NEXT_PUBLIC_APP_NAME=Code-UP
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-> Note: the student "buy" CTA on a paid course uses the global `NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD` number, **not** a per-course phone — so the old per-course contact-phone field was removed from the teacher form.
+| Layer | Mechanism |
+|---|---|
+| Authentication | JWT in HTTP-only cookie; bcrypt hashing |
+| AI Keys | AES-256-GCM encryption; never returned to client |
+| Gemini Pool | Secret keys never logged, `Omit<..., "secretKey">` enforced at type level |
+| Watch Sessions | Quota slot consumption in DB transaction (Serializable / SQLite-serial) |
+| Superadmin Gate | Three separate passwords with dedicated scopes |
+| AI Safety | Prompt injection detection, jailbreak guards, student safety filters in `AlertCenter` |
+| Audit | Every AI config change and superadmin action logged with who/ip/prev/new/reason |
+| Provider Keys | 401 from any provider → auto-disabled, superadmin alerted immediately |
 
 ---
 
-## Recent Additions (2026-06)
+## Performance Design
 
-- **Multi-provider video** — VdoCipher / Bunny / YouTube via `video-provider.ts` dispatcher; teacher picks provider + ID per video.
-- **Per-video watch quotas** — `Video.maxWatchesPerUser` (replaces course-wide limit); inline editor in the panel; enforced by `VideoWatchSession`.
-- **Inline learn experience** — TOFAS-style split panel at `/courses/[id]/learn`: sequential lock, progress ring, watch-slot bar, 4h session countdown.
-- **Mark-complete flow** — `durationMinutes`-based progress bar gates a green finish button at ≥80%; YouTube auto-completes on `ended`.
-- **Teacher analytics dashboard** — `/api/admin/analytics` + `TeacherOverview.tsx` with KPIs/deltas, SVG charts, period & course filters, and an issues feed.
-- **Mobile-responsive admin** — `AdminSidebar` drawer + hamburger; design-token light/dark fixes across teacher & superadmin panels.
-- **Folder delete** — `DELETE /api/admin/courses/[id]/folders` with content cascade.
-- Enrollment/code activation now redirects to `/library`. 
-- Enrollment/code activation now redirects to `/library`.
+| Concern | Solution |
+|---|---|
+| Dashboard load | All analytics computed incrementally; no full-table scans |
+| Config reads | 60-second in-memory cache (`PlatformConfig`) |
+| Provider selection | O(n) score calculation on pool size; not on request volume |
+| Budget tracking | Additive accumulators (no aggregation query on hot path) |
+| Request explorer | 10K ring buffer in memory; no DB query for search |
+| Budget optimizer | Runs as a background job at night, not on each request |
+| AI Financial Advisor | Midnight report; precomputed from existing in-memory data |
+| Provider windows | Rolling minute + hour windows reset lazily (no cron) |
+| Audit trail | 5K ring buffer; writes are O(1) |
 
-## Platform Control, Settings & Security (latest)
+---
 
-A large superadmin-control layer was added. All of it lives under
-`/adminpanel/superadmin` (sidebar sections) with matching API routes under
-`/api/admin/superadmin/*`. Everything degrades gracefully if its DB table/column
-isn't migrated yet (reads fall back to defaults/empty; writes surface the real error).
+## Verification Tests
 
-### Superadmin accounts, roles & passwords
-- **Four named superadmins** seeded via `scripts/seed-superadmins.mjs`: **Ahmed (owner)**, Mohamed, Adham, Yassen. `User.isOwner` marks the single owner.
-- **DB-backed superadmin login**: the `/adminpanel` superadmin login is password-only and matches the entered password (bcrypt) against each active superadmin, OR the env master password (break-glass owner). `getJwtSession` re-validates named superadmins against the row; the `id:"superadmin"` break-glass session needs no DB.
-- **Three passwords, one job each** (env-only, no in-panel master change):
-  - `SUPERADMIN_MASTER_PASSWORD` — break-glass owner login.
-  - `SUPERADMIN_ACTION_PASSWORD` — confirms sensitive actions inside panels (`verifyRoleActionPassword`).
-  - `BULK_DELETE_PASSWORD` — **access key** that gates the Danger Zone + Instance sections (`<AccessGate>` + `/api/admin/superadmin/access-gate`) AND authorizes instant bulk deletion.
-- **Owner-only "Instance" section** (`InstanceControlSection.tsx`): manage the other superadmins (rename / set password / suspend / delete / create), toggle maintenance, generate/clear virtual data. Gated by `BULK_DELETE_PASSWORD`, then individual actions need the action password.
+| Script | Tests | Coverage |
+|---|---|---|
+| `scripts/test-gemini-parent-features.ts` | 27 | Gemini pool (key discovery, scoring, 429/401/5xx, GeminiProvider), ParentService, ParentStatsCalculator, WeeklyReportGenerator |
+| `scripts/test-milestone6-operations.ts` | 60 | BudgetManager, ProviderMonitor, GeminiClusterDashboard, AIRequestExplorer, LiveAIDashboard, BudgetOptimizer, AIFinancialAdvisor, RoutingAnalytics, Student/Teacher/Parent Analytics, CacheAnalytics, ProviderComparison, AlertCenter, AIOperationsConfig, AIAuditSystem |
 
-### Maintenance mode
-- Toggle + editable message stored in `AppSetting` (`lib/settings.ts`). Public visitors get a friendly `MaintenanceScreen`; **superadmins bypass it** and `/adminpanel` is always reachable.
-- Gating is done in the **root `layout.tsx`** (reads the flag + JWT role + the `x-pathname` header set by `proxy.ts`); fails open so a DB hiccup can't take down every page. `/maintenance` route renders the same screen.
+Both scripts pass with `npx tsc --noEmit` → **0 TypeScript errors**.
 
-### Bulk account deletion — "Danger Zone"
-- `DangerZoneSection.tsx` + `BulkDeletionRequest` model. Three scopes (all / students / teachers); **scheduled** (7-day, cancellable) or **instant** (env-password). Targets only student/teacher roles — superadmins/admins/staff/own account never deletable.
-- Execution **soft-deletes** into the existing trash (recoverable), then permanently purges after `trash_purge_days` (default 30, clamped ≥1). Runs lazily on panel load (no cron).
-
-### Virtual / demo data
-- Owner tool generates demo teachers/students + courses with YouTube videos (all flagged `isVirtual` / `User.isVirtual` / `Course.isVirtual`) and a one-click "clear all virtual data".
-
-### Editable site text
-- `lib/site-text.ts` + `SiteTextSection.tsx`: hero subtitle, contact heading/subtitle/email/phone, CTA copy — editable from the panel, stored in `AppSetting` (`site_text:` prefix), defaults always render. Public read at `/api/site-text`; the **homepage is server-rendered** (`(clerk)/page.tsx` → `HomeContent.tsx`) so edits apply with no flash.
-
-### Advanced Settings (PlatformConfig)
-- `lib/config.ts`: a catalog of editable platform constants in the `PlatformConfig` table, with `getConfig` / `getConfigNumber` / `getConfigBool` / `getConfigNumberClamped` / `setConfig`, a **60-second in-memory cache** invalidated on save, and `getGroupedConfig` for the panel.
-- **Hardcoded values removed → now config-driven & clamped:** JWT expiry, watch-session hours, default `maxWatchesPerUser`, mark-complete % (passed to the learn page via the course API), max videos/folder, AI max-tokens, trash-purge days. Remaining keys (login lockout, rate limits, password rules, code rules, session timeouts, thumbnail size) exist and are editable but are **badged "غير مُفعّل بعد"** in the panel until wired.
-
-### AI providers (encrypted) + study-plan rewire
-- `lib/ai-provider.ts` + `AIProvider` model: superadmins add/edit/delete providers (name, slug, base URL, models, key) and mark **one primary / one backup** (mutually exclusive; a backup equal to the primary is ignored).
-- **API keys are AES-256-GCM encrypted** (`CONFIG_ENCRYPTION_KEY`, ≥32 chars enforced) and **never returned** — the client only gets `hasKey`. Decryption happens server-side only inside the AI call.
-- `/api/ai/study-plan` now reads provider/model/baseURL/decrypted-key **from the DB** (primary → backup → static default) supporting Anthropic / Gemini / OpenAI-compatible shapes. The old retired `claude-3-5-sonnet-20241022` default is gone.
-
-### Reliability
-- Watch-quota check + slot consumption are now in a **transaction** (Serializable on Postgres; SQLite serializes) so two tabs can't both grab the last slot.
-- Critical config reads are clamped to safe ranges (e.g. purge-days never 0) so a bad value can't break login/playback or trigger an instant purge.
-- Learn-page mobile RTL drawer + wrapper-fullscreen fixes.
-
-### New models (Postgres/SQLite)
-`PlatformConfig`, `AIProvider`, `BulkDeletionRequest`; `User.isOwner`, `User.isVirtual`, `Course.isVirtual`.
-
-### New superadmin API routes
-- `GET/PATCH /api/admin/config`
-- `GET/POST /api/admin/ai-providers`, `PATCH/DELETE /api/admin/ai-providers/[id]`
-- `GET/POST /api/admin/superadmin/maintenance`
-- `GET/POST /api/admin/superadmin/site-text`, public `GET /api/site-text`
-- `GET/POST /api/admin/superadmin/superadmins`, `PATCH/DELETE /api/admin/superadmin/superadmins/[id]`
-- `GET/POST/DELETE /api/admin/superadmin/bulk-deletion[/[id]]`
-- `GET/POST /api/admin/superadmin/virtual-data`
-- `POST /api/admin/superadmin/access-gate`
-
-### Deploy notes
-- New tables/columns are **additive** — apply with `npx prisma db push` from an allow-listed host (the EC2 server's `update.sh`, or your laptop if its IP is in DigitalOcean → Database → Trusted Sources). `P1001` = your IP isn't allow-listed.
-- New env vars: `BULK_DELETE_PASSWORD`, `CONFIG_ENCRYPTION_KEY` (≥32 chars, **stable** — changing it makes saved AI keys undecryptable). Optional `AI_PRIMARY_API_KEY` only if not using the DB providers. See `docs/SECRETS-RUNBOOK.md`.
-- After push: `node --import dotenv/config scripts/seed-superadmins.mjs`, then set real (non-`ChangeMe-*`) passwords for the four superadmins.
+---
 
 ## Implementation Checklist
 
 - [x] Database schema with all models
-- [x] Type definitions
 - [x] Dark mode infrastructure (CSS-variable tokens)
-- [x] Landing page with hero section
+- [x] Landing page (server-rendered, editable copy)
 - [x] Courses page with access code input
-- [x] Library with AI study assistant
-- [x] Teacher admin panel (analytics overview + tabbed course editor)
-- [x] Superadmin panel
-- [x] Quiz interface
-- [x] Skeleton loaders
-- [x] Multi-provider secure video playback
+- [x] Multi-provider secure video playback (VdoCipher / Bunny / YouTube)
+- [x] Per-video watch quotas + 4h session tokens
+- [x] TOFAS-style inline learn experience with sequential lock
+- [x] Mark-complete flow (≥80% time gate + YouTube auto-complete)
+- [x] Quiz interface (A/B/C/D, timer, instant score)
+- [x] Teacher admin panel (analytics + tabbed course editor)
+- [x] Teacher analytics (KPIs, SVG charts, period filter, issues feed)
+- [x] Superadmin panel (accounts, maintenance, site text, bulk delete, virtual data)
+- [x] Platform config (AI max tokens, JWT expiry, watch limits — all config-driven)
+- [x] AI provider management (encrypted keys, primary + backup)
+- [x] **AI Engine Milestone 1**: Foundation (AIEngine, BaseProvider, MockProvider, ProviderManager, Telemetry)
+- [x] **AI Engine Milestone 2**: Educational intelligence (StateMachine, IntentClassifier, ContextBuilder, PromptBuilder, KnowledgeLoader, Memory)
+- [x] **AI Engine Milestone 3**: Universal Tool Framework (ToolRegistry, ToolExecutor, Student/Course/Quiz/Homework/Teacher tools)
+- [x] **AI Engine Milestone 4**: AI Administration (AIAuditSystem, CostManager, FeatureFlags, AIHealthDashboard)
+- [x] **AI Engine Milestone 5**: Production infrastructure (RAGPipeline, SimilarQuestionDetector Arabic normalization, DeepSeekV4FlashProvider, deployment modes)
+- [x] **AI Engine Milestone 6**: AI Operations Platform (BudgetManager, ProviderMonitor, GeminiClusterDashboard, AIRequestExplorer, LiveAIDashboard, BudgetOptimizer, AIFinancialAdvisor, RoutingAnalytics, AIAnalytics suite, AlertCenter, AIOperationsConfig, extended AIAuditSystem)
+- [x] **Gemini Account Pool**: GeminiPoolManager (score-based selection, 429/401/5xx handling, zero secret exposure)
+- [x] **Parent Follow-up System**: ParentService, ParentStatsCalculator, WeeklyReportGenerator (platform-native, no AI required)
 - [x] Responsive mobile design (admin drawer)
-- [x] Arabic/RTL support
-- [ ] AI API fallback mechanism (verify in prod)
-- [ ] Security audit
+- [x] Arabic/RTL support throughout
+- [ ] Connect AI Operations dashboard to Next.js admin panel pages
+- [ ] Real-time provider health polling via WebSocket or SSE
+- [ ] Persistent analytics to DB (currently in-memory ring buffers)
+- [ ] Payment integration (Fawry / HyperPay)
+- [ ] Mobile app (React Native)
 
 ---
 
-## Development Notes
+## Development Commands
 
-### Running Migrations
 ```bash
-npm run db:migrate
-npm run db:generate
-```
+# Start dev server
+npm run dev              # http://localhost:3000
 
-### Seeding Database    tg
-```bash
-npm run db:seed
-```
+# Database
+npx prisma db push       # Apply schema changes
+npx prisma generate      # Regenerate Prisma client
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed database
 
-### Development Server
-```bash
-npm run dev
-# Runs on http://localhost:3000
-```
+# Superadmin accounts
+node --import dotenv/config scripts/seed-superadmins.mjs
 
-### Production Build
-```bash
-npm run build
-npm start
-```
+# AI Engine verification
+npx tsx scripts/test-gemini-parent-features.ts   # 27 tests
+npx tsx scripts/test-milestone6-operations.ts    # 60 tests
 
---- 
-## Development Notes
+# TypeScript
+npx tsc --noEmit         # Full type check (0 errors expected)
 
-### Running Migrations
-```bash
-npm run db:migrate
-npm run db:generate
-```
-### Seeding Database    tg
-```bash
-npm run db:seed
-```
-
-### Development Server
-```bash
-npm run dev
-# Runs on http://localhost:3000
-```
-d
-### Production Build
-```bash
-npm run build
-npm start
-```
-
----
-### Seeding Database    tg
-```bash
-npm run db:seed
-```
-
-### Development Server
-```bash
-npm run dev
-# Runs on http://localhost:3000
-```
-
-### Production Build
-```bash
-npm run build
-npm start
+# Production build
+npm run build && npm start
 ```
 
 ---
 
-## Security Considerations
+## Future Roadmap
 
-1. **Password Security**: All passwords hashed with bcryptjs
-2. **Token Security**: JWT tokens in HTTP-only cookies
-3. **HTTPS**: Force HTTPS in production
-4. **CORS**: Restrict to trusted origins
-5. **Rate Limiting**: Implement on auth endpoints
-6. **Input Validation**: Sanitize all user inputs
-7. **Video Security**: Bunny Stream tokens expire quickly
-8. **Admin Panel**: Require master password for superadmin
-
----
-
-## Performance Optimizations
-
-1. **Image Optimization**: Use next/image for auto-optimization
-2. **Code Splitting**: Next.js automatic route-based splitting
-3. **Database Indexes**: Added on frequently queried fields
-4. **Caching**: Implement Redis for study plans (future)
-5. **CDN**: Bunny Stream for video delivery
-6. **API Pagination**: Implement limit/offset for large datasets
-
----
-
-## Future Enhancements
-
-1. Real-time notifications (Socket.io)
-2. Teacher-student messaging
-3. Group study sessions
-4. Video transcripts & notes
-5. Advanced analytics &reports
-6. Mobile app (React Native)
-7. Payment integration (Fawry/HyperPay)
-8. Certificate generation
-9. Gamification (badges, leaderboards)
-10. Multi-language support (English option)
-
+1. **Real-time notifications** — Socket.io or SSE for live provider health in dashboard
+2. **Persistent AI analytics** — Move in-memory ring buffers to DB with ISM (Incremental Summary Model)
+3. **Teacher-student messaging** — Direct inbox inside the platform
+4. **Payment integration** — Fawry / HyperPay for course purchases
+5. **Mobile app** — React Native with same AI Engine
+6. **Certificate generation** — On course completion
+7. **Gamification** — Badges, leaderboards, study streaks on the platform
+8. **Multi-language** — English option alongside Arabic
+9. **Group study sessions** — Real-time collaborative rooms
+10. **Video transcripts & AI notes** — Auto-generated per lesson

@@ -8,8 +8,11 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
-      await clearAuthCookie();
-      return NextResponse.json({ user: null });
+      return NextResponse.json({ user: null }, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
     }
 
     // Lightweight streak check: runs on first authenticated request of the day.
@@ -20,16 +23,16 @@ export async function GET() {
 
     return NextResponse.json({ user: session }, {
       headers: {
-        // 15s private browser cache: subsequent calls within 15s use the cached
-        // response, eliminating redundant DB hits from concurrent page components.
-        // 'private' ensures CDNs never cache this. Stale-while-revalidate gives a
-        // 30s window where the browser serves stale while refreshing in background.
-        "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       },
     });
   } catch (error) {
     console.error("GET /api/auth/me error:", error);
-    return NextResponse.json({ user: null, dbError: true });
+    return NextResponse.json({ user: null, dbError: true }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   }
 }
 

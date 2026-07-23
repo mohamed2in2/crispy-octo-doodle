@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { IconLogout, IconMenu, IconClose, SECTION_ICONS } from "./AdminIcons";
+import { IconLogout, IconMenu, IconClose, IconBrain, SECTION_ICONS } from "./AdminIcons";
 
 interface AdminSidebarProps {
   role: "superadmin" | "admin" | "staff" | "teacher";
@@ -30,6 +30,32 @@ const superadminSections = [
   { id: "advanced-settings", label: "الإعدادات المتقدمة" },
   { id: "errors",            label: "مراقبة الأخطاء" },
   { id: "danger-zone",       label: "منطقة الخطر" },
+];
+
+const aiSections = [
+  { id: "ai-overview",            label: "نظرة عامة" },
+  { id: "ai-live",                label: "المراقبة الحية" },
+  { id: "ai-requests",            label: "الطلبات" },
+  { id: "ai-playground",          label: "ساحة التجربة" },
+  { id: "ai-providers",           label: "مزودي الخدمة" },
+  { id: "ai-gemini-pool",         label: "Gemini Pool" },
+  { id: "ai-budget",              label: "مركز الميزانية" },
+  { id: "ai-prompts",             label: "مكتبة البرومبت" },
+  { id: "ai-knowledge",           label: "قاعدة المعرفة" },
+  { id: "ai-actions",             label: "الأوامر التعليمية" },
+  { id: "ai-tools",               label: "أدوات AI" },
+  { id: "ai-memory",              label: "إدارة الذاكرة" },
+  { id: "ai-student-analytics",   label: "تحليلات الطلاب" },
+  { id: "ai-teacher-analytics",   label: "تحليلات المعلمين" },
+  { id: "ai-parent-analytics",    label: "تحليلات الأهالي" },
+  { id: "ai-provider-analytics",  label: "تحليلات المزودين" },
+  { id: "ai-cost-analytics",      label: "تحليلات التكلفة" },
+  { id: "ai-cache-analytics",     label: "تحليلات الكاش" },
+  { id: "ai-alerts",              label: "مركز التنبيهات" },
+  { id: "ai-audit",               label: "سجلات التدقيق" },
+  { id: "ai-feature-flags",       label: "أعلام الميزات" },
+  { id: "ai-settings",            label: "إعدادات AI" },
+  { id: "ai-health",              label: "صحة النظام" },
 ];
 
 const adminSections = [
@@ -92,9 +118,20 @@ export function AdminSidebar({
     : teacherSections;
 
   const [internalOpen, setInternalOpen] = useState(false);
+  const [aiExpanded, setAiExpanded] = useState(() => {
+    if (typeof activeSection === "string" && activeSection.startsWith("ai-")) return true;
+    return false;
+  });
   const isControlled = mobileOpen !== undefined;
   const open    = isControlled ? mobileOpen : internalOpen;
   const setOpen = (v: boolean) => (isControlled ? onMobileOpenChange?.(v) : setInternalOpen(v));
+
+  // Auto-expand AI group when an AI section is selected
+  useEffect(() => {
+    if (typeof activeSection === "string" && activeSection.startsWith("ai-")) {
+      setAiExpanded(true);
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     if (!open) return;
@@ -142,49 +179,113 @@ export function AdminSidebar({
     </div>
   );
 
+  const renderItem = (s: { id: string; label: string }) => {
+    const Icon   = SECTION_ICONS[s.id];
+    const active = activeSection === s.id;
+    return (
+      <button
+        key={s.id}
+        onClick={() => handleSelect(s.id)}
+        aria-current={active ? "page" : undefined}
+        className="relative w-full flex items-center justify-end gap-[11px] cursor-pointer border-none transition-colors"
+        style={{
+          padding: "11px 14px",
+          borderRadius: 11,
+          fontSize: 14.5,
+          fontWeight: active ? 700 : 600,
+          color: active ? "var(--brand)" : "var(--ink-2)",
+          background: active ? "var(--brand-soft)" : "transparent",
+          textAlign: "right",
+        }}
+      >
+        {active && (
+          <motion.span
+            layoutId={`admin-rail-${role}`}
+            className="absolute top-2 bottom-2 right-0 w-[3px] rounded-full"
+            style={{ background: "var(--brand)" }}
+            transition={{ type: "spring", stiffness: 420, damping: 36 }}
+            aria-hidden
+          />
+        )}
+        <span className="truncate">{s.label}</span>
+        {Icon && (
+          <span className="shrink-0 w-5 h-5 flex items-center justify-center opacity-70">
+            <Icon className="w-[18px] h-[18px]" />
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const showAiSection = role === "superadmin";
+
   const Nav = (
     <nav
       className="flex-1 overflow-y-auto"
       style={{ padding: "14px 14px", display: "flex", flexDirection: "column", gap: 3 }}
       aria-label="أقسام لوحة التحكم"
     >
-      {sections.map((s) => {
-        const Icon   = SECTION_ICONS[s.id];
-        const active = activeSection === s.id;
-        return (
+      {sections.map(renderItem)}
+
+      {/* AI Collapsible Group */}
+      {showAiSection && (
+        <>
+          <div style={{ height: 8 }} />
           <button
-            key={s.id}
-            onClick={() => handleSelect(s.id)}
-            aria-current={active ? "page" : undefined}
+            onClick={() => setAiExpanded(!aiExpanded)}
             className="relative w-full flex items-center justify-end gap-[11px] cursor-pointer border-none transition-colors"
             style={{
               padding: "11px 14px",
               borderRadius: 11,
               fontSize: 14.5,
-              fontWeight: active ? 700 : 600,
-              color: active ? "var(--brand)" : "var(--ink-2)",
-              background: active ? "var(--brand-soft)" : "transparent",
+              fontWeight: 700,
+              color: activeSection.startsWith("ai-") ? "var(--brand)" : "var(--ink)",
+              background: aiExpanded ? "var(--surface-2)" : "transparent",
               textAlign: "right",
             }}
           >
-            {active && (
-              <motion.span
-                layoutId={`admin-rail-${role}`}
-                className="absolute top-2 bottom-2 right-0 w-[3px] rounded-full"
-                style={{ background: "var(--brand)" }}
-                transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                aria-hidden
-              />
-            )}
-            <span className="truncate">{s.label}</span>
-            {Icon && (
-              <span className="shrink-0 w-5 h-5 flex items-center justify-center opacity-70">
-                <Icon className="w-[18px] h-[18px]" />
-              </span>
-            )}
+            <span
+              className="transition-transform duration-200"
+              style={{
+                transform: aiExpanded ? "rotate(-90deg)" : "rotate(0deg)",
+                fontSize: 11,
+                color: "var(--ink-3)",
+              }}
+            >
+              ◀
+            </span>
+            <span className="flex-1 truncate">الذكاء الاصطناعي</span>
+            <span className="shrink-0 w-5 h-5 flex items-center justify-center opacity-80">
+              <IconBrain className="w-[18px] h-[18px]" />
+            </span>
           </button>
-        );
-      })}
+
+          <AnimatePresence initial={false}>
+            {aiExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                style={{ overflow: "hidden" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    paddingRight: 12,
+                    borderRight: "2px solid var(--border)",
+                    marginRight: 14,
+                  }}
+                >
+                  {aiSections.map(renderItem)}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
     </nav>
   );
 

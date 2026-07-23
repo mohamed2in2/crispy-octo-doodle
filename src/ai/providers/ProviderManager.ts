@@ -1,0 +1,117 @@
+import { AIProvider, GenerateOptions, GenerateResult } from "../types";
+import { MockProvider } from "./MockProvider";
+import { DeepSeekV4FlashProvider } from "./DeepSeekV4FlashProvider";
+import { OpenAICompatibleProvider } from "./OpenAICompatibleProvider";
+import { ConfigManager } from "../config/AIConfig";
+
+import { GeminiProvider } from "./GeminiProvider";
+
+export class ProviderManager {
+  private providers: Map<string, AIProvider> = new Map();
+  private primaryProviderId: string;
+  private fallbackChain: string[];
+
+  constructor(primaryId?: string, fallbacks?: string[]) {
+    const config = ConfigManager.getInstance().getConfig();
+    this.primaryProviderId = primaryId || config.primaryProvider || "mock";
+    this.fallbackChain = fallbacks || config.fallbackProviders || ["deepseek_v4_flash", "gemini", "mock"];
+
+    // Register built-in default providers
+    this.registerProvider(new MockProvider());
+    this.registerProvider(new DeepSeekV4FlashProvider());
+    this.registerProvider(new GeminiProvider());
+    this.registerProvider(new OpenAICompatibleProvider({ id: "openai_compatible", name: "OpenAI Compatible Stub" }));
+
+    // Register provider stubs for all supported platforms
+    this.registerProvider(new OpenAICompatibleProvider({ id: "deepseek", name: "DeepSeek Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "openai", name: "OpenAI Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "gemini", name: "Google Gemini Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "claude", name: "Anthropic Claude Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "qwen", name: "Alibaba Qwen Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "grok", name: "xAI Grok Provider" }));
+    this.registerProvider(new OpenAICompatibleProvider({ id: "openrouter", name: "OpenRouter Provider" }));
+  }
+
+  public registerProvider(provider: AIProvider): void {
+    this.providers.set(provider.id, provider);
+  }
+
+  public getProvider(id?: string): AIProvider {
+    const targetId = id || this.primaryProviderId;
+    const provider = this.providers.get(targetId);
+    if (!provider) {
+      // Fall back to mock provider if requested provider is missing
+      const mock = this.providers.get("mock");
+      if (mock) return mock;
+      throw new Error(`Provider with ID '${targetId}' not registered.`);
+    }
+    return provider;
+  }
+
+  public setPrimaryProvider(id: string): void {
+    if (!this.providers.has(id)) {
+      throw new Error(`Cannot set primary provider: Provider '${id}' is not registered.`);
+    }
+    this.primaryProviderId = id;
+  }
+
+  public setFallbackChain(chain: string[]): void {
+    this.fallbackChain = [...chain];
+  }
+
+  public getRegisteredProviderIds(): string[] {
+    return Array.from(this.providers.keys());
+  }
+
+  /**
+   * Generates content using the primary provider.
+   * If primary fails, automatically attempts fallbacks in order.
+   */
+  public async generateWithFallback(options: GenerateOptions): Promise<{
+    result: GenerateResult;
+    retriesCount: number;
+    usedFallback: boolean;
+  }> {
+    const candidates = [this.primaryProviderId, ...this.fallbackChain];
+    const uniqueCandidates = Array.from(new Set(candidates));
+
+    let lastError: Error | null = null;
+    let retriesCount = 0;
+
+    for (let i = 0; i < uniqueCandidates.length; i++) {
+      const providerId = uniqueCandidates[i];
+      const provider = this.providers.get(providerId);
+
+      if (!provider) continue;
+
+      try {
+        const result = await provider.generate(options);
+        return {
+          result,
+          retriesCount,
+          usedFallback: i > 0,
+        };
+      } catch (err: unknown) {
+        retriesCount++;
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(`[ProviderManager] Provider '${providerId}' failed. Attempting next fallback... Error:`, lastError.message);
+      }
+    }
+
+    throw new Error(
+      `All providers in fallback chain failed. Last error: ${lastError?.message || "Unknown error"}`
+    );
+  }
+
+  public async healthCheckAll(): Promise<Record<string, boolean>> {
+    const results: Record<string, boolean> = {};
+    for (const [id, provider] of this.providers.entries()) {
+      try {
+        results[id] = await provider.healthCheck();
+      } catch {
+        results[id] = false;
+      }
+    }
+    return results;
+  }
+}

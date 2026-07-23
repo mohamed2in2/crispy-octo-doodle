@@ -70,17 +70,42 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Get AI response — isolated catch so DB errors below still get a response
+    // Get AI response — try AIEngine first, fallback to chatWithAI if needed
     let result;
     try {
-      result = await chatWithAI(message, chatHistory, context!, notifications);
+      // First attempt: full AIEngine pipeline (DeepSeek -> Gemini Pool -> Groq)
+      const { AIEngine } = await import("@/ai/AIEngine");
+      const engine = new AIEngine();
+      const engineRes = await engine.processRequest({
+        userMessage: message,
+        studentId: session.id,
+        subject: context?.courses[0]?.subject || "عام",
+        grade: "3",
+      });
+
+      const resText = engineRes.formattedResponse?.renderedContent || engineRes.formattedResponse?.rawContent;
+
+      if (engineRes && engineRes.success && resText) {
+        result = {
+          message: resText,
+          actions: [] as AIAction[],
+          source: (engineRes.telemetry?.provider || "primary") as "primary" | "backup" | "fallback",
+        };
+      } else {
+        result = await chatWithAI(message, chatHistory, context!, notifications);
+      }
     } catch (aiErr) {
-      console.error("[chat/route] chatWithAI threw unexpectedly:", aiErr);
-      result = {
-        message: "عذراً، حدث خطأ مؤقت. حاول مرة أخرى.\n\n[م:menu]",
-        actions: [] as AIAction[],
-        source: "fallback" as const,
-      };
+      console.error("[chat/route] AIEngine threw unexpectedly, falling back to chatWithAI:", aiErr);
+      try {
+        result = await chatWithAI(message, chatHistory, context!, notifications);
+      } catch (fallbackErr) {
+        console.error("[chat/route] chatWithAI also threw:", fallbackErr);
+        result = {
+          message: "عذراً، حدث خطأ مؤقت. حاول مرة أخرى.\n\n[م:menu]",
+          actions: [] as AIAction[],
+          source: "fallback" as const,
+        };
+      }
     }
 
     // Execute AI actions if any

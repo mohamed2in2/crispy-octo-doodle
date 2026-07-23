@@ -241,6 +241,126 @@ export function IconMap({ className }: IconProps) {
   );
 }
 
+/* ─── AI Section Icons ─────────────────────────────────────────────────── */
+
+export function IconBrain({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" />
+      <path d="M9 22h6M10 17v5M14 17v5" />
+    </svg>
+  );
+}
+
+export function IconActivity({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+export function IconCpu({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
+    </svg>
+  );
+}
+
+export function IconZap({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+export function IconDollar({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+    </svg>
+  );
+}
+
+export function IconFlag({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+
+export function IconBell({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  );
+}
+
+export function IconDatabase({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  );
+}
+
+export function IconTool({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
+}
+
+export function IconMemory({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+      <path d="M12 3v0M8.5 4.5l-.1-.1M5 7h0M8.5 9.5l-.1.1" />
+    </svg>
+  );
+}
+
+export function IconHeart({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  );
+}
+
+export function IconToggle({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <rect x="1" y="5" width="22" height="14" rx="7" />
+      <circle cx="16" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconServer({ className }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <rect x="2" y="2" width="20" height="8" rx="2" />
+      <rect x="2" y="14" width="20" height="8" rx="2" />
+      <line x1="6" y1="6" x2="6.01" y2="6" />
+      <line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+  );
+}
+
 // Section-id → icon, used by AdminSidebar. Falls back to a dot if unmapped.
 export const SECTION_ICONS: Record<string, (p: IconProps) => React.ReactElement> = {
   plans: IconMap,
@@ -268,4 +388,29 @@ export const SECTION_ICONS: Record<string, (p: IconProps) => React.ReactElement>
   feedback: IconChat,
   homework: IconFile,
   review: IconClipboard,
+  wallet: IconDollar,
+  // ── AI Section ──
+  "ai-overview": IconBrain,
+  "ai-live": IconActivity,
+  "ai-requests": IconChat,
+  "ai-playground": IconZap,
+  "ai-providers": IconServer,
+  "ai-gemini-pool": IconDatabase,
+  "ai-budget": IconDollar,
+  "ai-prompts": IconFile,
+  "ai-knowledge": IconBook,
+  "ai-actions": IconClipboard,
+  "ai-tools": IconTool,
+  "ai-memory": IconMemory,
+  "ai-student-analytics": IconUsers,
+  "ai-teacher-analytics": IconUsers,
+  "ai-parent-analytics": IconHeart,
+  "ai-provider-analytics": IconChart,
+  "ai-cost-analytics": IconDollar,
+  "ai-cache-analytics": IconDatabase,
+  "ai-alerts": IconBell,
+  "ai-audit": IconShield,
+  "ai-feature-flags": IconToggle,
+  "ai-settings": IconSettings,
+  "ai-health": IconCpu,
 };
