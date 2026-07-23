@@ -64,7 +64,8 @@ async function callProvider(
       const data = (await res.json()) as { content?: Array<{ text?: string }> };
       planText = data.content?.[0]?.text || "[]";
     } else if (provider.kind === "gemini") {
-      const res = await fetch(`${base}/${provider.model}:generateContent?key=${provider.key}`, {
+      const geminiBase = base.endsWith("/models") ? base : `${base}/models`;
+      const res = await fetch(`${geminiBase}/${provider.model}:generateContent?key=${provider.key}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -263,7 +264,8 @@ Does the student's output match or is semantically equivalent to the expected ou
         const d = await res.json() as { content?: Array<{ text?: string }> };
         text = d.content?.[0]?.text || "";
       } else if (provider.kind === "gemini") {
-        const res = await fetch(`${base}/${provider.model}:generateContent?key=${provider.key}`, {
+        const geminiBase = base.endsWith("/models") ? base : `${base}/models`;
+        const res = await fetch(`${geminiBase}/${provider.model}:generateContent?key=${provider.key}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }], generationConfig: { maxOutputTokens: 256 } }),

@@ -4,8 +4,10 @@ const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "";
 const PRIMARY_API_URL = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
 const PRIMARY_MODEL = process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-20241022";
 
-// Backup AI disabled — smart menu fallback is used instead
-const BACKUP_API_KEY = "";
+const BACKUP_API_KEY = process.env.AI_BACKUP_API_KEY || process.env.GEMINI_API_KEY || "";
+const BACKUP_BASE_RAW = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
+const BACKUP_BASE_URL = BACKUP_BASE_RAW.replace(/\/+$/, "");
+const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-1.5-flash";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -158,9 +160,42 @@ async function callPrimary(messages: ChatMessage[]): Promise<AIChatResult | null
   }
 }
 
-async function callBackup(_messages: ChatMessage[]): Promise<AIChatResult | null> {
-  // Disabled until Gemini key format is verified — always use smart fallback
-  return null;
+async function callBackup(messages: ChatMessage[]): Promise<AIChatResult | null> {
+  if (!BACKUP_API_KEY) return null;
+  try {
+    const sys = messages.find((m) => m.role === "system")?.content || "";
+    const userMsgs = messages.filter((m) => m.role !== "system");
+    const promptText = sys
+      ? `[النظام: ${sys}]\n\n` + userMsgs.map((m) => `${m.role === "user" ? "المتعلم" : "المرشد"}: ${m.content}`).join("\n")
+      : userMsgs.map((m) => `${m.role === "user" ? "المتعلم" : "المرشد"}: ${m.content}`).join("\n");
+
+    const geminiBase = BACKUP_BASE_URL.endsWith("/models") ? BACKUP_BASE_URL : `${BACKUP_BASE_URL}/models`;
+    const url = `${geminiBase}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: { maxOutputTokens: 1200, temperature: 0.7 },
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) throw new Error(`Backup AI (Gemini) ${res.status}`);
+    const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+    const match = raw.match(/\{[\s\S]*\}/);
+    const parsed = match ? JSON.parse(match[0]) : {};
+    return {
+      message: String(parsed.message || raw),
+      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
+      source: "backup",
+    };
+  } catch (err) {
+    console.error("Backup AI (Gemini) error:", err);
+    return null;
+  }
 }
 
 // ── Menu state detection ──

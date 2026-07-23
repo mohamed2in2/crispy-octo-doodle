@@ -165,10 +165,37 @@ export async function resolvePlanProviders(): Promise<{
   primary: ResolvedProvider | null;
   backup: ResolvedProvider | null;
 }> {
-  const [primary, backup] = await Promise.all([
+  let [primary, backup] = await Promise.all([
     resolveOne({ isPrimary: true }),
     resolveOne({ isBackup: true }),
   ]);
+
+  if (!primary && process.env.AI_PRIMARY_API_KEY) {
+    const baseUrl = process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
+    primary = {
+      id: "env-primary",
+      name: "Primary AI (ENV)",
+      baseUrl,
+      model: process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-20241022",
+      kind: providerKind(baseUrl),
+      key: process.env.AI_PRIMARY_API_KEY,
+    };
+  }
+
+  if (!backup && (process.env.AI_BACKUP_API_KEY || process.env.GEMINI_API_KEY)) {
+    const key = process.env.AI_BACKUP_API_KEY || process.env.GEMINI_API_KEY || "";
+    const rawBase = process.env.AI_BACKUP_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
+    const baseUrl = rawBase.replace(/\/+$/, "").replace(/\/models$/, "");
+    backup = {
+      id: "env-backup",
+      name: "Backup AI (ENV)",
+      baseUrl,
+      model: process.env.AI_BACKUP_MODEL || "gemini-1.5-flash",
+      kind: providerKind(baseUrl),
+      key,
+    };
+  }
+
   // A backup that's the same provider as the primary is not a real fallback —
   // ignore it so retrying actually hits a different provider.
   if (primary && backup && backup.id === primary.id) {
