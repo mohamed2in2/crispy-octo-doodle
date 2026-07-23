@@ -15,10 +15,18 @@ export class SimilarQuestionDetector {
     return SimilarQuestionDetector.instance;
   }
 
+  public clearCache(): void {
+    this.history = [];
+  }
+
   public findSimilarAnswer(userMessage: string, threshold = 0.9): string | null {
     const normalizedInput = this.normalizeText(userMessage);
 
     for (const item of this.history) {
+      if (item.response.includes("المفهوم المطلوب يتعلق بالأساسيات البرمجية والتعليمية")) {
+        continue;
+      }
+
       const normalizedHistory = this.normalizeText(item.question);
       const similarity = this.calculateSimilarity(normalizedInput, normalizedHistory);
 
@@ -31,6 +39,10 @@ export class SimilarQuestionDetector {
   }
 
   public recordAnswer(question: string, response: string): void {
+    if (response.includes("المفهوم المطلوب يتعلق بالأساسيات البرمجية والتعليمية")) {
+      return;
+    }
+
     this.history.push({
       question,
       response,
