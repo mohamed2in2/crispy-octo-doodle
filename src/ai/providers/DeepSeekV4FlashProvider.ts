@@ -104,8 +104,8 @@ export class DeepSeekV4FlashProvider extends BaseProvider {
       }
     }
 
-    console.warn(`[DeepSeekV4FlashProvider] Provider call failed (${lastError?.message}). Falling back to local generation.`);
-    return this.generateSimulatedResult(promptText, inputTokens, startTime);
+    console.warn(`[DeepSeekV4FlashProvider] Provider call failed (${lastError?.message}). Throwing error for fallback chain.`);
+    throw lastError || new Error("DeepSeek V4 Flash API call failed");
   }
 
   public async *stream(options: GenerateOptions): AsyncGenerator<StreamChunk, StreamResult, unknown> {

@@ -19,17 +19,23 @@ export class ProviderManager {
     // Register built-in default providers
     this.registerProvider(new MockProvider());
     this.registerProvider(new DeepSeekV4FlashProvider());
+    this.registerProvider(new DeepSeekV4FlashProvider({ id: "deepseek" }));
     this.registerProvider(new GeminiProvider());
     this.registerProvider(new OpenAICompatibleProvider({ id: "openai_compatible", name: "OpenAI Compatible Stub" }));
 
-    // Register provider stubs for all supported platforms
-    this.registerProvider(new OpenAICompatibleProvider({ id: "deepseek", name: "DeepSeek Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "openai", name: "OpenAI Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "gemini", name: "Google Gemini Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "claude", name: "Anthropic Claude Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "qwen", name: "Alibaba Qwen Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "grok", name: "xAI Grok Provider" }));
-    this.registerProvider(new OpenAICompatibleProvider({ id: "openrouter", name: "OpenRouter Provider" }));
+    // Register provider stubs for platforms not already registered
+    const stubs = [
+      { id: "openai", name: "OpenAI Provider" },
+      { id: "claude", name: "Anthropic Claude Provider" },
+      { id: "qwen", name: "Alibaba Qwen Provider" },
+      { id: "grok", name: "xAI Grok Provider" },
+      { id: "openrouter", name: "OpenRouter Provider" },
+    ];
+    for (const stub of stubs) {
+      if (!this.providers.has(stub.id)) {
+        this.registerProvider(new OpenAICompatibleProvider(stub));
+      }
+    }
   }
 
   public registerProvider(provider: AIProvider): void {

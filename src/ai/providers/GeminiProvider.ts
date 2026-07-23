@@ -107,21 +107,8 @@ export class GeminiProvider extends BaseProvider {
         latencyMs: latency,
       };
     } catch (err: any) {
-      console.warn(`[GeminiProvider] Key '${selectedAccount.keyId}' failed (${err?.message}). Falling back to local generation.`);
-
-      const fallbackText = `[Google Gemini Pool (${selectedAccount.keyId})]: تم معالجة الشرح بذكاء محلي لضمان استمرارية خدمة الطالب دون انقطاع.`;
-      const outputTokens = this.estimateTokens(fallbackText);
-      const latency = Date.now() - startTime;
-
-      return {
-        text: fallbackText,
-        providerId: this.id,
-        providerName: this.name,
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        latencyMs: latency,
-      };
+      console.warn(`[GeminiProvider] Key '${selectedAccount.keyId}' failed (${err?.message}). Throwing error for fallback chain.`);
+      throw err instanceof Error ? err : new Error(String(err));
     }
   }
 

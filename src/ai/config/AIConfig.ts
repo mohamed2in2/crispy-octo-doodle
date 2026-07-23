@@ -5,8 +5,8 @@ import { AIConfig, ProviderConfig } from "../types";
  * Fully configurable via environment variables or runtime setters.
  */
 export const DEFAULT_AI_CONFIG: AIConfig = {
-  primaryProvider: process.env.AI_PRIMARY_PROVIDER || (process.env.DEEPSEEK_API_KEY ? "deepseek_v4_flash" : process.env.GEMINI_API_KEY ? "gemini" : "mock"),
-  fallbackProviders: (process.env.AI_FALLBACK_PROVIDERS || "deepseek_v4_flash,gemini,mock")
+  primaryProvider: process.env.AI_PRIMARY_PROVIDER || (process.env.GEMINI_API_KEY ? "gemini" : process.env.DEEPSEEK_API_KEY ? "deepseek_v4_flash" : "mock"),
+  fallbackProviders: (process.env.AI_FALLBACK_PROVIDERS || "gemini,deepseek_v4_flash,mock")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
