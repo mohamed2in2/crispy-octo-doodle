@@ -12,26 +12,28 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resettingDevices, setResettingDevices] = useState(false);
   const [error, setError] = useState("");
+  const [isDeviceLimitError, setIsDeviceLimitError] = useState(false);
   const { execute: executeRecaptcha } = useRecaptcha();
+
+  const formatForSend = (p: string) => {
+    const raw = String(p || "");
+    const digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("20") && digits.length === 12) return `+${digits}`;
+    if (digits.startsWith("0") && digits.length === 11) return `+20${digits.slice(1)}`;
+    if (digits.length === 9) return `+20${digits}`;
+    if (raw.startsWith("+")) return raw;
+    return raw;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setIsDeviceLimitError(false);
 
     try {
-      const formatForSend = (p: string) => {
-        const raw = String(p || "");
-        const digits = raw.replace(/\D/g, "");
-        if (digits.startsWith("20") && digits.length === 12) return `+${digits}`;
-        if (digits.startsWith("0") && digits.length === 11) return `+20${digits.slice(1)}`;
-        if (digits.length === 9) return `+20${digits}`;
-        if (raw.startsWith("+")) return raw;
-        return raw;
-      };
-
-      // Generate a reCAPTCHA token before calling the login API.
       const recaptchaToken = await executeRecaptcha("login");
 
       const response = await fetch("/api/auth/login", {
@@ -44,6 +46,9 @@ export default function LoginPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         setError(data.error || "فشل تسجيل الدخول");
+        if (data.code === "DEVICE_LIMIT") {
+          setIsDeviceLimitError(true);
+        }
         return;
       }
 
@@ -54,6 +59,35 @@ export default function LoginPage() {
       setError("تعذر الاتصال بالخادم. حاول مرة أخرى.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoutAllDevices = async () => {
+    setResettingDevices(true);
+    setError("");
+
+    try {
+      const recaptchaToken = await executeRecaptcha("login");
+      const response = await fetch("/api/auth/reset-devices", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formatForSend(phone), password, recaptchaToken }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || "فشل إعاده ضبط الأجهزة");
+        return;
+      }
+
+      const redirectTo = searchParams.get("redirect_url") || "/";
+      router.push(redirectTo);
+      router.refresh();
+    } catch {
+      setError("حدث خطأ أثناء الاتصال. يرجى المحاولة لاحقاً.");
+    } finally {
+      setResettingDevices(false);
     }
   };
 
@@ -72,8 +106,18 @@ export default function LoginPage() {
     >
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xl p-6 sm:p-8">
         {error && (
-          <div className="mb-5 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-            {error}
+          <div className="mb-5 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800/80 dark:bg-red-950/50 dark:text-red-300">
+            <div>{error}</div>
+            {isDeviceLimitError && (
+              <button
+                type="button"
+                onClick={handleLogoutAllDevices}
+                disabled={resettingDevices}
+                className="mt-3 w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer border-none"
+              >
+                {resettingDevices ? "جارٍ تسجيل الخروج وتفريغ الأجهزة..." : "🚪 تسجيل الخروج من كل الأجهزة"}
+              </button>
+            )}
           </div>
         )}
 
