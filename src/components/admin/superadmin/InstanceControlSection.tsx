@@ -29,12 +29,23 @@ export function InstanceControlSection() {
   const [selfId, setSelfId] = useState("");
   const [newAdmin, setNewAdmin] = useState({ name: "", email: "", password: "" });
 
+  const [overloadState, setOverloadState] = useState<{
+    mode: "auto" | "on" | "off";
+    ramThresholdPct: number;
+    cooldownUntil: string | null;
+    message: string;
+    isTriggered: boolean;
+    remainingMinutes: number;
+    memory: { usedMemPct: number; usedMemMb: number; totalMemMb: number; processRssMb: number };
+  } | null>(null);
+
   const loadAll = useCallback(async () => {
     try {
-      const [m, v, s] = await Promise.all([
+      const [m, v, s, ov] = await Promise.all([
         fetch("/api/admin/superadmin/maintenance", { credentials: "include" }).then((r) => r.json()),
         fetch("/api/admin/superadmin/virtual-data", { credentials: "include" }).then((r) => r.json()),
         fetch("/api/admin/superadmin/superadmins", { credentials: "include" }).then((r) => r.json()),
+        fetch("/api/admin/superadmin/overload-protection", { credentials: "include" }).then((r) => r.json()),
       ]);
       if (typeof m?.on === "boolean") {
         setMaintOn(m.on);
@@ -44,6 +55,9 @@ export function InstanceControlSection() {
       if (Array.isArray(s?.superadmins)) {
         setAdmins(s.superadmins);
         setSelfId(s.selfId ?? "");
+      }
+      if (ov?.state) {
+        setOverloadState(ov.state);
       }
     } catch {
       toastError("تعذر تحميل لوحة التحكم");
@@ -107,6 +121,23 @@ export function InstanceControlSection() {
     try {
       await post("/api/admin/superadmin/maintenance", { message: maintMsg });
       toastSuccess("تم حفظ رسالة الصيانة");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "خطأ");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Overload Protection ──
+  const updateOverload = async (action: string, payload: Record<string, unknown> = {}) => {
+    if (!needPw()) return;
+    setBusy(true);
+    try {
+      const res = await post("/api/admin/superadmin/overload-protection", { action, ...payload });
+      if (res?.state) {
+        setOverloadState(res.state);
+        toastSuccess("تم تحديث نظام حماية السيرفر الاستباقية");
+      }
     } catch (e) {
       toastError(e instanceof Error ? e.message : "خطأ");
     } finally {
@@ -278,6 +309,132 @@ export function InstanceControlSection() {
         >
           حفظ الرسالة
         </button>
+      </div>
+
+      {/* Emergency Overload Protection */}
+      <div className={card}>
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h3 className="font-bold text-white flex items-center gap-2">
+              <span>⚡ نظام حماية السيرفر الاستباقية من الانهيار</span>
+              {overloadState?.isTriggered && (
+                <span className="rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold animate-pulse">
+                  مُفعّل الآن لحماية السيرفر
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">
+              في حالة وصول ضغط الطلاب أو استهلاك الرام إلى الحد الأقصى (100%)، يتم توجيه الطلاب الجدد لغرفة الانتظار تلقائياً لمدة 15 دقيقة لمنع انهيار السيرفر. <b className="text-sky-400">/adminpanel يعمل دائماً بدون توقف للمشرفين.</b>
+            </p>
+          </div>
+        </div>
+
+        {/* Live RAM Gauge */}
+        {overloadState?.memory && (
+          <div className="mb-4 rounded-xl border border-gray-700 bg-gray-900/80 p-3">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-gray-400">استهلاك الرام الفعلي للسيرفر:</span>
+              <span className="font-mono font-bold text-white">
+                {overloadState.memory.usedMemPct}% ({overloadState.memory.usedMemMb} MB / {overloadState.memory.totalMemMb} MB)
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-800 overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  overloadState.memory.usedMemPct > 80
+                    ? "bg-red-500"
+                    : overloadState.memory.usedMemPct > 60
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+                }`}
+                style={{ width: `${Math.min(100, overloadState.memory.usedMemPct)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mode Selector */}
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-semibold text-gray-300">وضع الحماية المطلوبة:</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: "auto", label: "ذكي (Auto 85% RAM)" },
+              { id: "on", label: "تفعيل إجباري (Manual ON)" },
+              { id: "off", label: "إيقاف الحماية (OFF)" },
+            ].map((m) => (
+              <button
+                key={m.id}
+                onClick={() => updateOverload("setMode", { mode: m.id })}
+                disabled={busy}
+                className={`rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                  overloadState?.mode === m.id
+                    ? "bg-sky-600 text-white shadow-md"
+                    : "bg-gray-900 border border-gray-700 text-gray-400 hover:text-white"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Manual Cooldown Buffer Timers */}
+        <div className="mb-4 rounded-xl border border-gray-700/60 bg-gray-900/40 p-3">
+          <label className="mb-2 block text-xs font-semibold text-gray-300">
+            التحكم في وقت التهداة المؤقتة للطلاب (Cooldown Buffer):
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => updateOverload("addCooldown", { addMinutes: 15 })}
+              disabled={busy}
+              className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/30"
+            >
+              ⏱️ إعطاء مهلة +15 دقيقة
+            </button>
+            <button
+              onClick={() => updateOverload("addCooldown", { addMinutes: 30 })}
+              disabled={busy}
+              className="rounded-lg bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/30"
+            >
+              ⏱️ إعطاء مهلة +30 دقيقة
+            </button>
+            <button
+              onClick={() => updateOverload("resetCooldown")}
+              disabled={busy}
+              className="rounded-lg bg-red-500/20 border border-red-500/40 px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/30"
+            >
+              🛑 إلغاء وقت الانتظار فوراً
+            </button>
+          </div>
+          {overloadState?.remainingMinutes ? (
+            <p className="mt-2 text-[11px] text-amber-400 font-semibold">
+              متبقى على انتهاء فترة تنظيم المرور: {overloadState.remainingMinutes} دقيقة
+            </p>
+          ) : null}
+        </div>
+
+        {/* Custom Message */}
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-300">
+            الرسالة المعروضة للطلاب في غرفة الانتظار:
+          </label>
+          <textarea
+            value={overloadState?.message || ""}
+            onChange={(e) =>
+              setOverloadState((prev) => (prev ? { ...prev, message: e.target.value } : null))
+            }
+            rows={2}
+            maxLength={300}
+            className={`${input} resize-none`}
+          />
+          <button
+            onClick={() => updateOverload("setMessage", { message: overloadState?.message })}
+            disabled={busy}
+            className="mt-2 rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
+          >
+            حفظ رسالة الانتظار
+          </button>
+        </div>
       </div>
 
       {/* Virtual data */}
