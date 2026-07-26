@@ -113,7 +113,9 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "e-Your-Google-Search-Console-Verification-Code", // placeholder, but good practice
+    other: {
+      "facebook-domain-verification": ["fagzmwahaw0vng7nfk8xm6izl2upf4"],
+    },
   },
 };
 
@@ -127,6 +129,7 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
+        <meta name="facebook-domain-verification" content="fagzmwahaw0vng7nfk8xm6izl2upf4" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0E6E62" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
