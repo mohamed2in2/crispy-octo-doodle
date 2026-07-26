@@ -70,10 +70,21 @@ model User {
   planHomeworkSubmissions PlanHomeworkSubmission[]
   planAiChatMessages      PlanAIChatMessage[]
 
+  // ── Teacher Promo / Referral Program ──
+  promoProgramEnabled     Boolean                  @default(false)
+  promoCode               String?                  @unique
+  promoCodeCreatedAt      DateTime?
+  referredByTeacherId     String?
+  referredByTeacher       User?                    @relation("TeacherStudentReferrals", fields: [referredByTeacherId], references: [id], onDelete: SetNull)
+  referredStudents        User[]                   @relation("TeacherStudentReferrals")
+  teacherAttributions     TeacherReferralAttribution[] @relation("TeacherAttributions")
+  studentAttributions     TeacherReferralAttribution[] @relation("StudentAttributions")
+
   @@index([role])
   @@index([educationalStage])
   @@index([email])
   @@index([isDeleted])
+  @@index([promoCode])
 }
 
 model Course {
@@ -1167,3 +1178,25 @@ model UnmatchedPlanContent {
   @@index([courseId])
   @@index([resolvedAt])
 }
+
+// ── Teacher Promo / Referral Program Attributions ─────────────────────────
+
+model TeacherReferralAttribution {
+  id            String   @id @default(cuid())
+  teacherId     String
+  teacher       User     @relation("TeacherAttributions", fields: [teacherId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User     @relation("StudentAttributions", fields: [studentId], references: [id], onDelete: Cascade)
+  purchaseType  String   // "COURSE" | "FOLDER" | "VIDEO" | "SIGNUP"
+  courseId      String?
+  folderId      String?
+  videoId       String?
+  amount        Float    @default(0)
+  promoCodeUsed String?
+  createdAt     DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([studentId])
+  @@index([createdAt])
+}
+

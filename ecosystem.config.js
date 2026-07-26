@@ -4,8 +4,8 @@ module.exports = {
       name: "code-up",
       script: "node_modules/next/dist/bin/next",
       args: "start",
-      instances: "max", // Automatically utilizes all available vCPUs (2 vCPUs = 2 workers)
-      exec_mode: "cluster", // Enables PM2 Cluster Mode to balance traffic across both CPUs
+      instances: 2, // Spawns 2 worker instances across both 2 vCPUs
+      exec_mode: "cluster", // Enables load balancing across both vCPUs
       env: {
         NODE_ENV: "production",
         PORT: 3000,

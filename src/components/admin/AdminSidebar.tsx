@@ -20,6 +20,7 @@ const superadminSections = [
   { id: "students",          label: "المتعلمين" },
   { id: "deleted-students",  label: "المتعلمين المرشحون" },
   { id: "teachers",          label: "المعلمون" },
+  { id: "teacher-referrals", label: "برامج إحالة المعلمين" },
   { id: "deleted-teachers",  label: "المعلمون المحذوفون" },
   { id: "create",            label: "إضافة مدرس" },
   { id: "wallet",            label: "💰 إدارة الرصيد" },

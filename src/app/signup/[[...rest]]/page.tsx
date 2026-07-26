@@ -23,6 +23,7 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     verificationCode: "",
+    promoCode: "",
   });
   const [sendingCode, setSendingCode] = useState(false);
   const [signingUp, setSigningUp] = useState(false);
@@ -146,6 +147,7 @@ export default function SignupPage() {
           password: form.password,
           verificationCode: form.verificationCode,
           referralCode: refCode || undefined,
+          promoCode: form.promoCode ? form.promoCode.trim() : undefined,
         }),
       });
 
@@ -246,6 +248,17 @@ export default function SignupPage() {
                   placeholder="01XXXXXXXXX"
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">لا تستخدم نفس الرقم للمتعلم وولي الأمر</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">كود خصم المعلم (اختياري)</label>
+                <input
+                  type="text"
+                  value={form.promoCode}
+                  onChange={(e) => setForm({ ...form, promoCode: e.target.value.toUpperCase() })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+                  placeholder="إذا كان لديك كود إحالة من معلمك (مثال: 123)"
+                />
               </div>
 
               <div className="md:col-span-2">

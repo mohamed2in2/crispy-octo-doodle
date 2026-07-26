@@ -5,7 +5,9 @@ import { randomBytes } from "crypto";
 
 import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+import { processTeacherAttribution } from "@/lib/referral";
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "يجب تسجيل الدخول أولاً" }, { status: 401 });
   if (session.role === "teacher" || session.role === "staff") {
@@ -13,10 +15,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id: courseId } = await params;
+  const reqBody = await req.json().catch(() => ({}));
+  const promoCodeInput = reqBody.promoCode || reqBody.promo_code;
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, title: true, isPaid: true, price: true, discountPercent: true, discountExpiresAt: true },
+    select: { id: true, title: true, teacherId: true, isPaid: true, price: true, discountPercent: true, discountExpiresAt: true },
   });
   if (!course) return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
 
@@ -82,6 +86,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           amount: -effectivePrice,
           note: `شراء كورس: ${course.title}`,
         },
+      });
+
+      // 7. Process Teacher Referral Attribution
+      await processTeacherAttribution({
+        studentId: session.id,
+        teacherIdOfContent: course.teacherId,
+        amount: effectivePrice,
+        purchaseType: "COURSE",
+        courseId: course.id,
+        promoCodeInput,
+        tx,
       });
 
       return {

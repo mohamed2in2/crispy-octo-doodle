@@ -221,6 +221,55 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Check Teacher Promo Code
+    const teacher = await prisma.user.findFirst({
+      where: {
+        role: "teacher",
+        promoProgramEnabled: true,
+        promoCode: normalizedCode,
+      },
+      select: { id: true, name: true, promoCode: true, promoCodeCreatedAt: true },
+    });
+
+    if (teacher && teacher.promoCodeCreatedAt) {
+      const now = new Date();
+      const isWithin350Days = now.getTime() - teacher.promoCodeCreatedAt.getTime() <= 350 * 24 * 60 * 60 * 1000;
+
+      if (!isWithin350Days) {
+        return NextResponse.json({ error: "كود الخصم هذا منتهي الصلاحية" }, { status: 400 });
+      }
+
+      // Link student's referredByTeacherId
+      await prisma.user.update({
+        where: { id: session.id },
+        data: { referredByTeacherId: teacher.id },
+      });
+
+      // Record initial signup/referral link attribution if not existing
+      const existing = await prisma.teacherReferralAttribution.findFirst({
+        where: { teacherId: teacher.id, studentId: session.id, purchaseType: "SIGNUP" },
+      });
+
+      if (!existing) {
+        await prisma.teacherReferralAttribution.create({
+          data: {
+            teacherId: teacher.id,
+            studentId: session.id,
+            purchaseType: "SIGNUP",
+            amount: 0,
+            promoCodeUsed: teacher.promoCode,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        type: "teacher_promo",
+        teacherName: teacher.name,
+        message: `تم ربط حسابك بكود المعلم أ/ ${teacher.name} بنجاح!`,
+      });
+    }
+
     return NextResponse.json({ error: "الكود غير صحيح" }, { status: 404 });
   } catch (error) {
     console.error("[codes] error:", error);

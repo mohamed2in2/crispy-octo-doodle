@@ -100,6 +100,8 @@ const ghostBtn =
 const card = "bg-[var(--surface)] rounded-2xl border border-[var(--border)]";
 const cardPad = `${card} p-5 sm:p-6`;
 
+import { ReferredStudentsSection } from "@/components/admin/teacher/ReferredStudentsSection";
+
 const SECTION_TITLES: Record<string, string> = {
   dashboard: "لوحة التحكم",
   "my-page": "صفحتي",
@@ -107,6 +109,7 @@ const SECTION_TITLES: Record<string, string> = {
   "create-course": "كورس جديد",
   codes: "أكواد الوصول",
   students: "المتعلمين",
+  "referred-students": "متابعة الطلاب المُحالين",
   requests: "طلبات المتعلمين",
   feedback: "ملاحظات المتعلمين",
   homework: "إدارة الواجبات",
@@ -774,6 +777,9 @@ export default function TeacherDashboardPage() {
 
           {/* ════════ MY PAGE (public teacher profile) ════════ */}
           {activeSection === "my-page" && <TeacherPublicProfile />}
+
+          {/* ════════ REFERRED STUDENTS ════════ */}
+          {activeSection === "referred-students" && <ReferredStudentsSection />}
 
           {/* ════════ COURSES ════════ */}
           {activeSection === "courses" && (

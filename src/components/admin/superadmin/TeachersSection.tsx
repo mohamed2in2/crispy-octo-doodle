@@ -16,12 +16,14 @@ interface Teacher {
   name: string;
   email: string;
   createdAt: string;
+  promoProgramEnabled?: boolean;
+  promoCode?: string;
   _count: { courses: number };
   courses: CourseItem[];
 }
 
 export function TeachersSection({ userRole = "superadmin" }: { userRole?: string }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -29,6 +31,33 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
   const [editTarget, setEditTarget] = useState<{ id: string; name: string } | null>(null);
   const [editName, setEditName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [togglingPromo, setTogglingPromo] = useState<string | null>(null);
+
+  const togglePromoProgram = async (t: Teacher) => {
+    setTogglingPromo(t.id);
+    const newVal = !t.promoProgramEnabled;
+    try {
+      const res = await fetch(`/api/admin/superadmin/teachers/${t.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promoProgramEnabled: newVal }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTeachers((prev) =>
+          prev.map((item) => (item.id === t.id ? { ...item, promoProgramEnabled: newVal } : item))
+        );
+        toastSuccess(`تم ${newVal ? "تفعيل" : "تعطيل"} برنامج الإحالة للمعلم "${t.name}"`);
+      } else {
+        toastError(data.error || "تعذر تغيير حالة البرنامج");
+      }
+    } catch {
+      toastError("حدث خطأ أثناء الاتصال بالخادم");
+    } finally {
+      setTogglingPromo(null);
+    }
+  };
 
   const fetchTeachers = useCallback(async () => {
     try {
@@ -145,6 +174,19 @@ export function TeachersSection({ userRole = "superadmin" }: { userRole?: string
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {userRole === "superadmin" && (
+                      <button
+                        onClick={() => togglePromoProgram(t)}
+                        disabled={togglingPromo === t.id}
+                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors border ${
+                          t.promoProgramEnabled
+                            ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                            : "bg-gray-700/50 hover:bg-gray-700 text-gray-400 border-gray-600"
+                        }`}
+                      >
+                        🏷️ برنامج الإحالة: {t.promoProgramEnabled ? "مُفعّل ✅" : "معطّل ❌"}
+                      </button>
+                    )}
                     {hasPermission(userRole, "edit_teacher_name") && (
                     <button
                       onClick={() => openEdit(t)}

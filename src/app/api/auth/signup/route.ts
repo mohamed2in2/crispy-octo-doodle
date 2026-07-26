@@ -21,7 +21,8 @@ function generateReferralCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, password, phone, parentPhone, age, educationalStage, verificationCode, referralCode } = await req.json();
+    const body = await req.json();
+    const { name, password, phone, parentPhone, age, educationalStage, verificationCode, referralCode, promoCode, teacherPromoCode } = body;
 
     if (!name || !password || !phone || !parentPhone || !age || !educationalStage) {
       return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
@@ -62,7 +63,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "العمر غير صالح" }, { status: 400 });
     }
 
-    // Resolve referrer if a valid referral code was supplied
+    // Resolve teacher referral if promoCode or teacherPromoCode was supplied
+    const promoCodeInput = (promoCode || teacherPromoCode || body.promo_code);
+    let referredByTeacherId: string | undefined;
+    let promoCodeUsed: string | undefined;
+
+    if (promoCodeInput) {
+      const codeUpper = String(promoCodeInput).trim().toUpperCase();
+      const teacher = await prisma.user.findFirst({
+        where: {
+          role: "teacher",
+          promoProgramEnabled: true,
+          promoCode: codeUpper,
+        },
+        select: { id: true, promoCodeCreatedAt: true },
+      });
+
+      if (teacher && teacher.promoCodeCreatedAt) {
+        const now = new Date();
+        const expiryDate = new Date(teacher.promoCodeCreatedAt.getTime() + 350 * 24 * 60 * 60 * 1000);
+        if (now <= expiryDate) {
+          referredByTeacherId = teacher.id;
+          promoCodeUsed = codeUpper;
+        }
+      }
+    }
+
+    // Resolve referrer if a valid student referral code was supplied
     let referredById: string | undefined;
     if (referralCode) {
       const referrer = await prisma.user.findUnique({
@@ -91,8 +118,21 @@ export async function POST(req: NextRequest) {
         profileCompleted: true,
         referralCode: newReferralCode,
         referredById,
+        referredByTeacherId,
       },
     });
+
+    if (referredByTeacherId) {
+      await prisma.teacherReferralAttribution.create({
+        data: {
+          teacherId: referredByTeacherId,
+          studentId: user.id,
+          purchaseType: "SIGNUP",
+          amount: 0,
+          promoCodeUsed,
+        },
+      }).catch(() => {});
+    }
 
     // Award referral bonus points: 50 to new user + 50 to referrer (fire-and-forget)
     if (referredById) {

@@ -94,7 +94,12 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
     if (purchasing) return;
     setPurchasing(true);
     try {
-      const res = await fetch(`/api/courses/${course.id}/purchase`, { method: "POST", credentials: "include" });
+      const res = await fetch(`/api/courses/${course.id}/purchase`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promoCode: code.trim() || undefined }),
+      });
       const data: { message?: string; courseTitle?: string; charged?: number; error?: string } = await res.json().catch(() => ({}));
       if (res.ok) {
         toastSuccess(data.message || `تم شراء «${course.title}» بنجاح!`);

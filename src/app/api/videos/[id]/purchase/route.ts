@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
+import { processTeacherAttribution } from "@/lib/referral";
+
 /**
  * POST /api/videos/[id]/purchase
  * Student purchases access to a single video/lesson.
@@ -16,6 +18,8 @@ export async function POST(
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 
   const { id: videoId } = await params;
+  const reqBody = await req.json().catch(() => ({}));
+  const promoCodeInput = reqBody.promoCode || reqBody.promo_code;
 
   try {
     const purchase = await prisma.$transaction(async (tx) => {
@@ -24,7 +28,7 @@ export async function POST(
 
       const video = await tx.video.findUnique({
         where: { id: videoId },
-        include: { folder: { include: { course: { select: { id: true, title: true } } } } },
+        include: { folder: { include: { course: { select: { id: true, teacherId: true, title: true } } } } },
       });
 
       if (!video) throw new Error("NOT_FOUND");
@@ -64,9 +68,24 @@ export async function POST(
       }
 
       // Create purchase record
-      return await tx.videoPurchase.create({
+      const res = await tx.videoPurchase.create({
         data: { studentId: session.id, videoId, price },
       });
+
+      // Process Teacher Referral Attribution
+      await processTeacherAttribution({
+        studentId: session.id,
+        teacherIdOfContent: video.folder.course.teacherId,
+        amount: price,
+        purchaseType: "VIDEO",
+        videoId,
+        folderId: video.folder.id,
+        courseId: video.folder.course.id,
+        promoCodeInput,
+        tx,
+      });
+
+      return res;
     });
 
     return NextResponse.json({ purchase, message: "تم شراء الدرس بنجاح" }, { status: 201 });

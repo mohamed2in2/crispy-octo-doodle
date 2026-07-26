@@ -19,6 +19,9 @@ export async function GET() {
         name: true,
         email: true,
         createdAt: true,
+        promoProgramEnabled: true,
+        promoCode: true,
+        promoCodeCreatedAt: true,
         _count: { select: { courses: true } },
         courses: { select: { id: true, title: true, subject: true }, orderBy: { createdAt: "desc" } },
       },
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
-  const { name, password } = await req.json();
+  const { name, password, promoProgramEnabled } = await req.json();
   if (!name || !password) {
     return NextResponse.json({ error: "الاسم وكلمة المرور مطلوبان" }, { status: 400 });
   }
@@ -60,8 +63,21 @@ export async function POST(req: NextRequest) {
   const hashed = await bcrypt.hash(password, 12);
 
   const teacher = await prisma.user.create({
-    data: { name, email, password: hashed, role: "teacher" },
-    select: { id: true, name: true, email: true, createdAt: true },
+    data: {
+      name,
+      email,
+      password: hashed,
+      role: "teacher",
+      promoProgramEnabled: !!promoProgramEnabled,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+      promoProgramEnabled: true,
+      promoCode: true,
+    },
   });
 
   return NextResponse.json({ teacher }, { status: 201 });

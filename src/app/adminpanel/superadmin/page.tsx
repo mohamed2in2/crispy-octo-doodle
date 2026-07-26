@@ -101,11 +101,14 @@ interface Teacher {
   createdAt?: string | Date;
 }
 
+import { SuperadminReferredStudentsSection } from "@/components/admin/superadmin/SuperadminReferredStudentsSection";
+
 const SECTION_TITLES: Record<string, string> = {
   overview: "نظرة عامة",
   plans: "الخطط الدراسية",
   students: "إدارة المتعلمين",
   teachers: "إدارة المعلمين",
+  "teacher-referrals": "برامج إحالة المعلمين",
   create: "إنشاء حساب مدرس",
   "daily-exams": "امتحانات لوحة الشرف",
   "staff-accounts": "المشرفون والموظفون",
@@ -536,6 +539,8 @@ export default function SuperadminPage() {
           )}
 
           {activeSection === "teachers" && <TeachersSection userRole={userRole} />}
+
+          {activeSection === "teacher-referrals" && <SuperadminReferredStudentsSection />}
 
           {activeSection === "deleted-teachers" && <DeletedTeachersSection userRole={userRole} />}
 

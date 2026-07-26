@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { acquireAdvisoryLock } from "@/lib/distributed-lock";
 
+import { processTeacherAttribution } from "@/lib/referral";
+
 /**
  * POST /api/folders/[id]/purchase
  * Student purchases access to a specific folder.
@@ -17,6 +19,8 @@ export async function POST(
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
 
   const { id: folderId } = await params;
+  const reqBody = await req.json().catch(() => ({}));
+  const promoCodeInput = reqBody.promoCode || reqBody.promo_code;
 
   try {
     const purchase = await prisma.$transaction(async (tx) => {
@@ -67,9 +71,23 @@ export async function POST(
       }
 
       // Create purchase record
-      return await tx.folderPurchase.create({
+      const res = await tx.folderPurchase.create({
         data: { studentId: session.id, folderId, price },
       });
+
+      // Process Teacher Referral Attribution
+      await processTeacherAttribution({
+        studentId: session.id,
+        teacherIdOfContent: folder.course.teacherId,
+        amount: price,
+        purchaseType: "FOLDER",
+        folderId,
+        courseId: folder.course.id,
+        promoCodeInput,
+        tx,
+      });
+
+      return res;
     });
 
     return NextResponse.json({ purchase, message: "تم شراء المجلد بنجاح" }, { status: 201 });
