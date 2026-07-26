@@ -290,7 +290,39 @@ export default function PlansPage() {
         )}
 
         {hasNoPlans && (
-          <div className="flex-1 flex items-center justify-center p-8 text-center" />
+          <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-16 text-center flex flex-col items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-8 md:p-12 rounded-3xl bg-slate-950/60 border border-slate-800 text-center max-w-lg w-full shadow-2xl"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-indigo-950/80 border border-indigo-700/40 flex items-center justify-center text-3xl mx-auto mb-5 shadow-lg">
+                📚
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-white mb-2" style={{ fontFamily: "var(--font-head)" }}>
+                لا توجد خطط دراسية متاح التسجيل فيها حالياً
+              </h2>
+              <p className="text-slate-400 text-xs md:text-sm mb-6 leading-relaxed">
+                لم يتم إتاحة خطط دراسية لهذه المرحلة حتى الآن. يمكنك تصفح الكورسات والمواد التعليمية المتاحة على المنصة.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {selectedStage !== "all" && (
+                  <button
+                    onClick={() => setSelectedStage("all")}
+                    className="px-5 py-2.5 text-xs font-bold text-indigo-300 bg-indigo-950/70 border border-indigo-800/60 rounded-xl hover:bg-indigo-900/60 transition-colors"
+                  >
+                    عرض جميع المراحل
+                  </button>
+                )}
+                <Link
+                  href="/courses"
+                  className="px-6 py-2.5 text-xs font-black text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/30"
+                >
+                  تصفح الكورسات المتاحة ➔
+                </Link>
+              </div>
+            </motion.div>
+          </main>
         )}
 
         <Footer />
