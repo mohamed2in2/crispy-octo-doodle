@@ -140,7 +140,7 @@ export function CourseCard({ course, onCodeApplied }: CourseCardProps) {
 
   return (
     <article
-      className="group flex flex-col overflow-hidden rounded-[20px] transition-all duration-300 hover:-translate-y-1"
+      className="group flex flex-col h-full overflow-hidden rounded-[20px] transition-all duration-300 hover:-translate-y-1"
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",

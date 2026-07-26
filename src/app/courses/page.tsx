@@ -5,7 +5,6 @@ import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { CourseCard } from "@/components/courses/CourseCard";
-import { StudentInsights } from "@/components/ai/StudentInsights";
 import { EDUCATIONAL_STAGES } from "@/types";
 
 interface Course {
@@ -287,12 +286,6 @@ export default function CoursesPage() {
               )}
             </div>
           </div>
-
-          {user?.role === "student" && (
-            <div className="mb-6">
-              <StudentInsights compact />
-            </div>
-          )}
 
           {/* Count + clear row */}
           {!loading && !error && (

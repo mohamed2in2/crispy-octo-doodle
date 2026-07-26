@@ -11,6 +11,12 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
     .map((s) => s.trim())
     .filter(Boolean),
   providers: {
+    digitalocean: {
+      apiKey: process.env.DIGITALOCEAN_API_KEY || "wbj5Ee7xbTENBOTBf1OBnPfX67WW2v79",
+      baseUrl: process.env.DIGITALOCEAN_BASE_URL || "https://inference.do.co/v1",
+      model: process.env.DIGITALOCEAN_MODEL || "meta-llama/Llama-3.3-70B-Instruct",
+      enabled: true,
+    },
     mock: {
       enabled: true,
       model: "mock-v1",

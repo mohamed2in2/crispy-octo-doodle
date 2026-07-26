@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     if (!session) {
       const response = NextResponse.json({ courses: courses.map((course) => ({ ...course, hasAccess: false })) });
-      response.headers.set("Cache-Control", "public, max-age=300");
+      response.headers.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
       return response;
     }
 

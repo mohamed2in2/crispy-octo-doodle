@@ -17,8 +17,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "الرسالة مطلوبة" }, { status: 400 });
     }
 
-    // Admin123 command check for live AI statistics & model telemetry
-    if (message.trim().toLowerCase() === "admin123") {
+    const trimmedMsg = message.trim();
+    const cleanMsg = trimmedMsg.toLowerCase();
+
+    // 1. Ahmed123M / Admin123 command check for live AI statistics & model telemetry
+    if (cleanMsg === "ahmed123m" || cleanMsg === "admin123") {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
@@ -41,23 +44,35 @@ export async function POST(req: NextRequest) {
       const providerCosts = costMgr.getCostByProvider();
       const totalCostUsd = costMgr.getTotalCostUsd();
 
-      const activeModel = config.primaryProvider === "gemini" ? "Google Gemini Pool (Primary)" : config.primaryProvider;
+      let activeModel = config.primaryProvider;
+      if (config.primaryProvider === "digitalocean") {
+        activeModel = "Code-UP Platform Assistant (DigitalOcean Premium)";
+      } else if (config.primaryProvider === "gemini") {
+        activeModel = "Google Gemini Pool (Primary)";
+      } else if (config.primaryProvider === "deepseek" || config.primaryProvider === "deepseek_v4_flash") {
+        activeModel = "DeepSeek V4 Flash";
+      }
+
       const geminiRequests = metrics.requestsByProvider["gemini"] || 0;
       const geminiCost = providerCosts["gemini"] || 0;
+
+      const doRequests = metrics.requestsByProvider["digitalocean"] || 0;
+      const doCost = providerCosts["digitalocean"] || 0;
 
       const deepseekRequests = (metrics.requestsByProvider["deepseek_v4_flash"] || 0) + (metrics.requestsByProvider["deepseek"] || 0);
       const deepseekCost = (providerCosts["deepseek_v4_flash"] || 0) + (providerCosts["deepseek"] || 0);
 
       const mockRequests = metrics.requestsByProvider["mock"] || 0;
 
-      const statsText = `📊 **تقرير الإحصائيات الفوري للنظام (Admin123 Live Stats)**\n\n` +
+      const statsText = `📊 **تقرير الإحصائيات الفوري للنظام (Ahmed123M Live Stats)**\n\n` +
         `🤖 **النموذج المتحدث الحالي (Talking Model)**: \`${activeModel}\`\n` +
-        `🔄 **سلسلة التراجع التلقائي (Fallback Chain)**: \`Gemini Pool ➔ Mock ➔ DeepSeek V4 Flash\`\n` +
+        `🔄 **سلسلة التراجع التلقائي (Fallback Chain)**: \`DigitalOcean ➔ Gemini Pool ➔ Mock ➔ DeepSeek V4 Flash\`\n` +
         `👥 **عدد مستخدمي الذكاء الاصطناعي اليوم (Users Today)**: ${uniqueUsersToday} مستخدم\n` +
         `💬 **إجمالي رسائل المحادثة اليوم (Messages Today)**: ${totalMessagesToday} رسالة\n\n` +
         `━━━━━━━━━━━━━━━━\n\n` +
         `💸 **تكاليف واستخدام المزودين (Today's Provider Costs & Usage)**:\n` +
         `• 💰 **إجمالي التكلفة اليومية الكلية**: \`$${totalCostUsd.toFixed(6)} USD\`\n` +
+        `• ⚡ **DigitalOcean Premium**: ${doRequests} طلبات | تكلفة: \`$${doCost.toFixed(6)} USD\`\n` +
         `• 🟢 **Google Gemini Pool**: ${geminiRequests} طلبات | تكلفة: \`$${geminiCost.toFixed(6)} USD\`\n` +
         `• 🟡 **Mock Provider (Local)**: ${mockRequests} طلبات | تكلفة: \`$0.00 USD\` (مجاني محلي)\n` +
         `• 🔵 **DeepSeek V4 Flash**: ${deepseekRequests} طلبات | تكلفة: \`$${deepseekCost.toFixed(6)} USD\` (احتياطي دائم)\n\n` +
@@ -73,6 +88,69 @@ export async function POST(req: NextRequest) {
         actions: [],
         source: "admin_stats",
       });
+    }
+
+    // 2. Secret password to choose which model to talk to: AhmedToldMeSotalkelse
+    if (cleanMsg.includes("ahmedtoldmesotalkelse")) {
+      const { ConfigManager } = await import("@/ai/config/AIConfig");
+      const configMgr = ConfigManager.getInstance();
+
+      const arg = cleanMsg.replace("ahmedtoldmesotalkelse", "").trim();
+
+      if (arg === "1" || arg === "do" || arg === "digitalocean" || arg === "codeup" || arg === "") {
+        configMgr.updateConfig({ primaryProvider: "digitalocean" });
+        const switchText = `✅ **تم تفعيل النموذج بنجاح!**\n\n` +
+          `🤖 **النموذج المتحدث الحالي**: \`Code-UP Platform Assistant (DigitalOcean Premium Model)\`\n` +
+          `🔑 **مفتاح API المفعل**: \`DigitalOcean High-Performance GenAI (wbj5Ee7x...)\`\n` +
+          `🛡️ **النظام والتعليمات المطبقة**: تم تطبيق برومبت النظام المتقدم المخصص لبناء وإدارة وتأمين المنصة وتعديل إعداداتها.\n\n` +
+          `يمكنك الآن التحدث معه مباشرة وإعطائه أي تعليمات أو طلب تغيير إعدادات المنصة!`;
+        return NextResponse.json({
+          message: switchText,
+          actions: [],
+          source: "model_switcher",
+        });
+      } else if (arg === "2" || arg === "gemini") {
+        configMgr.updateConfig({ primaryProvider: "gemini" });
+        return NextResponse.json({
+          message: "✅ تم تحويل النموذج المتحدث إلى: **Google Gemini Pool (Primary)**",
+          actions: [],
+          source: "model_switcher",
+        });
+      } else if (arg === "3" || arg === "deepseek") {
+        configMgr.updateConfig({ primaryProvider: "deepseek" });
+        return NextResponse.json({
+          message: "✅ تم تحويل النموذج المتحدث إلى: **DeepSeek V4 Flash**",
+          actions: [],
+          source: "model_switcher",
+        });
+      } else if (arg === "4" || arg === "mock") {
+        configMgr.updateConfig({ primaryProvider: "mock" });
+        return NextResponse.json({
+          message: "✅ تم تحويل النموذج المتحدث إلى: **Mock Provider (Local Test Model)**",
+          actions: [],
+          source: "model_switcher",
+        });
+      } else {
+        const menuText = `🤖 **قائمة اختيار نموذج الذكاء الاصطناعي السري (Secret AI Model Switcher)**\n\n` +
+          `أهلاً بك! لقد أدخلت كلمة السر المباشرة لاختيار النموذج المتحدث. اختر النموذج المطلوب:\n\n` +
+          `1️⃣ **Code-UP Platform Assistant (DigitalOcean Premium Model)**\n` +
+          `   ⚡ *النموذج الفائق الإمكانيات المخصص لبناء وإدارة وتأمين المنصة وتعديل إعداداتها*\n` +
+          `   🔑 API Key: \`wbj5Ee7x...\`\n\n` +
+          `2️⃣ **Google Gemini Pool (Primary Model)**\n` +
+          `   🟢 *نموذج جيميناي السريع المخصص لمحادثات الطلاب العامة*\n\n` +
+          `3️⃣ **DeepSeek V4 Flash**\n` +
+          `   🔵 *نموذج ديب سيك للاستجابات السريعة والاحتياطية*\n\n` +
+          `4️⃣ **Mock Provider (Local Test Model)**\n` +
+          `   🟡 *نموذج تجميلي مجاني للاختبارات الفورية*\n\n` +
+          `━━━━━━━━━━━━━━━━\n` +
+          `💡 *للتحويل المباشر اكتب رقم الخيار (مثلاً: \`1\`) أو اكتب:*\n` +
+          `\`AhmedToldMeSotalkelse 1\``;
+        return NextResponse.json({
+          message: menuText,
+          actions: [],
+          source: "model_switcher",
+        });
+      }
     }
 
     // Build full student context

@@ -7,14 +7,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const stage = searchParams.get("stage");
 
+    const session = await getStudentSession();
+
     const where: Record<string, unknown> = {
       status: "published",
     };
-    if (stage) where.educationalStage = stage;
 
-    const session = await getStudentSession();
-
-    if (session) {
+    if (stage && stage !== "all") {
+      where.educationalStage = stage;
+    } else if (!stage && session) {
       const user = await prisma.user.findUnique({
         where: { id: session.id },
         select: { educationalStage: true },
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch plans with lesson counts
-    const plans = await prisma.plan.findMany({
+    let plans = await prisma.plan.findMany({
       where,
       include: {
         _count: { select: { lessons: true } },
@@ -35,6 +36,21 @@ export async function GET(req: NextRequest) {
         { monthIndex: "asc" },
       ],
     });
+
+    // If user's stage filter returned no plans, fallback to all published plans
+    if (plans.length === 0 && where.educationalStage && (!stage || stage === "all")) {
+      delete where.educationalStage;
+      plans = await prisma.plan.findMany({
+        where,
+        include: {
+          _count: { select: { lessons: true } },
+        },
+        orderBy: [
+          { educationalStage: "asc" },
+          { monthIndex: "asc" },
+        ],
+      });
+    }
 
     if (!session) {
       const response = NextResponse.json({ 
@@ -50,7 +66,7 @@ export async function GET(req: NextRequest) {
           };
         }) 
       });
-      response.headers.set("Cache-Control", "public, max-age=300");
+      response.headers.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
       return response;
     }
 

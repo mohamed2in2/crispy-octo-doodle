@@ -1,4 +1,5 @@
 export * from "./BaseProvider";
+export * from "./DigitalOceanProvider";
 export * from "./MockProvider";
 export * from "./OpenAICompatibleProvider";
 export * from "./DeepSeekV4FlashProvider";

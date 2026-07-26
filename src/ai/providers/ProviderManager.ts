@@ -5,6 +5,7 @@ import { OpenAICompatibleProvider } from "./OpenAICompatibleProvider";
 import { ConfigManager } from "../config/AIConfig";
 
 import { GeminiProvider } from "./GeminiProvider";
+import { DigitalOceanProvider } from "./DigitalOceanProvider";
 
 export class ProviderManager {
   private providers: Map<string, AIProvider> = new Map();
@@ -14,9 +15,10 @@ export class ProviderManager {
   constructor(primaryId?: string, fallbacks?: string[]) {
     const config = ConfigManager.getInstance().getConfig();
     this.primaryProviderId = primaryId || config.primaryProvider || "gemini";
-    this.fallbackChain = fallbacks || config.fallbackProviders || ["gemini", "mock", "deepseek_v4_flash", "deepseek"];
+    this.fallbackChain = fallbacks || config.fallbackProviders || ["digitalocean", "gemini", "mock", "deepseek_v4_flash", "deepseek"];
 
     // Register built-in default providers
+    this.registerProvider(new DigitalOceanProvider());
     this.registerProvider(new MockProvider());
     this.registerProvider(new DeepSeekV4FlashProvider());
     this.registerProvider(new DeepSeekV4FlashProvider({ id: "deepseek" }));

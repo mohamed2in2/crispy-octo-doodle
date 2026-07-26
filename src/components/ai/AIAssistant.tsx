@@ -150,10 +150,10 @@ export function AIAssistant() {
             setUnread(false);
             setOpen(true);
           }}
-          className="fixed bottom-6 left-6 z-50 w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"
+          className="fixed bottom-[85px] lg:bottom-6 left-4 lg:left-6 z-50 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-2xl hover:scale-110 transition-transform flex items-center justify-center group"
           aria-label="مرشد الذكاء الاصطناعي"
         >
-          <span className="text-2xl group-hover:animate-bounce">🤖</span>
+          <span className="text-xl sm:text-2xl group-hover:animate-bounce">🤖</span>
           {unread && <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white" />}
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             مرشدك الذكي 🌟
@@ -163,7 +163,7 @@ export function AIAssistant() {
 
       {/* Chat Panel */}
       {open && (
-        <div className="fixed bottom-6 left-6 right-6 sm:right-auto sm:bottom-6 sm:left-6 z-50 sm:w-[420px] h-[80vh] sm:h-[600px] max-h-[calc(100vh-3rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-200 dark:border-purple-800 flex flex-col overflow-hidden">
+        <div className="fixed bottom-[80px] lg:bottom-6 left-4 right-4 sm:left-6 sm:right-auto z-50 sm:w-[420px] h-[75vh] sm:h-[600px] max-h-[calc(100vh-6rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-200 dark:border-purple-800 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
