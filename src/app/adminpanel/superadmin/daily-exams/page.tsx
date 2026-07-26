@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, Settings, Eye, Clock, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Settings, Eye, Calendar, CheckCircle2, XCircle } from "lucide-react";
 import { EDUCATIONAL_STAGES } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminDailyExamsPage() {
   const exams = await prisma.dailyExam.findMany({

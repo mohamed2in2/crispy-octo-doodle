@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "code-up",
+      name: "Thefake",
       script: "node_modules/next/dist/bin/next",
       args: "start",
       instances: 2, // Spawns 2 worker instances across both 2 vCPUs
