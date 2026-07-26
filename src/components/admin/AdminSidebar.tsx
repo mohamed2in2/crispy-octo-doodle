@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconLogout, IconMenu, IconClose, IconBrain, SECTION_ICONS } from "./AdminIcons";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 interface AdminSidebarProps {
   role: "superadmin" | "admin" | "staff" | "teacher";
@@ -155,13 +156,10 @@ export function AdminSidebar({
 
   const Brand = (
     <div
-      className="flex items-center gap-[11px] justify-end"
-      style={{ padding: "22px 20px", borderBottom: "1px solid var(--border)" }}
+      className="flex items-center gap-[11px] justify-between"
+      style={{ padding: "20px 20px", borderBottom: "1px solid var(--border)" }}
     >
       <div className="flex flex-col items-end leading-[1.2]">
-        <b style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, color: "var(--ink)", whiteSpace: "nowrap" }}>
-          Code-UP
-        </b>
         <small
           style={{
             fontSize: 12,
@@ -172,12 +170,7 @@ export function AdminSidebar({
           {ROLE_BADGE[role] ?? role}
         </small>
       </div>
-      <span
-        className="flex items-center justify-center shrink-0 text-white font-black text-[17px]"
-        style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand)" }}
-      >
-        C
-      </span>
+      <BrandLogo size={40} showText={true} />
     </div>
   );
 
