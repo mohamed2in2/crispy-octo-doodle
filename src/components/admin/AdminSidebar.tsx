@@ -78,17 +78,18 @@ const staffSections = [
 ];
 
 const teacherSections = [
-  { id: "dashboard",     label: "لوحة التحكم" },
-  { id: "my-page",       label: "صفحتي" },
-  { id: "courses",       label: "الكورسات" },
-  { id: "quiz-results",  label: "نتائج الاختبارات" },
-  { id: "homework",      label: "إدارة الواجبات" },
-  { id: "review",        label: "مراجعة الواجبات" },
-  { id: "create-course", label: "كورس جديد" },
-  { id: "codes",         label: "أكواد الوصول" },
-  { id: "students",      label: "المتعلمين" },
-  { id: "requests",      label: "طلبات المتعلمين" },
-  { id: "feedback",      label: "ملاحظات المتعلمين" },
+  { id: "dashboard",         label: "لوحة التحكم" },
+  { id: "my-page",           label: "صفحتي" },
+  { id: "courses",           label: "الكورسات" },
+  { id: "referred-students", label: "متابعة الطلاب المُحالين" },
+  { id: "quiz-results",      label: "نتائج الاختبارات" },
+  { id: "homework",          label: "إدارة الواجبات" },
+  { id: "review",            label: "مراجعة الواجبات" },
+  { id: "create-course",     label: "كورس جديد" },
+  { id: "codes",             label: "أكواد الوصول" },
+  { id: "students",          label: "المتعلمين" },
+  { id: "requests",          label: "طلبات المتعلمين" },
+  { id: "feedback",          label: "ملاحظات المتعلمين" },
 ];
 
 const ROLE_BADGE: Record<string, string> = {
@@ -233,7 +234,13 @@ export function AdminSidebar({
         <>
           <div style={{ height: 8 }} />
           <button
-            onClick={() => setAiExpanded(!aiExpanded)}
+            onClick={() => {
+              const nextState = !aiExpanded;
+              setAiExpanded(nextState);
+              if (!activeSection.startsWith("ai-")) {
+                setActiveSection("ai-overview");
+              }
+            }}
             className="relative w-full flex items-center justify-end gap-[11px] cursor-pointer border-none transition-colors"
             style={{
               padding: "11px 14px",

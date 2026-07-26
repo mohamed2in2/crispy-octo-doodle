@@ -544,6 +544,31 @@ export default function SuperadminPage() {
 
           {activeSection === "deleted-teachers" && <DeletedTeachersSection userRole={userRole} />}
 
+          {/* ════════ AI SECTIONS ════════ */}
+          {(activeSection === "ai-overview" || activeSection === "ai-control") && <AIOverview />}
+          {activeSection === "ai-live" && <AILiveMonitor />}
+          {activeSection === "ai-requests" && <AIRequests />}
+          {activeSection === "ai-playground" && <AIPlayground />}
+          {activeSection === "ai-providers" && <AIProviders />}
+          {activeSection === "ai-gemini-pool" && <AIGeminiPool />}
+          {activeSection === "ai-budget" && <AIBudgetCenter />}
+          {activeSection === "ai-prompts" && <AIPromptLibrary />}
+          {activeSection === "ai-knowledge" && <AIKnowledgeBase />}
+          {activeSection === "ai-actions" && <AIEducationalActions />}
+          {activeSection === "ai-tools" && <AITools />}
+          {activeSection === "ai-memory" && <AIMemoryManager />}
+          {activeSection === "ai-student-analytics" && <AIStudentAnalytics />}
+          {activeSection === "ai-teacher-analytics" && <AITeacherAnalytics />}
+          {activeSection === "ai-parent-analytics" && <AIParentAnalytics />}
+          {activeSection === "ai-provider-analytics" && <AIProviderAnalytics />}
+          {activeSection === "ai-cost-analytics" && <AICostAnalytics />}
+          {activeSection === "ai-cache-analytics" && <AICacheAnalytics />}
+          {activeSection === "ai-alerts" && <AIAlertsCenter />}
+          {activeSection === "ai-audit" && <AIAuditLogs />}
+          {activeSection === "ai-feature-flags" && <AIFeatureFlags />}
+          {activeSection === "ai-settings" && <AISettings />}
+          {activeSection === "ai-health" && <AISystemHealth />}
+
           {activeSection === "create" && (
             <div className="max-w-md">
               <h2
