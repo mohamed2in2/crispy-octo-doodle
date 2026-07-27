@@ -384,11 +384,38 @@ export default function PlanLearnPage() {
   const totalLessonsCount = lessons.length || 1;
   const progressPercentage = Math.round((completedLessonsCount / totalLessonsCount) * 100);
 
+  // Find current active / next lesson
+  const currentActiveLesson =
+    lessons.find((l) => l.unlocked && (!l.progress || !l.progress.watched || !l.progress.quizPassed)) ||
+    lessons[0];
+
+  // Helper to parse description safely
+  const formattedDescription = (() => {
+    if (!plan?.description) return "مسار تدريبي متكامل يربط المفاهيم النظرية بالتطبيقات العملية خطوة بخطوة.";
+    try {
+      if (plan.description.startsWith("[") && plan.description.endsWith("]")) {
+        const parsed = JSON.parse(plan.description);
+        return Array.isArray(parsed) ? parsed.join(" • ") : plan.description;
+      }
+    } catch {}
+    return plan.description;
+  })();
+
+  // Stage narrative titles based on index
+  const STAGE_TITLES = [
+    "🚀 انطلاق الأساسيات",
+    "🛰️ البناء والتطبيق",
+    "🌙 التعمق والتحدي",
+    "⚡ التمارين المكثفة",
+    "🤖 تقييم الذكاء البرمجي",
+    "🏆 مشروع التخرج النهائي",
+  ];
+
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans" dir="rtl">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white" dir="rtl">
       <Navbar user={user} />
 
-      {/* Global CSS for hides rollbar & path offsets */}
+      {/* Global CSS for scrollbars & animations */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -402,75 +429,172 @@ export default function PlanLearnPage() {
         }
         @media (min-width: 640px) {
           .duo-container {
-            --x-offset: 80px;
+            --x-offset: 75px;
           }
         }
         @media (min-width: 1024px) {
           .duo-container {
-            --x-offset: 150px;
+            --x-offset: 140px;
           }
         }
       `}</style>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center space-y-6">
         
-        {/* Top Hero Banner */}
-        <div className="w-full relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-slate-900/90 p-6 md:p-8 backdrop-blur-xl shadow-2xl mb-8">
-          {/* Cyber decorative background blobs */}
-          <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-indigo-600/20 blur-[80px]" />
-          <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/15 blur-[80px]" />
+        {/* ── 1. GAMIFIED HERO & PROGRESS DASHBOARD ── */}
+        <div className="w-full relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-slate-900/90 p-6 md:p-8 backdrop-blur-xl shadow-2xl transition-all duration-300">
+          {/* Cyber ambient glows */}
+          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-indigo-600/20 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/15 blur-[90px] pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                الخطة الحالية: {plan?.title || "المستوى الأول (Plan A)"}
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            
+            {/* Main Plan Overview (Left/Center 7 cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+                  الخطة الحالية: {plan?.title || "Plan A"}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+                  🔥 5 أيام مواظبة (Streak)
+                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                  ⭐ {(completedLessonsCount * 120 + 50).toLocaleString("ar-EG")} XP
+                </span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-                {plan?.title || "خطة التعلم البرمجي الشاملة"}
-              </h1>
-              <p className="text-slate-300 text-xs md:text-sm max-w-2xl leading-relaxed">
-                {plan?.description || "هذه الخطة ترشدك خلال مفاهيم البرمجة الأساسية والتطوير خطوة بخطوة من البداية حتى الاحتراف."}
-              </p>
+
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  {plan?.title || "خطة التعلم البرمجي الشاملة"}
+                </h1>
+                <p className="text-slate-300 text-xs md:text-sm mt-1.5 leading-relaxed max-w-2xl">
+                  {formattedDescription}
+                </p>
+              </div>
+
+              {/* Next Lesson Snapshot & Primary CTA */}
+              {currentActiveLesson && (
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    onClick={() => {
+                      if (currentActiveLesson.unlocked) {
+                        setSelectedLessonId(currentActiveLesson.id);
+                        setIsModalOpen(true);
+                      }
+                    }}
+                    className="px-6 py-3.5 bg-gradient-to-r from-indigo-500 via-indigo-600 to-emerald-500 hover:from-indigo-400 hover:to-emerald-400 text-white font-black text-sm rounded-2xl border-none cursor-pointer transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] flex items-center justify-center gap-2 group"
+                  >
+                    <span>▶ واصل التعلم الآن</span>
+                    <span className="text-xs font-normal opacity-80 group-hover:translate-x-1 transition-transform">←</span>
+                  </button>
+
+                  <div className="px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs flex items-center gap-2">
+                    <span className="text-slate-400">الدرس التالي:</span>
+                    <span className="font-bold text-indigo-300 truncate max-w-[180px]">{currentActiveLesson.title}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">⏱️ 12 د</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Integrated Progress Bar & Time Stats Card */}
-            <div className="shrink-0 p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md min-w-[280px] space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-300">نسبة الإنجاز</span>
-                <span className="text-emerald-400 font-mono text-sm">{progressPercentage}%</span>
+            {/* Progress Metrics Widget (Right 5 cols) */}
+            <div className="lg:col-span-5 p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 block font-semibold">مستوى الإنجاز في الخطة</span>
+                  <span className="text-2xl font-black text-emerald-400 font-mono">{progressPercentage}%</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl">
+                  🎓
+                </div>
               </div>
-              <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-700"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+
+              {/* Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-700 shadow-md shadow-emerald-500/20"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] text-slate-400 font-medium">
+                  <span>{completedLessonsCount} من أصل {totalLessonsCount} مراحل مكتملة</span>
+                  <span>المتبقي: {totalLessonsCount - completedLessonsCount} مراحل</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                <span>🎯 {completedLessonsCount} / {totalLessonsCount} مراحل مكتملة</span>
-                <span>⏱️ مسار نشط</span>
+
+              {/* Badges strip */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5 text-[11px]">
+                <div className="p-2 rounded-xl bg-slate-950/40 border border-white/5 flex items-center gap-2">
+                  <span>🏆</span>
+                  <span className="text-slate-300 font-bold">وسام البداية القوية</span>
+                </div>
+                <div className="p-2 rounded-xl bg-slate-950/40 border border-white/5 flex items-center gap-2">
+                  <span>⚡</span>
+                  <span className="text-slate-300 font-bold">سرعة الاستيعاب +15%</span>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
-        {/* 🗺️ Main Interactive Learning Roadmap Container */}
-        <div className="w-full relative duo-container">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
-              <span>📖</span>
-              <span>خريطة التعلم التفاعلية</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">اضغط على المرحلة النشطة للبدء ومتابعة الدروس</p>
+        {/* ── 2. TODAY'S MISSION ACTION PANEL (🎯 مهمة اليوم) ── */}
+        <div className="w-full p-5 rounded-3xl border border-indigo-500/20 bg-slate-900/60 backdrop-blur-xl shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-2xl shrink-0">
+              🎯
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-white">مهمة اليوم الدراسية</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">+150 XP مكافأة</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                شاهد درس ({currentActiveLesson?.title || "الأساسيات"}) واجتز الاختبار التقييمي القصير لفتح المرحلة التالية.
+              </p>
+            </div>
           </div>
 
-          <div className="relative w-full bg-slate-900/80 rounded-3xl border border-indigo-500/20 p-8 shadow-2xl overflow-hidden flex flex-col items-center min-h-[620px] backdrop-blur-xl">
+          <button
+            onClick={() => {
+              if (currentActiveLesson?.unlocked) {
+                setSelectedLessonId(currentActiveLesson.id);
+                setIsModalOpen(true);
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs border-none cursor-pointer transition-all shrink-0 self-start md:self-auto shadow-md shadow-indigo-600/20"
+          >
+            🚀 ابدأ مهمة اليوم
+          </button>
+        </div>
+
+        {/* ── 3. ROADMAP STORYTELLING CONTAINER ── */}
+        <div className="w-full relative duo-container">
+          
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                <span>📖</span>
+                <span>خريطة التعلم التفاعلية</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">مسار متتابع - اضغط على المرحلة النشطة لمتابعة التعلم</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> مكتمل</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping" /> حالي</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-700" /> مقفل</span>
+            </div>
+          </div>
+
+          <div className="relative w-full bg-slate-900/80 rounded-3xl border border-indigo-500/20 p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col items-center min-h-[580px] backdrop-blur-xl">
             
-            {/* The vertical connection line */}
-            <div className="absolute top-10 bottom-10 w-2 bg-gradient-to-b from-indigo-500 via-purple-500/50 to-slate-800 rounded-full left-1/2 -translate-x-1/2" />
+            {/* Central Animated Line */}
+            <div className="absolute top-10 bottom-10 w-2 bg-gradient-to-b from-emerald-500 via-indigo-500 to-slate-800 rounded-full left-1/2 -translate-x-1/2" />
 
             {/* Winding Nodes List */}
-            <div className="relative z-10 w-full flex flex-col items-center gap-16 py-8 max-h-[82vh] overflow-y-auto no-scrollbar pr-1 pl-1">
+            <div className="relative z-10 w-full flex flex-col items-center gap-12 py-4 max-h-[80vh] overflow-y-auto no-scrollbar pr-1 pl-1">
               {lessons.map((lesson, index) => {
                 const active = selectedLessonId === lesson.id;
                 const isCompleted =
@@ -482,42 +606,47 @@ export default function PlanLearnPage() {
                 const multipliers = [0, 0.6, 1, 0.6, 0, -0.6, -1, -0.6];
                 const multiplier = multipliers[index % multipliers.length];
 
-                // Landmarks along the winding path
+                // Story Title & Landmark
+                const stageNarrative = STAGE_TITLES[index % STAGE_TITLES.length];
                 const LANDMARKS = ["🧠", "🚀", "🏆", "☕", "🤖", "⚡", "📚", "👾"];
                 const landmark = LANDMARKS[index % LANDMARKS.length];
 
                 let btnClass = "";
                 let nodeIcon = null;
+                let badgeColor = "";
 
                 if (lesson.hasProject) {
+                  badgeColor = "text-purple-400 border-purple-500/30 bg-purple-500/10";
                   if (isCompleted) {
-                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_6px_0_0_#d97706] active:translate-y-[4px]";
+                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_6px_0_0_#d97706]";
                     nodeIcon = <span>🎁</span>;
                   } else if (active) {
-                    btnClass = "bg-yellow-500 hover:bg-yellow-400 text-white shadow-[0_0_30px_rgba(234,179,8,0.6)] ring-4 ring-yellow-400/40 animate-pulse";
-                    nodeIcon = <span>🎁</span>;
+                    btnClass = "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_35px_rgba(168,85,247,0.7)] ring-4 ring-purple-400/40 animate-pulse scale-105";
+                    nodeIcon = <span>🤖</span>;
                   } else if (lesson.unlocked) {
-                    btnClass = "bg-yellow-600 hover:bg-yellow-500 text-white shadow-[0_6px_0_0_#a16207]";
-                    nodeIcon = <span>🎁</span>;
+                    btnClass = "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_6px_0_0_#7e22ce]";
+                    nodeIcon = <span>🤖</span>;
                   } else {
                     btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
                     nodeIcon = <span>🔒</span>;
                   }
                 } else if (lesson.requiresQuiz) {
+                  badgeColor = "text-amber-400 border-amber-500/30 bg-amber-500/10";
                   if (isCompleted) {
                     btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
                     nodeIcon = <span>🏆</span>;
                   } else if (active) {
-                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_30px_rgba(99,102,241,0.7)] ring-4 ring-indigo-400/40 animate-pulse";
+                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_35px_rgba(245,158,11,0.7)] ring-4 ring-amber-400/40 animate-pulse scale-105";
                     nodeIcon = <span>🏆</span>;
                   } else if (lesson.unlocked) {
-                    btnClass = "bg-indigo-500 hover:bg-indigo-400 text-white shadow-[0_6px_0_0_#3730a3]";
+                    btnClass = "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_6px_0_0_#d97706]";
                     nodeIcon = <span>🏆</span>;
                   } else {
                     btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
                     nodeIcon = <span>🔒</span>;
                   }
                 } else {
+                  badgeColor = "text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
                   if (isCompleted) {
                     btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
                     nodeIcon = (
@@ -526,7 +655,7 @@ export default function PlanLearnPage() {
                       </svg>
                     );
                   } else if (active) {
-                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_30px_rgba(99,102,241,0.8)] ring-4 ring-indigo-400/40 animate-pulse scale-105";
+                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_35px_rgba(99,102,241,0.8)] ring-4 ring-indigo-400/40 animate-pulse scale-105";
                     nodeIcon = <span>{index + 1}</span>;
                   } else if (lesson.unlocked) {
                     btnClass = "bg-sky-500 hover:bg-sky-400 text-white shadow-[0_6px_0_0_#0369a1]";
@@ -540,7 +669,7 @@ export default function PlanLearnPage() {
                 return (
                   <div key={lesson.id} className="relative flex flex-col items-center w-full">
                     
-                    {/* Path Landmark icon opposite the node */}
+                    {/* Landmark icon along curved path */}
                     {multiplier !== 0 && (
                       <div
                         className="absolute top-1/2 -translate-y-1/2 text-2xl sm:text-3xl select-none pointer-events-none opacity-40 animate-pulse transition-all duration-300"
@@ -552,23 +681,23 @@ export default function PlanLearnPage() {
                       </div>
                     )}
 
-                    {/* Node Wrapper with offset */}
+                    {/* Node Wrapper */}
                     <div
-                      className="relative flex flex-col items-center"
+                      className="relative flex flex-col items-center group"
                       style={{ transform: `translateX(calc(${multiplier} * var(--x-offset)))` }}
                     >
-                      {/* Floating tooltip above active node */}
+                      {/* Active Node Badge Tooltip */}
                       {active && (
-                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
                           <div className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-xl whitespace-nowrap shadow-lg shadow-indigo-600/40 border border-indigo-400/30 flex items-center gap-1">
-                            <span>المرحلة النشطة</span>
+                            <span>أنت هنا الآن</span>
                             <span>🎓</span>
                           </div>
                           <div className="w-2 h-2 bg-indigo-600 rotate-45 -mt-1 shadow-md" />
                         </div>
                       )}
 
-                      {/* Main Node Button */}
+                      {/* Main Interactive Button */}
                       <button
                         onClick={() => {
                           if (lesson.unlocked) {
@@ -577,23 +706,27 @@ export default function PlanLearnPage() {
                           }
                         }}
                         disabled={!lesson.unlocked}
-                        className={`w-18 h-18 sm:w-22 sm:h-22 rounded-full flex items-center justify-center font-black text-xl transition-all border-none relative cursor-pointer outline-none ${btnClass}`}
+                        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center font-black text-xl transition-all border-none relative cursor-pointer outline-none group-hover:scale-110 ${btnClass}`}
                       >
                         {nodeIcon}
                       </button>
 
-                      {/* Lesson Stage Card Details */}
+                      {/* Lesson Stage Details Card */}
                       <div
-                        className={`mt-3 px-4 py-2 rounded-2xl text-center border max-w-[170px] transition-all ${
+                        className={`mt-3 px-4 py-2.5 rounded-2xl text-center border max-w-[180px] backdrop-blur-md transition-all shadow-md ${
                           active
-                            ? "bg-indigo-950/80 border-indigo-500/40 text-indigo-200 font-bold shadow-lg shadow-indigo-500/10"
+                            ? "bg-indigo-950/90 border-indigo-500/40 text-indigo-200 font-bold shadow-indigo-500/10"
+                            : isCompleted
+                            ? "bg-slate-900/90 border-emerald-500/30 text-emerald-300 font-semibold"
                             : lesson.unlocked
                             ? "bg-slate-900 border-slate-800 text-slate-200 font-semibold"
-                            : "bg-slate-950 border-slate-900 text-slate-600 text-xs"
+                            : "bg-slate-950/80 border-slate-900 text-slate-600 text-xs"
                         }`}
                       >
-                        <p className="text-[11px] font-bold text-slate-400 mb-0.5">المرحلة {index + 1}</p>
-                        <p className="text-xs font-bold truncate leading-tight">{lesson.title}</p>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border mb-1 inline-block ${badgeColor}`}>
+                          {stageNarrative}
+                        </span>
+                        <p className="text-xs font-bold truncate leading-tight mt-0.5">{lesson.title}</p>
                         
                         {/* Prominent Action Button for Active Node */}
                         {active && (
@@ -602,12 +735,16 @@ export default function PlanLearnPage() {
                               setSelectedLessonId(lesson.id);
                               setIsModalOpen(true);
                             }}
-                            className="mt-2.5 w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-[11px] hover:from-emerald-400 hover:to-teal-400 transition-all shadow-md shadow-emerald-500/20 border-none cursor-pointer"
+                            className="mt-2 w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-[11px] hover:from-emerald-400 hover:to-teal-400 transition-all shadow-md shadow-emerald-500/20 border-none cursor-pointer"
                           >
                             ▶ ابدأ الآن
                           </button>
                         )}
+                        {!lesson.unlocked && (
+                          <p className="text-[9px] text-slate-500 mt-1">تفتح بعد إنجاز ما قبلها</p>
+                        )}
                       </div>
+
                     </div>
                   </div>
                 );
@@ -615,6 +752,7 @@ export default function PlanLearnPage() {
             </div>
           </div>
         </div>
+
       </main>
 
       {/* Modern Lesson Gateways Modal Overlay */}
