@@ -391,7 +391,7 @@ export default function PlanLearnPage() {
 
   // Helper to parse description safely
   const formattedDescription = (() => {
-    if (!plan?.description) return "مسار تدريبي متكامل يربط المفاهيم النظرية بالتطبيقات العملية خطوة بخطوة.";
+    if (!plan?.description) return "مسار تدريبي ممتع يربط المفاهيم النظرية بالتطبيقات العملية خطوة بخطوة.";
     try {
       if (plan.description.startsWith("[") && plan.description.endsWith("]")) {
         const parsed = JSON.parse(plan.description);
@@ -412,10 +412,10 @@ export default function PlanLearnPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white" dir="rtl">
+    <div className="flex flex-col min-h-screen bg-[#060B17] text-slate-100 font-sans selection:bg-[#4F7DFF] selection:text-white" dir="rtl">
       <Navbar user={user} />
 
-      {/* Global CSS for scrollbars & animations */}
+      {/* Global CSS for scrollbars, button press dynamics & path offsets */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -425,57 +425,65 @@ export default function PlanLearnPage() {
           scrollbar-width: none;
         }
         .duo-container {
-          --x-offset: 32px;
+          --x-offset: 36px;
         }
         @media (min-width: 640px) {
           .duo-container {
-            --x-offset: 75px;
+            --x-offset: 85px;
           }
         }
         @media (min-width: 1024px) {
           .duo-container {
-            --x-offset: 140px;
+            --x-offset: 160px;
           }
         }
       `}</style>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center space-y-6">
         
-        {/* ── 1. GAMIFIED HERO & PROGRESS DASHBOARD ── */}
-        <div className="w-full relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-slate-900/90 p-6 md:p-8 backdrop-blur-xl shadow-2xl transition-all duration-300">
-          {/* Cyber ambient glows */}
-          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-indigo-600/20 blur-[90px] pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-emerald-500/15 blur-[90px] pointer-events-none" />
+        {/* ── 1. TACTILE HERO & ACHIEVEMENT DASHBOARD ── */}
+        <div className="w-full relative overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-b from-[#172338] to-[#101827] p-6 md:p-8 shadow-[0_16px_40px_rgba(0,0,0,0.5)] transition-all duration-300">
+          
+          {/* Subtle Ambient Glow Blobs */}
+          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#4F7DFF]/15 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#3DDC97]/15 blur-[90px] pointer-events-none" />
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
             
-            {/* Main Plan Overview (Left/Center 7 cols) */}
+            {/* Main Plan Information (Left 7 cols) */}
             <div className="lg:col-span-7 space-y-4">
+              
+              {/* Achievement Row (Streak, XP, Badges, Level) */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
-                  الخطة الحالية: {plan?.title || "Plan A"}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/20">
+                <span className="px-3.5 py-1.5 rounded-2xl bg-[#F7C948]/10 text-[#F7C948] text-xs font-bold border border-[#F7C948]/20 flex items-center gap-1.5 shadow-sm">
                   🔥 5 أيام مواظبة (Streak)
                 </span>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                <span className="px-3.5 py-1.5 rounded-2xl bg-[#3DDC97]/10 text-[#3DDC97] text-xs font-bold border border-[#3DDC97]/20 flex items-center gap-1.5 shadow-sm">
                   ⭐ {(completedLessonsCount * 120 + 50).toLocaleString("ar-EG")} XP
+                </span>
+                <span className="px-3.5 py-1.5 rounded-2xl bg-[#7C5CFF]/10 text-[#7C5CFF] text-xs font-bold border border-[#7C5CFF]/20 flex items-center gap-1.5 shadow-sm">
+                  🎖️ المستوى 3 مطور
+                </span>
+                <span className="px-3.5 py-1.5 rounded-2xl bg-[#4F7DFF]/10 text-[#4F7DFF] text-xs font-bold border border-[#4F7DFF]/20 flex items-center gap-1.5 shadow-sm">
+                  ⚡ 94% دقة
                 </span>
               </div>
 
               <div>
-                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-                  {plan?.title || "خطة التعلم البرمجي الشاملة"}
+                <span className="text-xs font-extrabold text-[#4F7DFF] uppercase tracking-wider block mb-1">
+                  الخطة الدراسية الحالية
+                </span>
+                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
+                  {plan?.title || "Plan A"}
                 </h1>
-                <p className="text-slate-300 text-xs md:text-sm mt-1.5 leading-relaxed max-w-2xl">
+                <p className="text-slate-300 text-xs md:text-sm mt-2 leading-relaxed max-w-2xl font-normal">
                   {formattedDescription}
                 </p>
               </div>
 
-              {/* Next Lesson Snapshot & Primary CTA */}
+              {/* Giant Tactile 3D "Continue Learning" Button (Height: 56px) */}
               {currentActiveLesson && (
-                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                   <button
                     onClick={() => {
                       if (currentActiveLesson.unlocked) {
@@ -483,76 +491,92 @@ export default function PlanLearnPage() {
                         setIsModalOpen(true);
                       }
                     }}
-                    className="px-6 py-3.5 bg-gradient-to-r from-indigo-500 via-indigo-600 to-emerald-500 hover:from-indigo-400 hover:to-emerald-400 text-white font-black text-sm rounded-2xl border-none cursor-pointer transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] flex items-center justify-center gap-2 group"
+                    className="h-14 px-8 bg-[#4F7DFF] hover:bg-[#4370f0] text-white font-black text-base rounded-2xl border-b-4 border-[#2d56d9] active:border-b-0 active:translate-y-1 transition-all cursor-pointer shadow-[0_8px_25px_rgba(79,125,255,0.35)] flex items-center justify-center gap-3 shrink-0"
                   >
                     <span>▶ واصل التعلم الآن</span>
-                    <span className="text-xs font-normal opacity-80 group-hover:translate-x-1 transition-transform">←</span>
+                    <span className="text-sm">←</span>
                   </button>
 
-                  <div className="px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs flex items-center gap-2">
-                    <span className="text-slate-400">الدرس التالي:</span>
-                    <span className="font-bold text-indigo-300 truncate max-w-[180px]">{currentActiveLesson.title}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">⏱️ 12 د</span>
+                  <div className="px-4 py-3 rounded-2xl bg-[#18243D] border border-white/10 text-xs flex items-center gap-2.5 shadow-inner">
+                    <span className="text-slate-400 font-medium">الهدف الحالي:</span>
+                    <span className="font-bold text-[#4F7DFF] truncate max-w-[190px]">{currentActiveLesson.title}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">⏱️ 12 د</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Progress Metrics Widget (Right 5 cols) */}
-            <div className="lg:col-span-5 p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-4">
+            {/* Premium Circular Progress Ring Card (Right 5 cols) */}
+            <div className="lg:col-span-5 p-6 rounded-[24px] bg-[#121B2E] border border-white/10 backdrop-blur-md space-y-4 shadow-xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-slate-400 block font-semibold">مستوى الإنجاز في الخطة</span>
-                  <span className="text-2xl font-black text-emerald-400 font-mono">{progressPercentage}%</span>
+                  <span className="text-xs text-slate-400 font-semibold block mb-1">إنجازك في المسار</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-[#3DDC97] font-mono tracking-tight">{progressPercentage}%</span>
+                    <span className="text-xs text-slate-400">مكتمل</span>
+                  </div>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl">
-                  🎓
+                {/* Tactile Progress Ring SVG */}
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <svg width="64" height="64" viewBox="0 0 64 64" className="transform -rotate-90">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="26"
+                      fill="none"
+                      stroke="#3DDC97"
+                      strokeWidth="6"
+                      strokeDasharray={2 * Math.PI * 26}
+                      strokeDashoffset={(2 * Math.PI * 26) * (1 - progressPercentage / 100)}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000 ease-out"
+                    />
+                  </svg>
+                  <span className="absolute text-xl">🚀</span>
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="space-y-1.5">
-                <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
+              {/* Progress Bar with Glowing Fill */}
+              <div className="space-y-2">
+                <div className="h-3.5 w-full bg-[#060B17] rounded-full overflow-hidden p-0.5 border border-white/10">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-700 shadow-md shadow-emerald-500/20"
+                    className="h-full bg-gradient-to-r from-[#4F7DFF] via-[#7C5CFF] to-[#3DDC97] rounded-full transition-all duration-700 shadow-[0_0_12px_rgba(61,220,151,0.5)]"
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-400 font-medium">
-                  <span>{completedLessonsCount} من أصل {totalLessonsCount} مراحل مكتملة</span>
-                  <span>المتبقي: {totalLessonsCount - completedLessonsCount} مراحل</span>
+                <div className="flex justify-between text-[11px] text-slate-400 font-semibold">
+                  <span>{completedLessonsCount} من أصل {totalLessonsCount} دروس مكتملة</span>
+                  <span>المتبقي: {totalLessonsCount - completedLessonsCount} دروس</span>
                 </div>
               </div>
 
-              {/* Badges strip */}
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5 text-[11px]">
-                <div className="p-2 rounded-xl bg-slate-950/40 border border-white/5 flex items-center gap-2">
-                  <span>🏆</span>
-                  <span className="text-slate-300 font-bold">وسام البداية القوية</span>
-                </div>
-                <div className="p-2 rounded-xl bg-slate-950/40 border border-white/5 flex items-center gap-2">
-                  <span>⚡</span>
-                  <span className="text-slate-300 font-bold">سرعة الاستيعاب +15%</span>
-                </div>
+              {/* Reward Highlights */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-amber-400">🎁</span>
+                  <span className="font-bold">مكافأة إكمال الخطة:</span>
+                </span>
+                <span className="font-black text-[#F7C948]">+500 XP + وسام خبير</span>
               </div>
             </div>
 
           </div>
         </div>
 
-        {/* ── 2. TODAY'S MISSION ACTION PANEL (🎯 مهمة اليوم) ── */}
-        <div className="w-full p-5 rounded-3xl border border-indigo-500/20 bg-slate-900/60 backdrop-blur-xl shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-2xl shrink-0">
+        {/* ── 2. TODAY'S GOAL ACTION CARD (🎯 هدف اليوم) ── */}
+        <div className="w-full p-6 rounded-[24px] border border-white/10 bg-gradient-to-r from-[#121B2E] via-[#18243D] to-[#121B2E] backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#4F7DFF]/15 border border-[#4F7DFF]/30 flex items-center justify-center text-3xl shrink-0 shadow-inner">
               🎯
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-white">مهمة اليوم الدراسية</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">+150 XP مكافأة</span>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-lg font-black text-white">هدف اليوم الدراسي</h3>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#F7C948]/15 text-[#F7C948] border border-[#F7C948]/30">+150 XP</span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                شاهد درس ({currentActiveLesson?.title || "الأساسيات"}) واجتز الاختبار التقييمي القصير لفتح المرحلة التالية.
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                أنقذ Streak اليوم بإنجاز درس (<strong className="text-white">{currentActiveLesson?.title || "الأساسيات"}</strong>) واجتياز الاختبار المباشر.
               </p>
             </div>
           </div>
@@ -564,37 +588,38 @@ export default function PlanLearnPage() {
                 setIsModalOpen(true);
               }
             }}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs border-none cursor-pointer transition-all shrink-0 self-start md:self-auto shadow-md shadow-indigo-600/20"
+            className="h-12 px-6 bg-[#3DDC97] hover:bg-[#32c988] text-slate-950 font-black text-sm rounded-2xl border-b-4 border-[#25a36c] active:border-b-0 active:translate-y-1 transition-all cursor-pointer shrink-0 self-start md:self-auto shadow-md"
           >
-            🚀 ابدأ مهمة اليوم
+            🚀 ابدأ هدف اليوم
           </button>
         </div>
 
-        {/* ── 3. ROADMAP STORYTELLING CONTAINER ── */}
+        {/* ── 3. ROADMAP TIMELINE (Oversized 100px Circular Nodes) ── */}
         <div className="w-full relative duo-container">
           
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 px-2">
             <div>
-              <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                <span>📖</span>
+              <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+                <span>🗺️</span>
                 <span>خريطة التعلم التفاعلية</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">مسار متتابع - اضغط على المرحلة النشطة لمتابعة التعلم</p>
+              <p className="text-xs text-slate-400 mt-1 font-medium">طريق المعرفة - اضغط على الدائرة النشطة لفتح المرحلة</p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> مكتمل</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping" /> حالي</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-700" /> مقفل</span>
+
+            <div className="flex items-center gap-3 text-xs text-slate-400 font-bold">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#3DDC97]" /> مكتمل</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#4F7DFF] animate-pulse" /> حالي</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-slate-700" /> مقفل</span>
             </div>
           </div>
 
-          <div className="relative w-full bg-slate-900/80 rounded-3xl border border-indigo-500/20 p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col items-center min-h-[580px] backdrop-blur-xl">
+          <div className="relative w-full bg-[#121B2E] rounded-[28px] border border-white/10 p-6 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col items-center min-h-[620px] backdrop-blur-xl">
             
-            {/* Central Animated Line */}
-            <div className="absolute top-10 bottom-10 w-2 bg-gradient-to-b from-emerald-500 via-indigo-500 to-slate-800 rounded-full left-1/2 -translate-x-1/2" />
+            {/* Glowing Central Connector Line */}
+            <div className="absolute top-12 bottom-12 w-2.5 bg-gradient-to-b from-[#3DDC97] via-[#4F7DFF] to-slate-800 rounded-full left-1/2 -translate-x-1/2 shadow-[0_0_15px_rgba(79,125,255,0.4)]" />
 
             {/* Winding Nodes List */}
-            <div className="relative z-10 w-full flex flex-col items-center gap-12 py-4 max-h-[80vh] overflow-y-auto no-scrollbar pr-1 pl-1">
+            <div className="relative z-10 w-full flex flex-col items-center gap-16 py-6 max-h-[82vh] overflow-y-auto no-scrollbar pr-1 pl-1">
               {lessons.map((lesson, index) => {
                 const active = selectedLessonId === lesson.id;
                 const isCompleted =
@@ -611,68 +636,72 @@ export default function PlanLearnPage() {
                 const LANDMARKS = ["🧠", "🚀", "🏆", "☕", "🤖", "⚡", "📚", "👾"];
                 const landmark = LANDMARKS[index % LANDMARKS.length];
 
-                let btnClass = "";
+                let btnStyle = "";
+                let shadowStyle = "";
                 let nodeIcon = null;
-                let badgeColor = "";
+                let badgeStyle = "";
 
                 if (lesson.hasProject) {
-                  badgeColor = "text-purple-400 border-purple-500/30 bg-purple-500/10";
+                  badgeStyle = "text-[#7C5CFF] border-[#7C5CFF]/30 bg-[#7C5CFF]/15";
                   if (isCompleted) {
-                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_6px_0_0_#d97706]";
-                    nodeIcon = <span>🎁</span>;
+                    btnStyle = "bg-[#3DDC97] text-slate-950 border-b-4 border-[#25a36c]";
+                    nodeIcon = <span className="text-3xl">🎁</span>;
                   } else if (active) {
-                    btnClass = "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_35px_rgba(168,85,247,0.7)] ring-4 ring-purple-400/40 animate-pulse scale-105";
-                    nodeIcon = <span>🤖</span>;
+                    btnStyle = "bg-[#7C5CFF] text-white border-b-4 border-[#5b36e0] ring-4 ring-[#7C5CFF]/50 animate-pulse scale-105";
+                    shadowStyle = "shadow-[0_0_40px_rgba(124,92,255,0.7)]";
+                    nodeIcon = <span className="text-3xl">🤖</span>;
                   } else if (lesson.unlocked) {
-                    btnClass = "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_6px_0_0_#7e22ce]";
-                    nodeIcon = <span>🤖</span>;
+                    btnStyle = "bg-[#7C5CFF] text-white border-b-4 border-[#5b36e0]";
+                    nodeIcon = <span className="text-3xl">🤖</span>;
                   } else {
-                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
-                    nodeIcon = <span>🔒</span>;
+                    btnStyle = "bg-[#18243D] text-slate-600 border-b-4 border-[#0f172a] opacity-50 cursor-not-allowed";
+                    nodeIcon = <span className="text-2xl">🔒</span>;
                   }
                 } else if (lesson.requiresQuiz) {
-                  badgeColor = "text-amber-400 border-amber-500/30 bg-amber-500/10";
+                  badgeStyle = "text-[#F7C948] border-[#F7C948]/30 bg-[#F7C948]/15";
                   if (isCompleted) {
-                    btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
-                    nodeIcon = <span>🏆</span>;
+                    btnStyle = "bg-[#3DDC97] text-slate-950 border-b-4 border-[#25a36c]";
+                    nodeIcon = <span className="text-3xl">🏆</span>;
                   } else if (active) {
-                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_0_35px_rgba(245,158,11,0.7)] ring-4 ring-amber-400/40 animate-pulse scale-105";
-                    nodeIcon = <span>🏆</span>;
+                    btnStyle = "bg-[#F7C948] text-slate-950 border-b-4 border-[#cfa32b] ring-4 ring-[#F7C948]/50 animate-pulse scale-105";
+                    shadowStyle = "shadow-[0_0_40px_rgba(247,201,72,0.7)]";
+                    nodeIcon = <span className="text-3xl">🏆</span>;
                   } else if (lesson.unlocked) {
-                    btnClass = "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_6px_0_0_#d97706]";
-                    nodeIcon = <span>🏆</span>;
+                    btnStyle = "bg-[#F7C948] text-slate-950 border-b-4 border-[#cfa32b]";
+                    nodeIcon = <span className="text-3xl">🏆</span>;
                   } else {
-                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
-                    nodeIcon = <span>🔒</span>;
+                    btnStyle = "bg-[#18243D] text-slate-600 border-b-4 border-[#0f172a] opacity-50 cursor-not-allowed";
+                    nodeIcon = <span className="text-2xl">🔒</span>;
                   }
                 } else {
-                  badgeColor = "text-indigo-400 border-indigo-500/30 bg-indigo-500/10";
+                  badgeStyle = "text-[#4F7DFF] border-[#4F7DFF]/30 bg-[#4F7DFF]/15";
                   if (isCompleted) {
-                    btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
+                    btnStyle = "bg-[#3DDC97] text-slate-950 border-b-4 border-[#25a36c]";
                     nodeIcon = (
-                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg className="w-10 h-10 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     );
                   } else if (active) {
-                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_35px_rgba(99,102,241,0.8)] ring-4 ring-indigo-400/40 animate-pulse scale-105";
-                    nodeIcon = <span>{index + 1}</span>;
+                    btnStyle = "bg-[#4F7DFF] text-white border-b-4 border-[#2d56d9] ring-4 ring-[#4F7DFF]/50 animate-pulse scale-105";
+                    shadowStyle = "shadow-[0_0_40px_rgba(79,125,255,0.7)]";
+                    nodeIcon = <span className="text-3xl font-black">{index + 1}</span>;
                   } else if (lesson.unlocked) {
-                    btnClass = "bg-sky-500 hover:bg-sky-400 text-white shadow-[0_6px_0_0_#0369a1]";
-                    nodeIcon = <span>{index + 1}</span>;
+                    btnStyle = "bg-[#4F7DFF] text-white border-b-4 border-[#2d56d9]";
+                    nodeIcon = <span className="text-3xl font-black">{index + 1}</span>;
                   } else {
-                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
-                    nodeIcon = <span>🔒</span>;
+                    btnStyle = "bg-[#18243D] text-slate-600 border-b-4 border-[#0f172a] opacity-50 cursor-not-allowed";
+                    nodeIcon = <span className="text-2xl">🔒</span>;
                   }
                 }
 
                 return (
                   <div key={lesson.id} className="relative flex flex-col items-center w-full">
                     
-                    {/* Landmark icon along curved path */}
+                    {/* Floating Landmark Icon Along Curved Path */}
                     {multiplier !== 0 && (
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 text-2xl sm:text-3xl select-none pointer-events-none opacity-40 animate-pulse transition-all duration-300"
+                        className="absolute top-1/2 -translate-y-1/2 text-3xl sm:text-4xl select-none pointer-events-none opacity-40 animate-pulse transition-all duration-300"
                         style={{
                           transform: `translateX(calc(${-multiplier} * var(--x-offset))) translateY(-50%)`,
                         }}
@@ -686,18 +715,18 @@ export default function PlanLearnPage() {
                       className="relative flex flex-col items-center group"
                       style={{ transform: `translateX(calc(${multiplier} * var(--x-offset)))` }}
                     >
-                      {/* Active Node Badge Tooltip */}
+                      {/* Active Node Floating Mascot Banner */}
                       {active && (
-                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
-                          <div className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-xl whitespace-nowrap shadow-lg shadow-indigo-600/40 border border-indigo-400/30 flex items-center gap-1">
+                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                          <div className="bg-[#4F7DFF] text-white text-[11px] font-black px-3.5 py-1.5 rounded-2xl whitespace-nowrap shadow-lg border border-white/20 flex items-center gap-1.5">
                             <span>أنت هنا الآن</span>
-                            <span>🎓</span>
+                            <span>🚀</span>
                           </div>
-                          <div className="w-2 h-2 bg-indigo-600 rotate-45 -mt-1 shadow-md" />
+                          <div className="w-2.5 h-2.5 bg-[#4F7DFF] rotate-45 -mt-1 shadow-md" />
                         </div>
                       )}
 
-                      {/* Main Interactive Button */}
+                      {/* Giant Tactile 3D Circular Node Button (100px / w-24 h-24 sm:w-28 sm:h-28) */}
                       <button
                         onClick={() => {
                           if (lesson.unlocked) {
@@ -706,24 +735,24 @@ export default function PlanLearnPage() {
                           }
                         }}
                         disabled={!lesson.unlocked}
-                        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center font-black text-xl transition-all border-none relative cursor-pointer outline-none group-hover:scale-110 ${btnClass}`}
+                        className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center font-black text-2xl transition-all cursor-pointer outline-none active:translate-y-1 ${btnStyle} ${shadowStyle} group-hover:scale-105`}
                       >
                         {nodeIcon}
                       </button>
 
-                      {/* Lesson Stage Details Card */}
+                      {/* Stage Card Details */}
                       <div
-                        className={`mt-3 px-4 py-2.5 rounded-2xl text-center border max-w-[180px] backdrop-blur-md transition-all shadow-md ${
+                        className={`mt-4 px-5 py-3 rounded-2xl text-center border max-w-[200px] backdrop-blur-md transition-all shadow-lg ${
                           active
-                            ? "bg-indigo-950/90 border-indigo-500/40 text-indigo-200 font-bold shadow-indigo-500/10"
+                            ? "bg-[#18243D] border-[#4F7DFF]/40 text-white font-bold"
                             : isCompleted
-                            ? "bg-slate-900/90 border-emerald-500/30 text-emerald-300 font-semibold"
+                            ? "bg-[#18243D]/90 border-[#3DDC97]/30 text-[#3DDC97] font-semibold"
                             : lesson.unlocked
-                            ? "bg-slate-900 border-slate-800 text-slate-200 font-semibold"
-                            : "bg-slate-950/80 border-slate-900 text-slate-600 text-xs"
+                            ? "bg-[#18243D]/80 border-white/10 text-slate-200 font-semibold"
+                            : "bg-[#060B17]/80 border-white/5 text-slate-600 text-xs"
                         }`}
                       >
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border mb-1 inline-block ${badgeColor}`}>
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border mb-1 inline-block ${badgeStyle}`}>
                           {stageNarrative}
                         </span>
                         <p className="text-xs font-bold truncate leading-tight mt-0.5">{lesson.title}</p>
@@ -735,13 +764,13 @@ export default function PlanLearnPage() {
                               setSelectedLessonId(lesson.id);
                               setIsModalOpen(true);
                             }}
-                            className="mt-2 w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-[11px] hover:from-emerald-400 hover:to-teal-400 transition-all shadow-md shadow-emerald-500/20 border-none cursor-pointer"
+                            className="mt-2.5 w-full h-8 px-3 rounded-xl bg-[#3DDC97] hover:bg-[#32c988] text-slate-950 font-black text-xs border-b-2 border-[#25a36c] active:border-b-0 active:translate-y-0.5 transition-all cursor-pointer"
                           >
                             ▶ ابدأ الآن
                           </button>
                         )}
                         {!lesson.unlocked && (
-                          <p className="text-[9px] text-slate-500 mt-1">تفتح بعد إنجاز ما قبلها</p>
+                          <p className="text-[9px] text-slate-500 mt-1 font-medium">تفتح بعد إنجاز ما قبلها</p>
                         )}
                       </div>
 
