@@ -74,7 +74,7 @@ export default function CourseProductPage() {
   const [course, setCourse] = useState<CoursePreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
-  const [user, setUser] = useState<{ name: string; role: string; phone?: string | null } | null>(null);
+  const [user, setUser] = useState<{ name: string; role: string; phone?: string | null; parentPhone?: string | null } | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [code, setCode] = useState("");
   const [applying, setApplying] = useState(false);
@@ -91,7 +91,7 @@ export default function CourseProductPage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then(async (r) => { const raw = await r.text(); return raw ? JSON.parse(raw) : {}; })
-      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role, phone: d.user.phone ?? null } : null))
+      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role, phone: d.user.phone ?? null, parentPhone: d.user.parentPhone ?? null } : null))
       .catch(() => setUser(null))
       .finally(() => setUserLoading(false));
   }, []);
@@ -537,7 +537,14 @@ export default function CourseProductPage() {
                       <>
                         <a href={buildWhatsAppUrl(
                             process.env.NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD || "+201285353604",
-                            `مرحباً، أريد الاشتراك في كورس "${course.title}"\nالسعر: ${course.effectivePrice} جنيه\nالاسم: ${user?.name || "غير مسجل"}`,
+                            [
+                              `مرحباً، أريد الاشتراك في كورس "${course.title}"`,
+                              `المعلم: ${course.teacher.name}`,
+                              `السعر: ${course.effectivePrice} جنيه`,
+                              `اسم الطالب: ${user?.name || "غير مسجل"}`,
+                              user?.phone ? `رقم الطالب: ${user.phone}` : null,
+                              user?.parentPhone ? `رقم ولي الأمر: ${user.parentPhone}` : null,
+                            ].filter(Boolean).join("\n"),
                           )} target="_blank" rel="noopener noreferrer"
                           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-base transition-colors hover:opacity-90"
                           style={{ background: "#25D366" }}>
