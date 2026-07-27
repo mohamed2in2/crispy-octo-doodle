@@ -19,10 +19,10 @@ export class SearchPlatformTool implements AITool {
       success: true,
       data: {
         query,
-        matchedLessons: [{ id: "lsn_101", title: "المتغيرات وأنواع البيانات" }],
-        matchedQuizzes: [{ id: "qz_101", title: "اختبار المتغيرات السريع" }],
+        matchedLessons: [],
+        matchedQuizzes: [],
       },
-      executionTimeMs: 14,
+      executionTimeMs: 5,
     };
   }
 

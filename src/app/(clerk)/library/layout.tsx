@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "مكتبتي | منصة Code-UP الكورسات",
-  description: "تصفح الكورسات التي قمت بالتسجيل فيها ومتابعة تقدمك التدريبي في منصة Code-UP الكورسات.",
+  title: "مكتبتي التعليمية | منصة Code-UP التعليمية",
+  description: "تصفح الكورسات التي قمت بالتسجيل فيها ومتابعة تقدمك التعليمي على منصة Code-UP.",
   openGraph: {
-    title: "مكتبتي | منصة Code-UP الكورسات",
-    description: "تصفح الكورسات التي قمت بالتسجيل فيها ومتابعة تقدمك التدريبي في منصة Code-UP الكورسات.",
+    title: "مكتبتي التعليمية | منصة Code-UP التعليمية",
+    description: "تصفح الكورسات التي قمت بالتسجيل فيها ومتابعة تقدمك التعليمي على منصة Code-UP.",
     url: "https://code-up.tech/library",
-    siteName: "منصة Code-UP",
+    siteName: "منصة Code-UP التعليمية",
     locale: "ar_EG",
     type: "website",
   },

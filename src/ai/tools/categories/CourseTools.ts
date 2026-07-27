@@ -72,17 +72,41 @@ export class GetLessonTool implements AITool {
   public validate(): boolean { return true; }
 
   public async execute(context: ToolExecutionContext): Promise<ToolExecutionResult> {
+    const startTime = Date.now();
+    try {
+      if (context.userId && context.userId !== "anon" && context.userId !== "std_demo_001") {
+        const studentCtx = await buildStudentContext(context.userId);
+        if (studentCtx.courses.length > 0) {
+          const firstCourse = studentCtx.courses[0];
+          return {
+            success: true,
+            data: {
+              id: firstCourse.id,
+              title: firstCourse.title,
+              order: 1,
+              objectives: [`مذاكرة ومراجعة ${firstCourse.title}`],
+              resources: [],
+              estimatedStudyMinutes: 30,
+            },
+            executionTimeMs: Date.now() - startTime,
+          };
+        }
+      }
+    } catch {
+      /* fallback */
+    }
+
     return {
       success: true,
       data: {
-        id: context.lessonId || "lsn_101",
-        title: "المتغيرات وأنواع البيانات",
-        order: 1,
-        objectives: ["فهم مفهوم المتغير في الذاكرة", "التمييز بين let و const"],
-        resources: ["فيديو الشرح", "ملف PDF المرفق", "كويز تفاعلي"],
-        estimatedStudyMinutes: 25,
+        id: "",
+        title: "غير مسجل في أي درس حالياً",
+        order: 0,
+        objectives: [],
+        resources: [],
+        estimatedStudyMinutes: 0,
       },
-      executionTimeMs: 4,
+      executionTimeMs: Date.now() - startTime,
     };
   }
 

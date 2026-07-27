@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "الكورسات | منصة Code-UP الكورسات",
-  description: "اكتشف مجموعة متنوعة من الكورسات الكورسات في مجالات متنوعة مثل التكنولوجيا والعلوم للمتعلمين المصريين لمختلف الأعمار والمستويات.",
+  title: "كورسات منصة Code-UP التعليمية | CodeUp Academy",
+  description: "تصفح واكتشف أفضل كورسات الرياضيات والعلوم والبرمجة والتكنولوجيا المتاحة على منصة Code-UP التعليمية للطلاب في مصر.",
   openGraph: {
-    title: "الكورسات | منصة Code-UP الكورسات",
-    description: "اكتشف مجموعة متنوعة من الكورسات الكورسات في مجالات متنوعة مثل التكنولوجيا والعلوم للمتعلمين المصريين لمختلف الأعمار والمستويات.",
+    title: "كورسات منصة Code-UP التعليمية | CodeUp Academy",
+    description: "تصفح واكتشف أفضل كورسات الرياضيات والعلوم والبرمجة والتكنولوجيا المتاحة على منصة Code-UP التعليمية للطلاب في مصر.",
     url: "https://code-up.tech/courses",
-    siteName: "منصة Code-UP",
+    siteName: "منصة Code-UP التعليمية",
     locale: "ar_EG",
     type: "website",
   },

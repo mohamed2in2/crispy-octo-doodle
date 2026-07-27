@@ -71,20 +71,36 @@ async function resolveGatedState(): Promise<GateResult> {
 export const metadata: Metadata = {
   metadataBase: new URL("https://code-up.tech"),
   title: {
-    default: "منصة Code-UP التعليمية",
-    template: "%s | منصة Code-UP",
+    default: "منصة Code-UP التعليمية | CodeUp Academy Tech",
+    template: "%s | منصة Code-UP التعليمية",
   },
-  description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
-  keywords: ["كورسات", "تعليم", "برمجة", "رياضيات", "علوم", "مصر", "Code-UP", "منصة تعليمية", "ثانوية عامة", "إعدادية"],
+  description: "المنصة التعليمية الأولى للطلاب المصريين في الرياضيات والعلوم والبرمجة والذكاء الاصطناعي - كورس وتدريب وتطبيقات تفاعلية.",
+  keywords: [
+    "code up tech",
+    "codeup tech",
+    "codeup academy",
+    "CodeUp",
+    "Code-UP",
+    "منصة code up",
+    "منصة codeup",
+    "منصة تعليمية",
+    "كورسات برمجة",
+    "رياضيات ثانوية عامة",
+    "علوم إعدادية",
+    "الذكاء الاصطناعي للتعليم",
+  ],
+  alternates: {
+    canonical: "https://code-up.tech",
+  },
   icons: {
     icon: "/logo.jpeg",
   },
   openGraph: {
-    title: "منصة Code-UP التعليمية",
-    description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
+    title: "منصة Code-UP التعليمية | CodeUp Academy",
+    description: "المنصة التعليمية الأولى للطلاب المصريين في الرياضيات والعلوم والبرمجة بالذكاء الاصطناعي",
     url: "https://code-up.tech",
     siteName: "منصة Code-UP",
-    locale: "ar",
+    locale: "ar_EG",
     type: "website",
     images: [
       {
@@ -97,8 +113,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "منصة Code-UP التعليمية",
-    description: "تعلّم الرياضيات والعلوم للطلاب المصريين",
+    title: "منصة Code-UP التعليمية | CodeUp Academy",
+    description: "المنصة التعليمية الأولى للطلاب المصريين في الرياضيات والعلوم والبرمجة بالذكاء الاصطناعي",
     images: ["https://code-up.tech/og-image.jpeg"],
   },
   robots: {
@@ -113,10 +129,26 @@ export const metadata: Metadata = {
     },
   },
   verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
     other: {
       "facebook-domain-verification": ["fagzmwahaw0vng7nfk8xm6izl2upf4"],
+      "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION || "",
     },
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "EducationalOrganization",
+  "name": "Code-UP Tech",
+  "alternateName": ["CodeUp Academy", "منصة Code-UP التعليمية", "Code Up"],
+  "url": "https://code-up.tech",
+  "logo": "https://code-up.tech/logo.jpeg",
+  "image": "https://code-up.tech/og-image.jpeg",
+  "description": "منصة تعليمية متكاملة لتعليم الطلاب الرياضيات والعلوم والبرمجة في مصر بأحدث أساليب التفكير والذكاء الاصطناعي.",
+  "sameAs": [
+    "https://www.facebook.com/CodeUpAcad"
+  ]
 };
 
 export default async function RootLayout({
@@ -144,6 +176,10 @@ export default async function RootLayout({
         />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}` }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
