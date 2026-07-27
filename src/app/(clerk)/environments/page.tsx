@@ -130,108 +130,158 @@ export default function EnvironmentsPage() {
   const [iqData, setIqData] = useState<IQData | null>(null);
 
   useEffect(() => {
-    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+    fetchMeWithRetry(2, 100).then((me) => setUser(me)).catch(() => {});
     setIqData(getIQData());
   }, []);
 
   return (
     <ProfileGuard>
-      <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-300 font-sans">
+      <div className="flex flex-col min-h-screen bg-[var(--bg)] transition-colors duration-300 font-sans">
         <Navbar user={user ? { name: user.name, role: user.role } : null} />
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-          {/* Header */}
+        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 md:py-14">
+          
+          {/* Hero Section */}
           <motion.div
-            className="mb-12 text-center"
+            className="mb-10 text-center relative z-10"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold mb-6 border border-indigo-100 dark:border-indigo-500/20">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-              بيئات التعلم والذكاء
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-xs sm:text-sm font-bold mb-4 border border-indigo-500/20 shadow-sm backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+              <span>🔬 بيئات التعلم والذكاء التفاعلية</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">بيئات التعلم والتحدي</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">ادخل إلى المحررات البرمجية التطويرية أو تسلَّى بألعاب الذكاء المعرفي التفاعلية</p>
+            <h1 className="text-3xl sm:text-5xl font-black text-gray-900 dark:text-white mb-3 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-800 dark:from-white dark:via-indigo-100 dark:to-indigo-300">
+              بيئات التعلم والتحدي
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+              انطلق في محررات البرمجة التطويرية أو درّب عقولك واختبر مهاراتك مع ألعاب الذكاء المعرفي
+            </p>
           </motion.div>
 
-          {/* IQ Brain Card — full width hero */}
+          {/* IQ Brain Card — Hero Dashboard Banner */}
           {iqData && (() => {
             const level = getIQLevel(iqData.overallIQ);
             const lc = LEVEL_COLORS[level] || LEVEL_COLORS["متوسط"];
-            const pct = Math.min(100, ((iqData.overallIQ - 200) / 1800) * 100);
+            const pct = Math.min(100, Math.max(10, ((iqData.overallIQ - 200) / 1800) * 100));
             return (
               <motion.div
                 className="mb-12"
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.5 }}
               >
                 <Link href="/environments/iq" className="block group no-underline">
-                  <div className="relative rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5"
-                    style={{ background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)" }}>
-                    {/* Decorative blobs */}
-                    <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-[60px] opacity-40"
-                      style={{ background: lc.color }} />
-                    <div className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full blur-[50px] opacity-30"
-                      style={{ background: "#7C3AED" }} />
+                  <div
+                    className="relative rounded-3xl overflow-hidden border border-indigo-500/20 dark:border-indigo-500/15 p-6 sm:p-8 transition-all duration-300 hover:border-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/10"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,27,75,0.95) 50%, rgba(15,23,42,0.95) 100%)",
+                      backdropFilter: "blur(20px)",
+                    }}
+                  >
+                    {/* Background glow effects */}
+                    <div
+                      className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[80px] opacity-30"
+                      style={{ background: lc.color }}
+                    />
+                    <div
+                      className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-[80px] opacity-25"
+                      style={{ background: "#6366f1" }}
+                    />
 
-                    <div className="relative z-10 p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6">
-                      {/* Ring */}
-                      <div className="shrink-0">
-                        {(() => {
-                          const r = 42; const c = 2 * Math.PI * r;
-                          return (
-                            <svg width="110" height="110" viewBox="0 0 110 110">
-                              <circle cx="55" cy="55" r={r} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="8" />
-                              <circle cx="55" cy="55" r={r} fill="none" stroke={lc.color} strokeWidth="8"
-                                strokeDasharray={c} strokeDashoffset={c - (pct / 100) * c}
-                                strokeLinecap="round" transform="rotate(-90 55 55)"
-                                style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" }} />
-                              <text x="55" y="50" textAnchor="middle" fontSize="22" fontWeight="900" fill="white">{iqData.overallIQ}</text>
-                              <text x="55" y="66" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,.6)">معدل الذكاء</text>
-                              <text x="55" y="80" textAnchor="middle" fontSize="11" fontWeight="700" fill={lc.color}>{level}</text>
-                            </svg>
-                          );
-                        })()}
+                    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 md:gap-8">
+                      
+                      {/* Left Block (RTL right): IQ Score + Avatar Level */}
+                      <div className="flex items-center gap-5 shrink-0 text-center sm:text-right w-full lg:w-auto justify-center sm:justify-start">
+                        <div className="relative shrink-0 flex items-center justify-center">
+                          {(() => {
+                            const r = 44;
+                            const c = 2 * Math.PI * r;
+                            return (
+                              <svg width="116" height="116" viewBox="0 0 116 116" className="transform -rotate-90">
+                                <circle cx="58" cy="58" r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="9" />
+                                <circle
+                                  cx="58"
+                                  cy="58"
+                                  r={r}
+                                  fill="none"
+                                  stroke={lc.color}
+                                  strokeWidth="9"
+                                  strokeDasharray={c}
+                                  strokeDashoffset={c - (pct / 100) * c}
+                                  strokeLinecap="round"
+                                  className="transition-all duration-1000 ease-out"
+                                />
+                              </svg>
+                            );
+                          })()}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                            <span className="text-2xl font-black text-white tracking-tight">{iqData.overallIQ}</span>
+                            <span className="text-[10px] font-semibold text-gray-400">معدل الذكاء</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-1.5"
+                            style={{ background: `${lc.color}20`, color: lc.color, border: `1px solid ${lc.color}40` }}
+                          >
+                            <span>🧠 {level}</span>
+                          </div>
+                          <h2 className="text-2xl font-black text-white">معدل الذكاء المعرفي</h2>
+                          <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                            <span className="flex items-center gap-1">🎯 {iqData.totalGamesPlayed} جلسة</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 text-amber-400 font-bold">🔥 {iqData.streak.current} يوم مواظبة</span>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Info */}
-                      <div className="flex-1 text-center sm:text-right">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black mb-2"
-                          style={{ background: "rgba(124,58,237,.3)", color: "#C4B5FD", border: "1px solid rgba(124,58,237,.5)" }}>
-                          🧠 بيئة الذكاء المعرفي
-                        </div>
-                        <h2 className="text-2xl md:text-3xl font-black text-white mb-1">معدلي</h2>
-                        <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,.6)" }}>
-                          {iqData.totalGamesPlayed} جلسة · streak {iqData.streak.current} 🔥
+                      {/* Center Block: Skills Horizontal Bars */}
+                      <div className="flex-1 w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
+                        <p className="text-xs font-bold text-gray-300 mb-3 flex items-center justify-between">
+                          <span>📊 مهارات التفكير التفاعلية</span>
+                          <span className="text-[11px] text-indigo-400 font-normal">تحليل آلي</span>
                         </p>
-                        {/* Skill mini bars */}
-                        <div className="flex gap-1 flex-wrap justify-center sm:justify-end">
-                          {(["السرعة","الذاكرة","التركيز","المرونة"] as const).map((label, i) => {
-                            const skillKeys = ["speed","memory","attention","flexibility"] as const;
+                        <div className="grid grid-cols-2 gap-3">
+                          {(["السرعة", "الذاكرة", "التركيز", "المرونة"] as const).map((label, i) => {
+                            const skillKeys = ["speed", "memory", "attention", "flexibility"] as const;
                             const sk = skillKeys[i];
-                            const p = Math.min(100, ((iqData.skills[sk].score - 200) / 1800) * 100);
-                            const colors = ["#E91E63","#9C27B0","#FF9800","#FF5722"];
+                            const p = Math.min(100, Math.max(15, ((iqData.skills[sk].score - 200) / 1800) * 100));
+                            const barColors = [
+                              "from-pink-500 to-rose-500",
+                              "from-purple-500 to-indigo-500",
+                              "from-amber-400 to-orange-500",
+                              "from-emerald-400 to-teal-500",
+                            ];
                             return (
-                              <div key={sk} className="flex flex-col items-center gap-1">
-                                <div className="h-12 w-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.1)" }}>
-                                  <div className="w-full rounded-full transition-all duration-700" style={{ height: `${p}%`, background: colors[i], marginTop: `${100-p}%` }} />
+                              <div key={sk} className="space-y-1">
+                                <div className="flex justify-between items-center text-[11px] font-semibold text-gray-300">
+                                  <span>{label}</span>
+                                  <span className="font-mono text-gray-400">{Math.round(p)}%</span>
                                 </div>
-                                <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,.5)" }}>{label}</span>
+                                <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full bg-gradient-to-r ${barColors[i]} transition-all duration-700`}
+                                    style={{ width: `${p}%` }}
+                                  />
+                                </div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
 
-                      {/* CTA */}
-                      <div className="shrink-0">
-                        <div className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm text-white transition-all group-hover:scale-105"
-                          style={{ background: "linear-gradient(135deg,#7C3AED,#534AB7)", boxShadow: "0 8px 24px -4px rgba(124,58,237,.5)" }}>
-                          عرض المعدل
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      {/* Right Block (RTL left): Action CTA */}
+                      <div className="shrink-0 w-full sm:w-auto">
+                        <div className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all duration-200 shadow-lg shadow-indigo-600/30 group-hover:scale-105">
+                          <span>دخول معمل الذكاء</span>
+                          <svg className="w-4 h-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
                         </div>
                       </div>
+
                     </div>
                   </div>
                 </Link>
@@ -240,10 +290,18 @@ export default function EnvironmentsPage() {
           })()}
 
           {/* ════════ SECTION 1: DEVELOPER PLAYGROUNDS ════════ */}
-          <div className="mb-12">
-            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-3">
-              <span className="text-2xl">💻</span>
-              <h2 className="text-xl font-black text-gray-900 dark:text-white">بيئات التطوير والمحررات البرمجية</h2>
+          <div className="mb-14">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-gray-200 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-lg font-bold">💻</span>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 dark:text-white">بيئات التطوير والمحررات البرمجية</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">محررات أكواد تفاعلية تدعم التنفيذ الفوري للمشاريع</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                {PLAYGROUNDS.length} بيئات
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {PLAYGROUNDS.map((subject, index) => (
@@ -254,7 +312,7 @@ export default function EnvironmentsPage() {
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                   whileHover={{ y: -5 }}
                 >
-                  <Link href={`/environments/${subject.id}`} className="block h-full group">
+                  <Link href={`/environments/${subject.id}`} className="block h-full group no-underline">
                     <SubjectCard subject={subject} />
                   </Link>
                 </motion.div>
@@ -263,10 +321,18 @@ export default function EnvironmentsPage() {
           </div>
 
           {/* ════════ SECTION 2: COGNITIVE IQ GAMES ════════ */}
-          <div className="mb-12">
-            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 dark:border-white/5 pb-3">
-              <span className="text-2xl">🎮</span>
-              <h2 className="text-xl font-black text-gray-900 dark:text-white">ألعاب التحدي والذكاء المعرفي (IQ)</h2>
+          <div className="mb-14">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-gray-200 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center text-lg font-bold">🎮</span>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 dark:text-white">ألعاب التحدي والذكاء المعرفي (IQ)</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">ألعاب ذكاء تفاعلية مصممة لرفع مهارات الاستيعاب والسرعة</p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                {GAMES.length} ألعاب
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {GAMES.map((subject, index) => (
@@ -277,7 +343,7 @@ export default function EnvironmentsPage() {
                   transition={{ duration: 0.4, delay: index * 0.05 }}
                   whileHover={{ y: -5 }}
                 >
-                  <Link href={`/environments/${subject.id}`} className="block h-full group">
+                  <Link href={`/environments/${subject.id}`} className="block h-full group no-underline">
                     <SubjectCard subject={subject} />
                   </Link>
                 </motion.div>
@@ -294,36 +360,49 @@ export default function EnvironmentsPage() {
 function SubjectCard({ subject }: { subject: any }) {
   return (
     <div
-      className="relative p-6 bg-white dark:bg-[#151B2B] rounded-[2rem] border border-gray-100 dark:border-white/5 overflow-hidden transition-all duration-300 hover:border-indigo-500/30 dark:hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/10 text-right group flex flex-col justify-between"
-      style={{ minHeight: 270 }}
+      className="relative p-6 bg-white dark:bg-[#151B2B] rounded-3xl border border-gray-200/80 dark:border-white/10 overflow-hidden transition-all duration-300 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 hover:shadow-xl hover:shadow-indigo-500/10 text-right group flex flex-col justify-between"
+      style={{ minHeight: 250 }}
     >
       {/* Top Gradient Glow */}
-      <div className={`absolute top-0 inset-x-0 h-24 bg-gradient-to-b ${subject.color} opacity-10 dark:opacity-5`} />
-      <div className={`absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br ${subject.color} rounded-full opacity-20 group-hover:opacity-40 transition-opacity`} style={{ filter: "blur(50px)" }} />
+      <div className={`absolute top-0 inset-x-0 h-24 bg-gradient-to-b ${subject.color} opacity-10 dark:opacity-15`} />
+      <div
+        className={`absolute -top-20 -right-20 w-44 h-44 bg-gradient-to-br ${subject.color} rounded-full opacity-20 group-hover:opacity-40 transition-opacity duration-300`}
+        style={{ filter: "blur(40px)" }}
+      />
 
-      {/* Top row */}
+      {/* Top Header Row */}
       <div className="relative z-10 flex justify-between items-start mb-4">
-        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-lg ${subject.shadow} group-hover:scale-110 transition-transform duration-300`}>
+        <div
+          className={`w-13 h-13 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-md ${subject.shadow} group-hover:scale-110 transition-transform duration-300`}
+        >
           {subject.icon}
         </div>
-        
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-100 dark:border-emerald-500/20">
+
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold rounded-full border border-emerald-500/20">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
           متاح الآن
         </div>
       </div>
 
-      {/* Bottom row */}
+      {/* Content Row */}
       <div className="relative z-10 mt-auto flex flex-col gap-1.5">
-        <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-400 group-hover:to-cyan-400 transition-all">
+        <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
           {subject.name}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
+        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">
           {subject.description}
         </p>
       </div>
-      
-      {/* Bottom accent border line */}
+
+      {/* Action Footer */}
+      <div className="relative z-10 pt-4 mt-3 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+        <span>دخول البيئة</span>
+        <svg className="w-4 h-4 transform rotate-180 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </div>
+
+      {/* Bottom Accent Line */}
       <div className={`absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r ${subject.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300`} />
     </div>
   );
