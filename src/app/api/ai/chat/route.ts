@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     const trimmedMsg = message.trim();
     const cleanMsg = trimmedMsg.toLowerCase();
 
-    // 1. Ahmed123M / Admin123 command check for live AI statistics & model telemetry
-    if (cleanMsg === "ahmed123m" || cleanMsg === "admin123") {
+    // 1. Ahmed123M / Admin123 / stats command check for live AI statistics & model telemetry
+    if (cleanMsg === "ahmed123m" || cleanMsg === "admin123" || cleanMsg === "stats") {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
@@ -90,67 +90,95 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Secret password to choose which model to talk to: AhmedToldMeSotalkelse
-    if (cleanMsg.includes("ahmedtoldmesotalkelse")) {
+    // 2. Secret command to purge/delete chat messages: AhmedReset / delete / clear
+    if (cleanMsg === "ahmedreset" || cleanMsg === "clear" || cleanMsg === "delete") {
+      await prisma.aIConversation.deleteMany({
+        where: { studentId: session.id },
+      });
+      const { MemoryManager } = await import("@/ai/memory/MemoryManager");
+      MemoryManager.getInstance().clearSession(session.id);
+
+      return NextResponse.json({
+        message: "🗑️ **تم مسح جميع الرسائل والمحادثات السابقة والحالية بنجاح!**\n\nتم إعادة ضبط السجل بالكامل.",
+        actions: [],
+        source: "chat_cleared",
+      });
+    }
+
+    // 3. Secret password to unlock Developer / Admin Mode & Model Switcher: AhmedToldMeSotalkelse
+    if (cleanMsg.includes("ahmedtoldmesotalkelse") || cleanMsg === "dev" || cleanMsg === "developer") {
       const { ConfigManager } = await import("@/ai/config/AIConfig");
       const configMgr = ConfigManager.getInstance();
 
-      const arg = cleanMsg.replace("ahmedtoldmesotalkelse", "").trim();
+      const arg = cleanMsg.replace("ahmedtoldmesotalkelse", "").replace("developer", "").replace("dev", "").trim();
 
-      if (arg === "1" || arg === "do" || arg === "digitalocean" || arg === "codeup" || arg === "") {
+      if (arg === "1" || arg === "do" || arg === "digitalocean" || arg === "codeup") {
         configMgr.updateConfig({ primaryProvider: "digitalocean" });
-        const switchText = `✅ **تم تفعيل النموذج بنجاح!**\n\n` +
-          `🤖 **النموذج المتحدث الحالي**: \`Code-UP Platform Assistant (DigitalOcean Premium Model)\`\n` +
-          `🔑 **مفتاح API المفعل**: \`DigitalOcean High-Performance GenAI (wbj5Ee7x...)\`\n` +
-          `🛡️ **النظام والتعليمات المطبقة**: تم تطبيق برومبت النظام المتقدم المخصص لبناء وإدارة وتأمين المنصة وتعديل إعداداتها.\n\n` +
-          `يمكنك الآن التحدث معه مباشرة وإعطائه أي تعليمات أو طلب تغيير إعدادات المنصة!`;
+        const switchText = `👨‍💻 **تم تفعيل وضع المطور + النموذج 1!**\n\n` +
+          `🤖 **النموذج المتحدث**: \`Code-UP Platform Assistant (DigitalOcean Premium Llama-3.3-70B)\`\n` +
+          `⚡ **وضع المطور**: لن يتم التعامل معك كطالب، ولن يكون هناك أي شرح أو تعليم غير مطلوب. استجابات سريعة ومباشرة للمطور.`;
         return NextResponse.json({
           message: switchText,
           actions: [],
-          source: "model_switcher",
+          source: "developer_mode",
         });
       } else if (arg === "2" || arg === "gemini") {
         configMgr.updateConfig({ primaryProvider: "gemini" });
         return NextResponse.json({
-          message: "✅ تم تحويل النموذج المتحدث إلى: **Google Gemini Pool (Primary)**",
+          message: "👨‍💻 **تم تفعيل وضع المطور + تحويل النموذج إلى Google Gemini Pool (Primary)**",
           actions: [],
-          source: "model_switcher",
+          source: "developer_mode",
         });
       } else if (arg === "3" || arg === "deepseek") {
         configMgr.updateConfig({ primaryProvider: "deepseek" });
         return NextResponse.json({
-          message: "✅ تم تحويل النموذج المتحدث إلى: **DeepSeek V4 Flash**",
+          message: "👨‍💻 **تم تفعيل وضع المطور + تحويل النموذج إلى DeepSeek V4 Flash**",
           actions: [],
-          source: "model_switcher",
+          source: "developer_mode",
         });
       } else if (arg === "4" || arg === "mock") {
         configMgr.updateConfig({ primaryProvider: "mock" });
         return NextResponse.json({
-          message: "✅ تم تحويل النموذج المتحدث إلى: **Mock Provider (Local Test Model)**",
+          message: "👨‍💻 **تم تفعيل وضع المطور + تحويل النموذج إلى Mock Provider (Local Test)**",
           actions: [],
-          source: "model_switcher",
+          source: "developer_mode",
         });
       } else {
-        const menuText = `🤖 **قائمة اختيار نموذج الذكاء الاصطناعي السري (Secret AI Model Switcher)**\n\n` +
-          `أهلاً بك! لقد أدخلت كلمة السر المباشرة لاختيار النموذج المتحدث. اختر النموذج المطلوب:\n\n` +
-          `1️⃣ **Code-UP Platform Assistant (DigitalOcean Premium Model)**\n` +
-          `   ⚡ *النموذج الفائق الإمكانيات المخصص لبناء وإدارة وتأمين المنصة وتعديل إعداداتها*\n` +
-          `   🔑 API Key: \`wbj5Ee7x...\`\n\n` +
-          `2️⃣ **Google Gemini Pool (Primary Model)**\n` +
-          `   🟢 *نموذج جيميناي السريع المخصص لمحادثات الطلاب العامة*\n\n` +
-          `3️⃣ **DeepSeek V4 Flash**\n` +
-          `   🔵 *نموذج ديب سيك للاستجابات السريعة والاحتياطية*\n\n` +
-          `4️⃣ **Mock Provider (Local Test Model)**\n` +
-          `   🟡 *نموذج تجميلي مجاني للاختبارات الفورية*\n\n` +
-          `━━━━━━━━━━━━━━━━\n` +
-          `💡 *للتحويل المباشر اكتب رقم الخيار (مثلاً: \`1\`) أو اكتب:*\n` +
-          `\`AhmedToldMeSotalkelse 1\``;
+        const menuText = `👨‍💻 **تم تفعيل وضع المطور المباشر (Developer / Admin Mode Activated)**\n\n` +
+          `أهلاً يا باشمهندس! تم تحويل النظام للتعامل معك كـ **Platform Developer** وليس كطالب:\n` +
+          `• ❌ إلغاء الشرح والتعليم التلقائي غير المطلوب\n` +
+          `• ⚡ استجابة فورية ومباشرة للأوامر البرمجية والمنصة\n` +
+          `• 🗑️ مسح المحادثات السابقة عند الحاجة بكلمة \`AhmedReset\`\n\n` +
+          `🤖 **اختيار النموذج بـ 1-4 (Secret AI Model Switcher)**:\n` +
+          `1️⃣ **DigitalOcean Premium Model** (Llama-3.3-70B)\n` +
+          `2️⃣ **Google Gemini Pool** (Primary)\n` +
+          `3️⃣ **DeepSeek V4 Flash** (Fast Backup)\n` +
+          `4️⃣ **Mock Provider** (Local Test)\n\n` +
+          `💡 *للتحويل المباشر اكتب الرقم:* \`1\` أو \`2\` أو \`3\` أو \`4\``;
         return NextResponse.json({
           message: menuText,
           actions: [],
-          source: "model_switcher",
+          source: "developer_mode",
         });
       }
+    }
+
+    // 4. Secret password for Professional Mode: AhmedProMode / professional / pro
+    if (cleanMsg === "ahmedpromode" || cleanMsg === "professional" || cleanMsg === "pro") {
+      return NextResponse.json({
+        message: "👔 **تم تفعيل الوضع المهني المتقدم (Professional Mode)**\n\nسيتحدث الوكيل بأسلوب عملي، رسمي، ومباشر دون مقدمات إضافية.",
+        actions: [],
+        source: "pro_mode",
+      });
+    }
+
+    // 5. Secret password for Fast Response Mode: AhmedFastMode / fast / speed
+    if (cleanMsg === "ahmedfastmode" || cleanMsg === "fast" || cleanMsg === "speed") {
+      return NextResponse.json({
+        message: "⚡ **تم تفعيل وضع الاستجابة الفائقة (Fast Latency Mode)**\n\nإجابات موجزة في نقاط سريعة بأقل زحام في الكلمات.",
+        actions: [],
+        source: "fast_mode",
+      });
     }
 
     // Build full student context
@@ -358,6 +386,27 @@ export async function GET() {
   }
 }
 
+export async function DELETE() {
+  try {
+    const session = await getStudentSession() ?? await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    await prisma.aIConversation.deleteMany({
+      where: { studentId: session.id },
+    });
+
+    const { MemoryManager } = await import("@/ai/memory/MemoryManager");
+    MemoryManager.getInstance().clearSession(session.id);
+
+    return NextResponse.json({ success: true, message: "تم مسح المحادثة وحذف السجل بالكامل" });
+  } catch (err) {
+    console.error("Delete conversation error:", err);
+    return NextResponse.json({ error: "حدث خطأ أثناء مسح المحادثة" }, { status: 500 });
+  }
+}
+
 async function executeAction(
   studentId: string,
   action: AIAction
@@ -375,7 +424,6 @@ async function executeAction(
           return { type: action.type, status: "failed", error: "بيانات ناقصة" };
         }
 
-        // Get current quiz result
         const result = await prisma.quizResult.findFirst({
           where: { quizId: p.quizId, studentId },
           include: {
@@ -391,7 +439,6 @@ async function executeAction(
           return { type: action.type, status: "failed", error: "لم يتم حل هذا الكويز" };
         }
 
-        // Build AI analysis with chat context for staff
         let aiAnalysis = "تم إنشاء الطلب بواسطة المساعد الذكي بناءً على شكوى المتعلم";
         if (p.evidence) {
           try {
@@ -435,7 +482,6 @@ async function executeAction(
           return { type: action.type, status: "failed", error: "بيانات ناقصة" };
         }
 
-        // Validate course enrollment if courseId is provided
         if (p.courseId) {
           const { checkCourseEnrollment } = await import("@/lib/authorization");
           const isEnrolled = await checkCourseEnrollment(studentId, p.courseId);
@@ -444,7 +490,6 @@ async function executeAction(
           }
         }
 
-        // Build AI response with chat context for staff
         let aiResponse: string | null = null;
         if (p.chatHistory || p.studentInfo) {
           const parts: string[] = [];
@@ -481,7 +526,6 @@ async function executeAction(
           return { type: action.type, status: "failed", error: "بيانات ناقصة" };
         }
 
-        // Validate course enrollment
         const { checkCourseEnrollment } = await import("@/lib/authorization");
         const isEnrolled = await checkCourseEnrollment(studentId, p.courseId);
         if (!isEnrolled) {

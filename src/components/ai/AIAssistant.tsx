@@ -173,11 +173,32 @@ export function AIAssistant() {
                 <p className="text-xs text-white/80">يعرف كل بياناتك ويساعدك</p>
               </div>
             </div>
-            <button
-              onClick={() => { setOpen(false); setMessages([]); setInput(""); setSending(false); }}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
-              aria-label="إغلاق"
-            >✕</button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (confirm("هل تريد مسح الرسائل والمحادثات السابقة والحالية بالكامل؟")) {
+                    try {
+                      await fetch("/api/ai/chat", { method: "DELETE" });
+                      setMessages([WELCOME_MESSAGE]);
+                    } catch {
+                      /* fallback clear */
+                      setMessages([WELCOME_MESSAGE]);
+                    }
+                  }
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-red-500/40 text-xs font-medium transition-colors flex items-center gap-1 border border-white/20"
+                title="مسح المحادثة وإعادة الضبط"
+                aria-label="مسح المحادثة"
+              >
+                <span>🗑️</span>
+                <span className="hidden sm:inline">إعادة ضبط</span>
+              </button>
+              <button
+                onClick={() => { setOpen(false); setMessages([]); setInput(""); setSending(false); }}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="إغلاق"
+              >✕</button>
+            </div>
           </div>
 
           {/* Messages */}
