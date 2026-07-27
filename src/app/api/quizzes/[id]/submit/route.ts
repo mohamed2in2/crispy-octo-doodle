@@ -137,15 +137,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  // Points Logic
+  // Points Logic: Award points only once per achievement milestone (Idempotent)
   if (session.role === "student") {
     const { addPoints, POINTS } = await import("@/lib/points");
     let pointsEarned = 0;
     
-    if (!existingResult && passed) {
+    // First try bonus: awarded only on the very first completion if passed
+    const isFirstAttempt = !existingResult?.completedAt;
+    if (isFirstAttempt && passed) {
       pointsEarned += POINTS.FIRST_TRY_BONUS;
     }
-    if (score === 100) {
+    
+    // Perfect score bonus: awarded only if they achieve 100% and hadn't scored 100% previously
+    const previousScore = existingResult?.completedAt ? existingResult.score : 0;
+    if (score === 100 && previousScore < 100) {
       pointsEarned += POINTS.EXAM_FULL_SCORE;
     }
     

@@ -134,12 +134,9 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
 
-    // Award referral bonus points: 50 to new user + 50 to referrer (fire-and-forget)
+    // Save referral link (referral points are awarded only upon qualified enrollment/course redemption)
     if (referredById) {
-      void Promise.all([
-        prisma.user.update({ where: { id: user.id }, data: { points: { increment: 50 } } }),
-        prisma.user.update({ where: { id: referredById }, data: { points: { increment: 50 } } }),
-      ]).catch(() => {});
+      console.log(`[Signup] Linked referral: User ${user.id} referred by ${referredById}`);
     }
 
     const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
