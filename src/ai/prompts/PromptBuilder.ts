@@ -26,14 +26,21 @@ export class PromptBuilder {
       options.userMessage
     );
     const difficultyInstructions = AdaptiveDifficulty.getPromptInstructions(studentLevel);
-    const layeredInstructions = LayeredTeacher.getPromptInstructions();
     const pedagogicalSubjectRules = this.subjectRulesRegistry.getFormattedRules(
       options.context.course.subject
     );
 
+    const isDetailedExplanationRequested =
+      (options.context.currentAction as string) === "TUTOR_LESSON" ||
+      options.userMessage.includes("اشرح بالتفصيل") ||
+      options.userMessage.includes("شرح مفصل");
+    const layeredInstructions = isDetailedExplanationRequested
+      ? LayeredTeacher.getPromptInstructions()
+      : `استجب مباشرة وبشكل سلس وطبيعي بدون التقيد بهياكل جامدة أو عناوين تكرارية، وركز على تلبية احتياجات الطالب بوضوح وتكيف.`;
+
     const identity = `أنت المساعد التعليمي الذكي الخبير لمنصة Code-UP والتعليم المصري.`;
     const teachingStyle = `نمط التدريس المعتمد: ${config.teachingStyle}\n` +
-      `التزم بالطول المحدد للإجابات (100 إلى 250 كلمة كحد افتراضي، و 500 كلمة كحد أقصى للمشكلات المعقدة). تجنب إهدار التوكنز في المحادثات الحبيبة أو المقدمات طويلة.`;
+      `التزم بالطول المناسب للسؤال. أجب مباشرة وفقاً لطلب الطالب بدون مقدمات طويلة أو تمبلت ثابت مفروض.`;
 
     const actionInstructions = options.actionInstructions;
     const subjectRules = `${pedagogicalSubjectRules}\n\n${options.subjectRules}`;
@@ -50,7 +57,7 @@ export class PromptBuilder {
       `=== ADAPTIVE DIFFICULTY ===`,
       difficultyInstructions,
       ``,
-      `=== LAYERED TEACHING METHOD ===`,
+      `=== RESPONSE GUIDELINES ===`,
       layeredInstructions,
       ``,
       `=== ACTION SPECIFIC INSTRUCTIONS ===`,

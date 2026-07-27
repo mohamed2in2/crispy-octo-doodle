@@ -19,9 +19,10 @@ export async function POST(req: NextRequest) {
 
     const trimmedMsg = message.trim();
     const cleanMsg = trimmedMsg.toLowerCase();
+    const isAdmin = session.role === "admin" || session.role === "superadmin" || session.isOwner === true;
 
-    // 1. Ahmed123M / Admin123 / stats command check for live AI statistics & model telemetry
-    if (cleanMsg === "ahmed123m" || cleanMsg === "admin123" || cleanMsg === "stats") {
+    // 1. Ahmed123M / Admin123 / stats command check for live AI statistics & model telemetry (ADMIN ONLY)
+    if (isAdmin && (cleanMsg === "ahmed123m" || cleanMsg === "admin123" || cleanMsg === "stats")) {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
 
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Secret command to purge/delete chat messages: AhmedReset / delete / clear
+    // 2. Secret command to purge/delete chat messages: AhmedReset / delete / clear (Allowed for any user for their OWN chat)
     if (cleanMsg === "ahmedreset" || cleanMsg === "clear" || cleanMsg === "delete") {
       await prisma.aIConversation.deleteMany({
         where: { studentId: session.id },
@@ -105,8 +106,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Secret password to unlock Developer / Admin Mode & Model Switcher: AhmedToldMeSotalkelse
-    if (cleanMsg.includes("ahmedtoldmesotalkelse") || cleanMsg === "dev" || cleanMsg === "developer") {
+    // 3. Secret password to unlock Developer / Admin Mode & Model Switcher: AhmedToldMeSotalkelse (ADMIN ONLY)
+    if (isAdmin && (cleanMsg.includes("ahmedtoldmesotalkelse") || cleanMsg === "dev" || cleanMsg === "developer")) {
       const { ConfigManager } = await import("@/ai/config/AIConfig");
       const configMgr = ConfigManager.getInstance();
 
