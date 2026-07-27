@@ -4,8 +4,8 @@ module.exports = {
       name: "Thefake",
       script: "node_modules/next/dist/bin/next",
       args: "start",
-      instances: 2, // Spawns 2 worker instances across both 2 vCPUs
-      exec_mode: "cluster", // Enables load balancing across both vCPUs
+      instances: 1,
+      exec_mode: "fork",
       env: {
         NODE_ENV: "production",
         PORT: 3000,
