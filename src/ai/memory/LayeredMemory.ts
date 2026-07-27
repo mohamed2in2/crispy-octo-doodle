@@ -60,10 +60,10 @@ export class LayeredMemory {
       this.longTermProfiles.get(studentId) || {
         studentId,
         learningStyle: "balanced",
-        weakTopics: ["الدوال المتقدمة"],
-        strongTopics: ["المتغيرات"],
-        streakDays: 5,
-        overallProgress: 75,
+        weakTopics: [],
+        strongTopics: [],
+        streakDays: 0,
+        overallProgress: 0,
       }
     );
   }

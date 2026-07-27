@@ -1,4 +1,5 @@
 import { AITool, ToolExecutionContext, ToolExecutionResult, ToolParameterSchema, UserRole } from "../types";
+import { buildStudentContext } from "@/lib/ai-context";
 
 export class GenerateParentReportTool implements AITool {
   public name = "GenerateParentReport";
@@ -14,17 +15,38 @@ export class GenerateParentReportTool implements AITool {
   public validate(params?: Record<string, unknown>): boolean { return true; }
 
   public async execute(context: ToolExecutionContext): Promise<ToolExecutionResult> {
+    const startTime = Date.now();
+    try {
+      if (context.userId && context.userId !== "anon") {
+        const studentCtx = await buildStudentContext(context.userId);
+        return {
+          success: true,
+          data: {
+            studentName: studentCtx.profile.name,
+            weeklyStudyHours: studentCtx.overallStats.totalVideosWatched * 0.2,
+            quizPassRatePercentage: studentCtx.overallStats.averageScore,
+            strengths: studentCtx.overallStats.averageScore >= 75 ? ["أداء عام ممتاز"] : [],
+            weaknesses: studentCtx.weakAreas.map((w) => `${w.subject}: ${w.topic}`),
+            parentRecommendations: ["متابعة حل الكويزات بانتظام على المنصة"],
+          },
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+    } catch {
+      /* fallback */
+    }
+
     return {
       success: true,
       data: {
-        studentName: "طالب Code-UP",
-        weeklyStudyHours: 6.5,
-        quizPassRatePercentage: 88,
-        strengths: ["الالتزام بمواعيد الدروس", "التفكير المنطقي"],
-        weaknesses: ["الحاجة لمزيد من التطبيق في الدوال المتقدمة"],
-        parentRecommendations: ["تخصيص 20 دقيقة يومياً للمراجعة التفاعلية"],
+        studentName: "طالب",
+        weeklyStudyHours: 0,
+        quizPassRatePercentage: 0,
+        strengths: [],
+        weaknesses: [],
+        parentRecommendations: [],
       },
-      executionTimeMs: 15,
+      executionTimeMs: Date.now() - startTime,
     };
   }
 

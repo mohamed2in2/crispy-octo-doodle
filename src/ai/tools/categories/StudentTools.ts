@@ -1,4 +1,5 @@
 import { AITool, ToolExecutionContext, ToolExecutionResult, ToolParameterSchema, UserRole } from "../types";
+import { buildStudentContext } from "@/lib/ai-context";
 
 export class StudentProfileTool implements AITool {
   public name = "GetStudentProfile";
@@ -20,22 +21,49 @@ export class StudentProfileTool implements AITool {
 
   public async execute(context: ToolExecutionContext): Promise<ToolExecutionResult> {
     const startTime = Date.now();
+    try {
+      if (context.userId && context.userId !== "anon" && context.userId !== "std_demo_001") {
+        const studentCtx = await buildStudentContext(context.userId);
+        return {
+          success: true,
+          data: {
+            id: studentCtx.profile.id,
+            name: studentCtx.profile.name,
+            grade: studentCtx.profile.educationalStage || "غير محدد",
+            educationalTrack: "عام",
+            preferredLanguage: "ar",
+            learningStyle: "balanced",
+            goals: studentCtx.courses.map((c) => `إتقان مادة ${c.subject}`),
+            weakSubjects: studentCtx.weakAreas.map((w) => `${w.subject}: ${w.topic}`),
+            strongSubjects: [],
+            studyStreakDays: 0,
+            availableTimeMinutes: 45,
+            currentCourses: studentCtx.courses.map((c) => c.title),
+            currentPlanId: null,
+          },
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+    } catch {
+      /* fallback if user not found */
+    }
+
     return {
       success: true,
       data: {
         id: context.userId,
-        name: "طالب Code-UP المميز",
-        grade: "sec_1",
-        educationalTrack: "General STEM & Computer Science",
+        name: "طالب",
+        grade: "عام",
+        educationalTrack: "عام",
         preferredLanguage: "ar",
         learningStyle: "balanced",
-        goals: ["إتقان أساسيات البرمجة", "الحصول على الدرجة النهائية في الفيزياء"],
-        weakSubjects: ["الدوال المتقدمة"],
-        strongSubjects: ["المتغيرات والجمل الشرطية"],
-        studyStreakDays: 7,
-        availableTimeMinutes: 45,
-        currentCourses: ["crs_prog_101", "crs_phys_301"],
-        currentPlanId: "plan_sec1_active",
+        goals: [],
+        weakSubjects: [],
+        strongSubjects: [],
+        studyStreakDays: 0,
+        availableTimeMinutes: 30,
+        currentCourses: [],
+        currentPlanId: null,
       },
       executionTimeMs: Date.now() - startTime,
     };
