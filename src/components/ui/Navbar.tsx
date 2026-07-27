@@ -420,11 +420,11 @@ export function Navbar({ user }: NavbarProps) {
 
                     {user.role === "student" && (
                       <>
-                        <Link href="/student/me" onClick={() => setProfileMenuOpen(false)}
+                        <Link href="/environments" onClick={() => setProfileMenuOpen(false)}
                           className="flex items-center gap-3 no-underline rounded-[10px] transition-colors hover:bg-[var(--surface-2)] text-[var(--ink)]"
                           style={{ padding: "10px 12px", fontSize: 14.5, fontWeight: 600 }}>
-                          <span style={{ fontSize: 16 }}>📊</span>
-                          <span>بيانات التعلم</span>
+                          <span style={{ fontSize: 16 }}>🔬</span>
+                          <span>بيئات التعلم</span>
                         </Link>
 
                         <Link href="/leaderboard" onClick={() => setProfileMenuOpen(false)}
