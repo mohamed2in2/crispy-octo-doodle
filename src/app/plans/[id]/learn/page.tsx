@@ -372,45 +372,23 @@ export default function PlanLearnPage() {
     );
   }
 
-  // ─── Rendering ──────────────────────────────────────────────────────────────
+  // Calculate overall progress stats
+  const completedLessonsCount = lessons.filter(
+    (l) =>
+      l.progress?.watched &&
+      (!l.requiresQuiz || l.progress.quizPassed) &&
+      (!l.requiresHomework || l.progress.homeworkPassed) &&
+      (!l.hasProject || l.progress.projectPassed)
+  ).length;
+
+  const totalLessonsCount = lessons.length || 1;
+  const progressPercentage = Math.round((completedLessonsCount / totalLessonsCount) * 100);
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950" dir="rtl">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans" dir="rtl">
       <Navbar user={user} />
 
-      {/* Hero header */}
-      <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white border-b border-indigo-900/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black">{plan?.title}</h1>
-            {plan?.description && (() => {
-              let points: string[] = [];
-              try {
-                if (plan.description.startsWith('[') && plan.description.endsWith(']')) {
-                  points = JSON.parse(plan.description);
-                }
-              } catch {}
-              return points.length > 0 ? (
-                <div className="flex flex-wrap gap-x-4 text-xs text-slate-300 mt-2">
-                  {points.map((p, i) => <span key={i}>• {p}</span>)}
-                </div>
-              ) : (
-                <p className="text-slate-300 text-xs mt-1.5">{plan.description}</p>
-              );
-            })()}
-          </div>
-          {plan?.chatEnabled && (
-            <button
-              onClick={() => setChatOpen(!chatOpen)}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 border-none cursor-pointer transition-colors shadow-lg shadow-indigo-600/25 shrink-0 self-start md:self-auto"
-            >
-              💬 المساعد الذكي
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Global CSS to hide scrollbar */}
+      {/* Global CSS for hides rollbar & path offsets */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
@@ -420,155 +398,221 @@ export default function PlanLearnPage() {
           scrollbar-width: none;
         }
         .duo-container {
-          --x-offset: 28px;
+          --x-offset: 32px;
         }
         @media (min-width: 640px) {
           .duo-container {
-            --x-offset: 70px;
+            --x-offset: 80px;
           }
         }
         @media (min-width: 1024px) {
           .duo-container {
-            --x-offset: 140px;
+            --x-offset: 150px;
           }
         }
       `}</style>
 
-      {/* Main Roadmap Area (Centered, Full Page Width) */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 flex flex-col items-center relative duo-container">
-        <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 mb-6 text-center">🗺️ خريطة التعلم التفاعلية</h2>
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center">
         
-        {/* Duolingo Winding Map Card */}
-        <div className="relative w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800 p-8 shadow-sm overflow-hidden flex flex-col items-center min-h-[600px]">
-          {/* The vertical connection line */}
-          <div className="absolute top-8 bottom-8 w-2 bg-slate-100 dark:bg-slate-800 rounded-full left-1/2 -translate-x-1/2" />
+        {/* Top Hero Banner */}
+        <div className="w-full relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-slate-900/90 p-6 md:p-8 backdrop-blur-xl shadow-2xl mb-8">
+          {/* Cyber decorative background blobs */}
+          <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-indigo-600/20 blur-[80px]" />
+          <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/15 blur-[80px]" />
 
-          {/* Snaking nodes list (with scrollbar hidden but scrollable) */}
-          <div className="relative z-10 w-full flex flex-col items-center gap-16 py-8 max-h-[80vh] overflow-y-auto no-scrollbar pr-1 pl-1">
-            {lessons.map((lesson, index) => {
-              const active = selectedLessonId === lesson.id;
-              const isCompleted = lesson.progress?.watched &&
-                (!lesson.requiresQuiz || lesson.progress.quizPassed) &&
-                (!lesson.requiresHomework || lesson.progress.homeworkPassed) &&
-                (!lesson.hasProject || lesson.progress.projectPassed);
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                الخطة الحالية: {plan?.title || "المستوى الأول (Plan A)"}
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                {plan?.title || "خطة التعلم البرمجي الشاملة"}
+              </h1>
+              <p className="text-slate-300 text-xs md:text-sm max-w-2xl leading-relaxed">
+                {plan?.description || "هذه الخطة ترشدك خلال مفاهيم البرمجة الأساسية والتطوير خطوة بخطوة من البداية حتى الاحتراف."}
+              </p>
+            </div>
 
-              const multipliers = [0, 0.6, 1, 0.6, 0, -0.6, -1, -0.6];
-              const multiplier = multipliers[index % multipliers.length];
-
-              // Tech decorations to place opposite the nodes
-              const DECORATIONS = ["💻", "🧠", "🚀", "☕", "🤖", "✨", "📚", "💡", "⚡", "👾"];
-              const decoration = DECORATIONS[index % DECORATIONS.length];
-
-              // Decide node style classes based on completed/active/unlocked status & lesson type
-              let btnClass = "";
-              let nodeIcon = null;
-
-              if (lesson.hasProject) {
-                // Project node - Gold / Chest theme
-                if (isCompleted) {
-                  btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_6px_0_0_#d97706] active:shadow-[0_2px_0_0_#d97706] active:translate-y-[4px]";
-                  nodeIcon = <span>🎁</span>;
-                } else if (active) {
-                  btnClass = "bg-yellow-500 hover:bg-yellow-400 text-white shadow-[0_6px_0_0_#ca8a04] active:shadow-[0_2px_0_0_#ca8a04] active:translate-y-[4px] ring-4 ring-yellow-500/20";
-                  nodeIcon = <span>🎁</span>;
-                } else if (lesson.unlocked) {
-                  btnClass = "bg-yellow-600 hover:bg-yellow-500 text-white shadow-[0_6px_0_0_#a16207] active:shadow-[0_2px_0_0_#a16207] active:translate-y-[4px]";
-                  nodeIcon = <span>🎁</span>;
-                } else {
-                  btnClass = "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 shadow-[0_6px_0_0_#cbd5e1] dark:shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-50";
-                  nodeIcon = <span>🔒</span>;
-                }
-              } else if (lesson.requiresQuiz) {
-                // Quiz node - Dumbbell / Trophy theme
-                if (isCompleted) {
-                  btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857] active:shadow-[0_2px_0_0_#047857] active:translate-y-[4px]";
-                  nodeIcon = <span>🏆</span>;
-                } else if (active) {
-                  btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_6px_0_0_#4338ca] active:shadow-[0_2px_0_0_#4338ca] active:translate-y-[4px] ring-4 ring-indigo-500/20";
-                  nodeIcon = <span>🏆</span>;
-                } else if (lesson.unlocked) {
-                  btnClass = "bg-indigo-500 hover:bg-indigo-450 text-white shadow-[0_6px_0_0_#3730a3] active:shadow-[0_2px_0_0_#3730a3] active:translate-y-[4px]";
-                  nodeIcon = <span>🏆</span>;
-                } else {
-                  btnClass = "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 shadow-[0_6px_0_0_#cbd5e1] dark:shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-50";
-                  nodeIcon = <span>🔒</span>;
-                }
-              } else {
-                // Normal / Homework lesson
-                if (isCompleted) {
-                  btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857] active:shadow-[0_2px_0_0_#047857] active:translate-y-[4px]";
-                  nodeIcon = <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
-                } else if (active) {
-                  btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_6px_0_0_#4338ca] active:shadow-[0_2px_0_0_#4338ca] active:translate-y-[4px] ring-4 ring-indigo-500/20";
-                  nodeIcon = <span>{index + 1}</span>;
-                } else if (lesson.unlocked) {
-                  btnClass = "bg-sky-500 hover:bg-sky-400 text-white shadow-[0_6px_0_0_#0369a1] active:shadow-[0_2px_0_0_#0369a1] active:translate-y-[4px]";
-                  nodeIcon = <span>{index + 1}</span>;
-                } else {
-                  btnClass = "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 shadow-[0_6px_0_0_#cbd5e1] dark:shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-50";
-                  nodeIcon = <span>🔒</span>;
-                }
-              }
-
-              return (
+            {/* Integrated Progress Bar & Time Stats Card */}
+            <div className="shrink-0 p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md min-w-[280px] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-300">نسبة الإنجاز</span>
+                <span className="text-emerald-400 font-mono text-sm">{progressPercentage}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-white/10">
                 <div
-                  key={lesson.id}
-                  className="relative flex flex-col items-center w-full"
-                >
-                  {/* Decorative element opposite the node */}
-                  {multiplier !== 0 && (
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 text-2xl sm:text-3xl select-none pointer-events-none opacity-30 dark:opacity-40 animate-pulse hover:opacity-80 transition-all duration-300"
-                      style={{
-                        transform: `translateX(calc(${-multiplier} * var(--x-offset))) translateY(-50%)`,
-                      }}
-                    >
-                      {decoration}
-                    </div>
-                  )}
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-700"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                <span>🎯 {completedLessonsCount} / {totalLessonsCount} مراحل مكتملة</span>
+                <span>⏱️ مسار نشط</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                  {/* Node Wrapper for Offset */}
-                  <div
-                    className="relative flex flex-col items-center"
-                    style={{ transform: `translateX(calc(${multiplier} * var(--x-offset)))` }}
-                  >
-                    {/* Waving mascot floating above the active node */}
-                    {active && (
-                      <div className="absolute -top-14 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
-                        <div className="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg whitespace-nowrap shadow-md shadow-indigo-600/30">
-                          أنت هنا 🎓
-                        </div>
-                        <div className="w-2 h-2 bg-indigo-600 rotate-45 -mt-1 shadow-md" />
+        {/* 🗺️ Main Interactive Learning Roadmap Container */}
+        <div className="w-full relative duo-container">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+              <span>📖</span>
+              <span>خريطة التعلم التفاعلية</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">اضغط على المرحلة النشطة للبدء ومتابعة الدروس</p>
+          </div>
+
+          <div className="relative w-full bg-slate-900/80 rounded-3xl border border-indigo-500/20 p-8 shadow-2xl overflow-hidden flex flex-col items-center min-h-[620px] backdrop-blur-xl">
+            
+            {/* The vertical connection line */}
+            <div className="absolute top-10 bottom-10 w-2 bg-gradient-to-b from-indigo-500 via-purple-500/50 to-slate-800 rounded-full left-1/2 -translate-x-1/2" />
+
+            {/* Winding Nodes List */}
+            <div className="relative z-10 w-full flex flex-col items-center gap-16 py-8 max-h-[82vh] overflow-y-auto no-scrollbar pr-1 pl-1">
+              {lessons.map((lesson, index) => {
+                const active = selectedLessonId === lesson.id;
+                const isCompleted =
+                  lesson.progress?.watched &&
+                  (!lesson.requiresQuiz || lesson.progress.quizPassed) &&
+                  (!lesson.requiresHomework || lesson.progress.homeworkPassed) &&
+                  (!lesson.hasProject || lesson.progress.projectPassed);
+
+                const multipliers = [0, 0.6, 1, 0.6, 0, -0.6, -1, -0.6];
+                const multiplier = multipliers[index % multipliers.length];
+
+                // Landmarks along the winding path
+                const LANDMARKS = ["🧠", "🚀", "🏆", "☕", "🤖", "⚡", "📚", "👾"];
+                const landmark = LANDMARKS[index % LANDMARKS.length];
+
+                let btnClass = "";
+                let nodeIcon = null;
+
+                if (lesson.hasProject) {
+                  if (isCompleted) {
+                    btnClass = "bg-amber-500 hover:bg-amber-400 text-white shadow-[0_6px_0_0_#d97706] active:translate-y-[4px]";
+                    nodeIcon = <span>🎁</span>;
+                  } else if (active) {
+                    btnClass = "bg-yellow-500 hover:bg-yellow-400 text-white shadow-[0_0_30px_rgba(234,179,8,0.6)] ring-4 ring-yellow-400/40 animate-pulse";
+                    nodeIcon = <span>🎁</span>;
+                  } else if (lesson.unlocked) {
+                    btnClass = "bg-yellow-600 hover:bg-yellow-500 text-white shadow-[0_6px_0_0_#a16207]";
+                    nodeIcon = <span>🎁</span>;
+                  } else {
+                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
+                    nodeIcon = <span>🔒</span>;
+                  }
+                } else if (lesson.requiresQuiz) {
+                  if (isCompleted) {
+                    btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
+                    nodeIcon = <span>🏆</span>;
+                  } else if (active) {
+                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_30px_rgba(99,102,241,0.7)] ring-4 ring-indigo-400/40 animate-pulse";
+                    nodeIcon = <span>🏆</span>;
+                  } else if (lesson.unlocked) {
+                    btnClass = "bg-indigo-500 hover:bg-indigo-400 text-white shadow-[0_6px_0_0_#3730a3]";
+                    nodeIcon = <span>🏆</span>;
+                  } else {
+                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
+                    nodeIcon = <span>🔒</span>;
+                  }
+                } else {
+                  if (isCompleted) {
+                    btnClass = "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_6px_0_0_#047857]";
+                    nodeIcon = (
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    );
+                  } else if (active) {
+                    btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_30px_rgba(99,102,241,0.8)] ring-4 ring-indigo-400/40 animate-pulse scale-105";
+                    nodeIcon = <span>{index + 1}</span>;
+                  } else if (lesson.unlocked) {
+                    btnClass = "bg-sky-500 hover:bg-sky-400 text-white shadow-[0_6px_0_0_#0369a1]";
+                    nodeIcon = <span>{index + 1}</span>;
+                  } else {
+                    btnClass = "bg-slate-800 text-slate-600 shadow-[0_6px_0_0_#0f172a] cursor-not-allowed opacity-40";
+                    nodeIcon = <span>🔒</span>;
+                  }
+                }
+
+                return (
+                  <div key={lesson.id} className="relative flex flex-col items-center w-full">
+                    
+                    {/* Path Landmark icon opposite the node */}
+                    {multiplier !== 0 && (
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 text-2xl sm:text-3xl select-none pointer-events-none opacity-40 animate-pulse transition-all duration-300"
+                        style={{
+                          transform: `translateX(calc(${-multiplier} * var(--x-offset))) translateY(-50%)`,
+                        }}
+                      >
+                        {landmark}
                       </div>
                     )}
 
-                    <button
-                      onClick={() => {
-                        if (lesson.unlocked) {
-                          setSelectedLessonId(lesson.id);
-                          setIsModalOpen(true);
-                        }
-                      }}
-                      disabled={!lesson.unlocked}
-                      className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center font-black text-lg transition-all border-none relative cursor-pointer outline-none ${btnClass}`}
+                    {/* Node Wrapper with offset */}
+                    <div
+                      className="relative flex flex-col items-center"
+                      style={{ transform: `translateX(calc(${multiplier} * var(--x-offset)))` }}
                     >
-                      {nodeIcon}
-                    </button>
+                      {/* Floating tooltip above active node */}
+                      {active && (
+                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                          <div className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-xl whitespace-nowrap shadow-lg shadow-indigo-600/40 border border-indigo-400/30 flex items-center gap-1">
+                            <span>المرحلة النشطة</span>
+                            <span>🎓</span>
+                          </div>
+                          <div className="w-2 h-2 bg-indigo-600 rotate-45 -mt-1 shadow-md" />
+                        </div>
+                      )}
 
-                    {/* Lesson Label */}
-                    <div className={`mt-2.5 px-3 py-1 rounded-xl text-center shadow-sm border max-w-[120px] transition-all whitespace-nowrap ${
-                      active
-                        ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold shadow-indigo-100/50 dark:shadow-none"
-                        : lesson.unlocked
-                        ? "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
-                        : "bg-slate-50 dark:bg-slate-950 border-transparent text-slate-400 dark:text-slate-600 text-xs"
-                    }`}>
-                      <p className="text-[10px] truncate leading-tight">{lesson.title}</p>
+                      {/* Main Node Button */}
+                      <button
+                        onClick={() => {
+                          if (lesson.unlocked) {
+                            setSelectedLessonId(lesson.id);
+                            setIsModalOpen(true);
+                          }
+                        }}
+                        disabled={!lesson.unlocked}
+                        className={`w-18 h-18 sm:w-22 sm:h-22 rounded-full flex items-center justify-center font-black text-xl transition-all border-none relative cursor-pointer outline-none ${btnClass}`}
+                      >
+                        {nodeIcon}
+                      </button>
+
+                      {/* Lesson Stage Card Details */}
+                      <div
+                        className={`mt-3 px-4 py-2 rounded-2xl text-center border max-w-[170px] transition-all ${
+                          active
+                            ? "bg-indigo-950/80 border-indigo-500/40 text-indigo-200 font-bold shadow-lg shadow-indigo-500/10"
+                            : lesson.unlocked
+                            ? "bg-slate-900 border-slate-800 text-slate-200 font-semibold"
+                            : "bg-slate-950 border-slate-900 text-slate-600 text-xs"
+                        }`}
+                      >
+                        <p className="text-[11px] font-bold text-slate-400 mb-0.5">المرحلة {index + 1}</p>
+                        <p className="text-xs font-bold truncate leading-tight">{lesson.title}</p>
+                        
+                        {/* Prominent Action Button for Active Node */}
+                        {active && (
+                          <button
+                            onClick={() => {
+                              setSelectedLessonId(lesson.id);
+                              setIsModalOpen(true);
+                            }}
+                            className="mt-2.5 w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black text-[11px] hover:from-emerald-400 hover:to-teal-400 transition-all shadow-md shadow-emerald-500/20 border-none cursor-pointer"
+                          >
+                            ▶ ابدأ الآن
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </main>

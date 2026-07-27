@@ -12,20 +12,26 @@ import {
 } from "@/lib/iq-system";
 
 /* ─── Mini bar used per skill ────────────────────────────────────────────── */
-function SkillRow({ sk, data }: { sk: IQSkillName; data: IQData["skills"][IQSkillName] }) {
-  const pct = Math.min(100, ((data.score - 200) / (2000 - 200)) * 100);
+function SkillCard({ sk, data }: { sk: IQSkillName; data: IQData["skills"][IQSkillName] }) {
+  const pct = Math.min(100, Math.max(10, ((data.score - 200) / (2000 - 200)) * 100));
   const lc  = LEVEL_COLORS[data.level] || LEVEL_COLORS["متوسط"];
   return (
-    <div className="mb-5">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: lc.bg, color: lc.color }}>
+    <div className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full border" style={{ background: lc.bg, color: lc.color, borderColor: `${lc.color}30` }}>
           {data.level}
         </span>
-        <span className="text-sm font-black" style={{ color: "var(--ink)" }}>
-          {SKILL_LABELS[sk]} : {data.score.toLocaleString("ar-EG")}
+        <span className="text-sm font-black text-[var(--ink)]">
+          {SKILL_LABELS[sk]}
         </span>
       </div>
-      <div className="h-3 rounded-full overflow-hidden" style={{ background: "#E0E0E0" }}>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-2xl font-black text-[var(--ink)] tracking-tight">
+          {data.score.toLocaleString("ar-EG")}
+        </span>
+        <span className="text-[11px] text-[var(--ink-muted)]">مستوى {Math.round(pct)}%</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-[var(--surface-2)] overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, background: SKILL_COLORS[sk] }}
@@ -37,50 +43,63 @@ function SkillRow({ sk, data }: { sk: IQSkillName; data: IQData["skills"][IQSkil
 
 /* ─── Radar-style SVG overview ───────────────────────────────────────────── */
 function OverallRing({ iq }: { iq: number }) {
-  const pct = Math.min(100, ((iq - 200) / 1800) * 100);
-  const r = 54; const c = 2 * Math.PI * r;
+  const pct = Math.min(100, Math.max(10, ((iq - 200) / 1800) * 100));
+  const r = 52;
+  const c = 2 * Math.PI * r;
   const level = getIQLevel(iq);
   const lc = LEVEL_COLORS[level] || LEVEL_COLORS["متوسط"];
   return (
-    <div className="flex flex-col items-center gap-2">
-      <svg width="140" height="140" viewBox="0 0 140 140">
+    <div className="relative flex flex-col items-center justify-center p-2">
+      <svg width="150" height="150" viewBox="0 0 150 150" className="transform -rotate-90">
         {/* Track */}
-        <circle cx="70" cy="70" r={r} fill="none" stroke="#E0E0E0" strokeWidth="10" />
+        <circle cx="75" cy="75" r={r} fill="none" stroke="var(--border)" strokeWidth="10" />
         {/* Fill */}
-        <circle cx="70" cy="70" r={r} fill="none" stroke={lc.color} strokeWidth="10"
-          strokeDasharray={c} strokeDashoffset={c - (pct / 100) * c}
-          strokeLinecap="round" transform="rotate(-90 70 70)"
-          style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" }}
+        <circle
+          cx="75"
+          cy="75"
+          r={r}
+          fill="none"
+          stroke={lc.color}
+          strokeWidth="10"
+          strokeDasharray={c}
+          strokeDashoffset={c - (pct / 100) * c}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
         />
-        {/* Score */}
-        <text x="70" y="64" textAnchor="middle" fontSize="26" fontWeight="900" fill="#1a1a2e">{iq}</text>
-        <text x="70" y="82" textAnchor="middle" fontSize="11" fill="#888">معدل الذكاء</text>
-        <text x="70" y="97" textAnchor="middle" fontSize="13" fontWeight="700" fill={lc.color}>{level}</text>
       </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-black text-[var(--ink)] tracking-tight">{iq.toLocaleString("ar-EG")}</span>
+        <span className="text-xs text-[var(--ink-muted)] font-medium">معدل الذكاء</span>
+        <span className="text-xs font-bold mt-0.5 px-2 py-0.5 rounded-full" style={{ background: lc.bg, color: lc.color }}>
+          {level}
+        </span>
+      </div>
     </div>
   );
 }
 
 /* ─── Session history sparkline ──────────────────────────────────────────── */
 function Sparkline({ sessions }: { sessions: { score: number; date: number }[] }) {
-  if (sessions.length < 2) return <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}>العب أكثر لترى تقدمك</p>;
+  if (sessions.length < 2) return <p className="text-xs text-center text-[var(--ink-muted)]">العب أكثر لترى تقدمك التراكمي</p>;
   const last10 = sessions.slice(-10);
-  const min = Math.min(...last10.map(s => s.score));
-  const max = Math.max(...last10.map(s => s.score));
+  const min = Math.min(...last10.map((s) => s.score));
+  const max = Math.max(...last10.map((s) => s.score));
   const range = max - min || 1;
-  const W = 220, H = 50;
-  const pts = last10.map((s, i) => {
-    const x = (i / (last10.length - 1)) * W;
-    const y = H - ((s.score - min) / range) * H;
-    return `${x},${y}`;
-  }).join(" ");
+  const W = 320, H = 60;
+  const pts = last10
+    .map((s, i) => {
+      const x = (i / (last10.length - 1)) * W;
+      const y = H - ((s.score - min) / range) * H;
+      return `${x},${y}`;
+    })
+    .join(" ");
   return (
     <svg width="100%" height={H + 10} viewBox={`0 0 ${W} ${H + 10}`} preserveAspectRatio="none">
-      <polyline fill="none" stroke="#534AB7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts} />
+      <polyline fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={pts} />
       {last10.map((s, i) => {
         const x = (i / (last10.length - 1)) * W;
         const y = H - ((s.score - min) / range) * H;
-        return <circle key={i} cx={x} cy={y} r="3" fill="#534AB7" />;
+        return <circle key={i} cx={x} cy={y} r="4" fill="#6366f1" className="transition-transform hover:scale-125" />;
       })}
     </svg>
   );
@@ -92,15 +111,15 @@ function ComparisonBar({ label, you, avg, color }: { label: string; you: number;
   const youPct = (you / maxVal) * 100;
   const avgPct = (avg / maxVal) * 100;
   return (
-    <div className="mb-4">
-      <div className="flex justify-between mb-1">
-        <span className="text-xs" style={{ color: "var(--ink-3)" }}>متوسط الطلاب: {avg}</span>
-        <span className="text-sm font-bold" style={{ color: "var(--ink)" }}>{label}</span>
+    <div className="p-3.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
+      <div className="flex justify-between items-center mb-1.5 text-xs">
+        <span className="font-bold text-[var(--ink)]">{label}</span>
+        <span className="text-[var(--ink-muted)]">درجتك: <strong className="text-[var(--ink)]">{you}</strong> | متوسط الطلاب: <strong>{avg}</strong></span>
       </div>
-      <div className="relative h-3 rounded-full" style={{ background: "#E0E0E0" }}>
-        {/* average marker */}
-        <div className="absolute top-0 h-full w-0.5 bg-gray-400 rounded-full" style={{ left: `${avgPct}%` }} />
-        {/* your bar */}
+      <div className="relative h-2.5 rounded-full bg-[var(--bg)] overflow-hidden">
+        {/* Average marker */}
+        <div className="absolute top-0 bottom-0 w-1 bg-amber-400 rounded-full z-10" style={{ left: `${avgPct}%` }} title={`متوسط الطلاب: ${avg}`} />
+        {/* Student bar */}
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${youPct}%`, background: color }} />
       </div>
     </div>
@@ -109,21 +128,21 @@ function ComparisonBar({ label, you, avg, color }: { label: string; you: number;
 
 /* ─── Subject shortcuts ──────────────────────────────────────────────────── */
 const SUBJECT_LINKS = [
-  { id: "math",      label: "🔢 رياضيات",  href: "/environments/math" },
-  { id: "languages", label: "🗣️ لغات",     href: "/environments/languages" },
-  { id: "history",   label: "🏛️ تاريخ",    href: "/environments/history" },
-  { id: "geography", label: "🌍 جغرافيا",  href: "/environments/geography" },
-  { id: "biology",   label: "🔬 أحياء",    href: "/environments/biology" },
-  { id: "physics",   label: "⚡ فيزياء",   href: "/environments/physics" },
+  { id: "math",      label: "🔢 الرياضيات السريعة",  href: "/environments/math", color: "from-blue-500 to-cyan-500" },
+  { id: "languages", label: "🗣️ اللغات والقواعد",     href: "/environments/languages", color: "from-rose-500 to-pink-600" },
+  { id: "history",   label: "🏛️ التاريخ والمخططات",    href: "/environments/history", color: "from-amber-500 to-orange-600" },
+  { id: "geography", label: "🌍 الجغرافيا والخرائط",  href: "/environments/geography", color: "from-indigo-500 to-blue-600" },
+  { id: "biology",   label: "🔬 الأحياء والخلايا",    href: "/environments/biology", color: "from-emerald-500 to-teal-600" },
+  { id: "physics",   label: "⚡ الفيزياء الكهربية",   href: "/environments/physics", color: "from-purple-500 to-indigo-600" },
 ];
 
-/* ─── Avg scores for comparison (platform averages, can be server-fetched later) */
+/* ─── Platform averages ─── */
 const PLATFORM_AVG: Record<IQSkillName, number> = {
   speed: 1050, memory: 1020, attention: 980, flexibility: 970,
   linguistic: 1010, logical: 1040, spatial: 990, problemsolving: 1030,
 };
 
-/* ─── Page ──────────────────────────────────────────────────────────────── */
+/* ─── Page Component ─────────────────────────────────────────────────────── */
 export default function IQDashboardPage() {
   const [user, setUser]     = useState<MeUser | null>(null);
   const [iqData, setIqData] = useState<IQData | null>(null);
@@ -138,15 +157,14 @@ export default function IQDashboardPage() {
   } | null>(null);
 
   useEffect(() => {
-    fetchMeWithRetry(2, 100).then(me => setUser(me)).catch(() => {});
+    fetchMeWithRetry(2, 100).then((me) => setUser(me)).catch(() => {});
     setIqData(getIQData());
     const sync = () => setIqData(getIQData());
     window.addEventListener("storage", sync);
 
-    // Fetch monthly placement statistics
     fetch("/api/student/iq")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data && typeof data.rank === "number") {
           setStats({
             rank: data.rank,
@@ -154,7 +172,7 @@ export default function IQDashboardPage() {
             averageIQ: data.averageIQ,
             studentCount: data.studentCount,
             isAdaptive: data.isAdaptive,
-            rankingPeriod: data.rankingPeriod
+            rankingPeriod: data.rankingPeriod,
           });
         }
       })
@@ -167,193 +185,246 @@ export default function IQDashboardPage() {
 
   return (
     <ProfileGuard>
-      <div className="flex flex-col min-h-screen" style={{ background: "#F5F5F5" }}>
+      <div className="flex flex-col min-h-screen bg-[var(--bg)] transition-colors duration-300 font-sans">
         <Navbar user={user ? { name: user.name, role: user.role } : null} />
 
-        <main className="flex-1 max-w-lg mx-auto w-full pb-8">
+        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          
+          {/* Top Breadcrumb & Header */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <Link href="/environments" className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline mb-2">
+                <svg className="w-4 h-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                العودة إلى بيئات التعلم
+              </Link>
+              <h1 className="text-3xl font-black text-[var(--ink)] tracking-tight">معدلي | تحليل الذكاء المعرفي</h1>
+              <p className="text-sm text-[var(--ink-muted)] mt-1">لوحة التقييم والتحليل التراكمي لمهارات التفكير والسرعة</p>
+            </div>
 
-          {/* ── Tab bar (matches screenshot) ── */}
-          <div className="flex border-b" style={{ background: "#fff", borderColor: "#E0E0E0" }}>
-            {([["perf", "الأداء"], ["progress", "التقدم"]] as const).map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)}
-                className="flex-1 py-4 text-sm font-black transition-colors"
-                style={{
-                  color: tab === id ? "#7C3AED" : "#9E9E9E",
-                  borderBottom: tab === id ? "3px solid #7C3AED" : "3px solid transparent",
-                }}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Header ── */}
-          <div className="bg-white px-5 pt-6 pb-4 flex items-center gap-4 border-b" style={{ borderColor: "#E0E0E0" }}>
-            <Link href="/environments" className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </Link>
-            <h1 className="text-2xl font-black text-right flex-1" style={{ color: "#1a1a2e" }}>معدلي</h1>
+            {/* Segmented Tab Controls */}
+            <div className="flex p-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] w-full md:w-auto self-start">
+              {([["perf", "📊 الأداء العام"], ["progress", "📈 التطور والتأثير"]] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={`flex-1 md:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    tab === id
+                      ? "bg-[var(--surface)] text-[var(--brand)] shadow-sm"
+                      : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── PERFORMANCE TAB ── */}
           {tab === "perf" && iq && (
-            <div>
-              {/* Overall ring */}
-              <div className="bg-white py-6 flex justify-center border-b" style={{ borderColor: "#E0E0E0" }}>
-                <OverallRing iq={iq.overallIQ} />
-              </div>
-
-              {/* Rank and Average statistics card */}
-              {stats && (
-                <div className="bg-white px-5 py-4 border-b text-right flex flex-col gap-2" style={{ borderColor: "#E0E0E0" }}>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-black" style={{ color: "#7C3AED" }}>#{stats.rank} <span className="text-xs font-normal" style={{ color: "#9E9E9E" }}>من {stats.totalRanked}</span></span>
-                    <span className="font-bold" style={{ color: "#1a1a2e" }}>الترتيب {stats.rankingPeriod === "monthly" ? "هذا الشهر" : "العام"}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-black" style={{ color: "#009688" }}>{stats.averageIQ}</span>
-                    <span className="font-bold" style={{ color: "#1a1a2e" }}>متوسط ذكاء طلاب التطبيق</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Stats row */}
-              <div className="bg-white px-5 py-3 flex justify-around border-b text-center" style={{ borderColor: "#E0E0E0" }}>
-                <div>
-                  <div className="text-xl font-black" style={{ color: "#1a1a2e" }}>{iq.totalGamesPlayed}</div>
-                  <div className="text-xs" style={{ color: "#9E9E9E" }}>جلسات</div>
-                </div>
-                <div style={{ width: 1, background: "#E0E0E0" }} />
-                <div>
-                  <div className="text-xl font-black" style={{ color: "#1a1a2e" }}>{iq.streak.current}</div>
-                  <div className="text-xs" style={{ color: "#9E9E9E" }}>🔥 streak</div>
-                </div>
-                <div style={{ width: 1, background: "#E0E0E0" }} />
-                <div>
-                  <div className="text-xl font-black" style={{ color: "#1a1a2e" }}>{iq.streak.best}</div>
-                  <div className="text-xs" style={{ color: "#9E9E9E" }}>أفضل streak</div>
-                </div>
-              </div>
-
-              {/* Skills */}
-              <div className="bg-white px-5 pt-5 pb-2">
-                {DASHBOARD_SKILLS.map(sk => (
-                  <SkillRow key={sk} sk={sk} data={iq.skills[sk]} />
-                ))}
-              </div>
-
-              {/* Spatial (if played) */}
-              {iq.skills.spatial.sessions.length > 0 && (
-                <div className="bg-white px-5 pb-2 pt-0">
-                  <SkillRow sk="spatial" data={iq.skills.spatial} />
-                </div>
-              )}
-
-              {/* Comparison — uses real server average when available */}
-              <div className="bg-white mt-2 px-5 pt-5 pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs" style={{ color: "#9E9E9E" }}>
-                    {stats
-                      ? `بناءً على ${stats.totalRanked} طالب`
-                      : "متوسط تقديري"}
+            <div className="space-y-8">
+              
+              {/* Top Overview Cards (Grid 2 cols) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Overall Gauge Card */}
+                <div className="lg:col-span-1 p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm flex flex-col items-center justify-center text-center">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 mb-3">
+                    🧠 التقييم التراكمي الموحد
                   </span>
-                  <h2 className="text-lg font-black" style={{ color: "#1a1a2e" }}>مقارنة</h2>
+                  <OverallRing iq={iq.overallIQ} />
+                  <p className="text-xs text-[var(--ink-muted)] mt-4 leading-relaxed max-w-xs">
+                    معدل مستمد من الدقة، سرعة الاستجابة، ونقاط التحدي اليومية
+                  </p>
                 </div>
-                {DASHBOARD_SKILLS.slice(0, 4).map(sk => (
-                  <ComparisonBar key={sk} label={SKILL_LABELS[sk]}
-                    you={iq.skills[sk].score}
-                    avg={stats?.averageIQ ?? PLATFORM_AVG[sk]}
-                    color={SKILL_COLORS[sk]} />
-                ))}
+
+                {/* Rank & Stats Card */}
+                <div className="lg:col-span-2 p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between border-b border-[var(--border)] pb-4 mb-4">
+                    <div>
+                      <h2 className="text-lg font-black text-[var(--ink)]">الترتيب والإحصائيات الحية</h2>
+                      <p className="text-xs text-[var(--ink-muted)]">مقارنتك بالمتوسط العام لطلاب المنصة</p>
+                    </div>
+                    {stats && (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        #{stats.rank} من {stats.totalRanked.toLocaleString("ar-EG")} طالب
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 3 Metric Boxes */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <div className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] text-center">
+                      <span className="text-xs text-[var(--ink-muted)] block mb-1">جلسات التحدي</span>
+                      <span className="text-2xl font-black text-[var(--ink)]">{iq.totalGamesPlayed.toLocaleString("ar-EG")}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] text-center">
+                      <span className="text-xs text-[var(--ink-muted)] block mb-1">سلسلة المواظبة</span>
+                      <span className="text-2xl font-black text-amber-500">🔥 {iq.streak.current} يوم</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] text-center">
+                      <span className="text-xs text-[var(--ink-muted)] block mb-1">أفضل streak</span>
+                      <span className="text-2xl font-black text-indigo-500">⭐ {iq.streak.best} يوم</span>
+                    </div>
+                  </div>
+
+                  {/* Platform Average Banner */}
+                  <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between text-xs">
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">متوسط ذكاء طلاب المنصة:</span>
+                    <span className="font-black text-indigo-700 dark:text-indigo-300 text-sm">{(stats?.averageIQ ?? 1050).toLocaleString("ar-EG")} درجة</span>
+                  </div>
+                </div>
+
               </div>
 
-              {/* Quick play shortcuts */}
-              <div className="mt-2 px-4 pb-4">
-                <h3 className="text-sm font-bold text-right mb-3" style={{ color: "#9E9E9E" }}>العب الآن لتحسين معدلك</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                  {SUBJECT_LINKS.map(s => (
-                    <Link key={s.id} href={s.href}
-                      className="text-center py-3 rounded-xl font-bold text-sm transition-all active:scale-95"
-                      style={{ background: "#fff", border: "1px solid #E0E0E0", color: "#1a1a2e" }}>
-                      {s.label}
+              {/* Skills Grid */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-black text-[var(--ink)]">تفصيل مهارات التفكير والمعرفة</h2>
+                  <span className="text-xs text-[var(--ink-muted)]">محدث تلقائياً مع كل لعبة</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {DASHBOARD_SKILLS.map((sk) => (
+                    <SkillCard key={sk} sk={sk} data={iq.skills[sk]} />
+                  ))}
+                  {iq.skills.spatial.sessions.length > 0 && (
+                    <SkillCard sk="spatial" data={iq.skills.spatial} />
+                  )}
+                </div>
+              </div>
+
+              {/* Comparison Section */}
+              <div className="p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+                <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
+                  <div>
+                    <h2 className="text-lg font-black text-[var(--ink)]">مقارنة بأداء طلاب المنصة</h2>
+                    <p className="text-xs text-[var(--ink-muted)]">الخط الأصفر يمثل متوسط الطلاب في كل مهارة</p>
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--ink-muted)]">
+                    {stats ? `بناءً على ${stats.totalRanked.toLocaleString("ar-EG")} طالب` : "مقارنة حية"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {DASHBOARD_SKILLS.slice(0, 4).map((sk) => (
+                    <ComparisonBar
+                      key={sk}
+                      label={SKILL_LABELS[sk]}
+                      you={iq.skills[sk].score}
+                      avg={stats?.averageIQ ?? PLATFORM_AVG[sk]}
+                      color={SKILL_COLORS[sk]}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Play Shortcuts */}
+              <div>
+                <h2 className="text-lg font-black text-[var(--ink)] mb-3">العب الآن لتحسين معدلك</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {SUBJECT_LINKS.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={s.href}
+                      className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-indigo-500/40 text-center font-bold text-xs text-[var(--ink)] shadow-sm hover:shadow-md transition-all active:scale-95 flex flex-col items-center justify-center gap-2 group no-underline"
+                    >
+                      <span className="text-base group-hover:scale-110 transition-transform">{s.label.split(" ")[0]}</span>
+                      <span>{s.label.split(" ").slice(1).join(" ")}</span>
                     </Link>
                   ))}
                 </div>
               </div>
+
             </div>
           )}
 
           {/* ── PROGRESS TAB ── */}
           {tab === "progress" && iq && (
-            <div>
+            <div className="space-y-8">
+              
               {/* Overall trend */}
-              <div className="bg-white mt-2 px-5 pt-5 pb-4">
-                <h2 className="text-base font-black text-right mb-3" style={{ color: "#1a1a2e" }}>📈 تطور الأداء الكلي</h2>
+              <div className="p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+                <h2 className="text-lg font-black text-[var(--ink)] mb-4">📈 مسار التطور والتغير في الأداء</h2>
+                
                 {iq.totalGamesPlayed === 0 ? (
-                  <div className="py-8 text-center" style={{ color: "#9E9E9E" }}>
-                    <div style={{ fontSize: 40 }}>🎮</div>
-                    <p className="text-sm mt-2">العب أولاً لترى تقدمك</p>
-                    <Link href="/environments" className="inline-block mt-3 px-5 py-2 rounded-xl text-sm font-bold text-white" style={{ background: "#7C3AED" }}>
-                      ابدأ الآن
+                  <div className="py-12 text-center text-[var(--ink-muted)]">
+                    <div className="text-4xl mb-2">🎮</div>
+                    <p className="text-sm font-bold text-[var(--ink)]">لم تلعب أي ألعاب بعد</p>
+                    <p className="text-xs mt-1">ابدأ باللعب الآن لتسجيل نقاط التطور الأولى</p>
+                    <Link
+                      href="/environments"
+                      className="inline-block mt-4 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md no-underline"
+                    >
+                      ابدأ التحدي الأول
                     </Link>
                   </div>
                 ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs" style={{ color: "#9E9E9E" }}>IQ: {iq.overallIQ}</span>
-                      <span className="text-xs font-bold" style={{ color: "#7C3AED" }}>
-                        {iq.lastUpdated ? new Date(iq.lastUpdated).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }) : ""}
-                      </span>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 text-xs text-[var(--ink-muted)]">
+                      <span>آخر تحديث: {iq.lastUpdated ? new Date(iq.lastUpdated).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }) : "اليوم"}</span>
+                      <span className="font-mono font-bold text-[var(--ink)]">IQ: {iq.overallIQ}</span>
                     </div>
-                    {/* Show per-skill recent trend */}
-                    {DASHBOARD_SKILLS.map(sk => {
-                      const sessions = iq.skills[sk].sessions;
-                      if (sessions.length < 2) return null;
-                      const first = sessions[0].score;
-                      const last  = sessions[sessions.length - 1].score;
-                      const delta = last - first;
-                      return (
-                        <div key={sk} className="mb-5">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-bold" style={{ color: delta >= 0 ? "#009688" : "#E91E63" }}>
-                              {delta >= 0 ? "+" : ""}{delta} {delta >= 0 ? "↑" : "↓"}
-                            </span>
-                            <span className="text-sm font-black" style={{ color: "#1a1a2e" }}>{SKILL_LABELS[sk]}</span>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {DASHBOARD_SKILLS.map((sk) => {
+                        const sessions = iq.skills[sk].sessions;
+                        if (sessions.length < 2) return null;
+                        const first = sessions[0].score;
+                        const last = sessions[sessions.length - 1].score;
+                        const delta = last - first;
+                        return (
+                          <div key={sk} className="p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)]">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-[var(--ink)]">{SKILL_LABELS[sk]}</span>
+                              <span className={`text-xs font-bold ${delta >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                                {delta >= 0 ? "+" : ""}{delta} {delta >= 0 ? "↑" : "↓"}
+                              </span>
+                            </div>
+                            <Sparkline sessions={sessions} />
                           </div>
-                          <Sparkline sessions={sessions} />
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Per-subject breakdown */}
-              <div className="bg-white mt-2 px-5 pt-5 pb-4">
-                <h2 className="text-base font-black text-right mb-3" style={{ color: "#1a1a2e" }}>📚 تفصيل المواد</h2>
-                {SUBJECT_LINKS.map(s => {
-                  // Collect all sessions for this subject
-                  const subjectSessions = Object.values(iq.skills)
-                    .flatMap(skill => skill.sessions.filter(sess => sess.subject === s.id));
-                  const count = subjectSessions.length;
-                  if (count === 0) return (
-                    <div key={s.id} className="flex items-center justify-between py-3 border-b" style={{ borderColor: "#F5F5F5" }}>
-                      <span className="text-xs" style={{ color: "#BDBDBD" }}>لم تلعب بعد</span>
-                      <span className="text-sm font-bold" style={{ color: "#9E9E9E" }}>{s.label}</span>
-                    </div>
-                  );
-                  const avgScore = Math.round(subjectSessions.reduce((a, b) => a + b.score, 0) / count);
-                  return (
-                    <Link key={s.id} href={s.href} className="flex items-center justify-between py-3 border-b" style={{ borderColor: "#F5F5F5" }}>
-                      <div className="text-left">
-                        <span className="text-xs font-bold" style={{ color: "#009688" }}>{count} جلسة</span>
-                        <span className="text-xs ml-2" style={{ color: "#9E9E9E" }}>•</span>
-                        <span className="text-xs ml-2" style={{ color: "#9E9E9E" }}>متوسط {avgScore.toLocaleString("ar-EG")}</span>
-                      </div>
-                      <span className="text-sm font-black" style={{ color: "#1a1a2e" }}>{s.label}</span>
-                    </Link>
-                  );
-                })}
+              <div className="p-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+                <h2 className="text-lg font-black text-[var(--ink)] mb-4">📚 تفصيل الأداء حسب المواد</h2>
+                <div className="divide-y divide-[var(--border)]">
+                  {SUBJECT_LINKS.map((s) => {
+                    const subjectSessions = Object.values(iq.skills).flatMap((skill) =>
+                      skill.sessions.filter((sess) => sess.subject === s.id)
+                    );
+                    const count = subjectSessions.length;
+                    if (count === 0) {
+                      return (
+                        <div key={s.id} className="flex items-center justify-between py-3 text-xs text-[var(--ink-muted)]">
+                          <span className="font-bold text-[var(--ink)]">{s.label}</span>
+                          <span className="italic">لم تلعب بعد</span>
+                        </div>
+                      );
+                    }
+                    const avgScore = Math.round(subjectSessions.reduce((a, b) => a + b.score, 0) / count);
+                    return (
+                      <Link
+                        key={s.id}
+                        href={s.href}
+                        className="flex items-center justify-between py-3 text-xs hover:bg-[var(--surface-2)] px-2 rounded-xl transition-colors no-underline"
+                      >
+                        <span className="font-bold text-[var(--ink)]">{s.label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{count} جلسة</span>
+                          <span className="text-[var(--ink-muted)]">•</span>
+                          <span className="font-mono font-bold text-[var(--ink)]">متوسط {avgScore.toLocaleString("ar-EG")}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
+
             </div>
           )}
 
