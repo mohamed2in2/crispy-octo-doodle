@@ -37,8 +37,13 @@ model User {
   referralCode        String?                  @unique
   referredById        String?
   balance             Float                    @default(0)
+  isVerified          Boolean                  @default(false)
+  verificationStatus  String                   @default("UNVERIFIED") // "VERIFIED" | "WAITING_FOR_OTP" | "UNVERIFIED"
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
+  otpQueueItems       OtpQueueItem[]
+  referralsSent       Referral[]               @relation("ReferralsSent")
+  referralReceived    Referral?                @relation("ReferralReceived")
   aiConversations     AIConversation[]         @relation("StudentAIConversations")
   aiInsights          AIStudentInsight[]       @relation("StudentAIInsights")
   accessCodes         AccessCode[]             @relation("StudentCodes")
@@ -1199,4 +1204,87 @@ model TeacherReferralAttribution {
   @@index([studentId])
   @@index([createdAt])
 }
+
+// ── Security & OTP Infrastructure Models ────────────────────────────────────
+
+/// Daily WhatsApp OTP Usage Quota Manager (Hard Limit: 250/24h)
+model OtpQuota {
+  id                  String   @id @default(cuid())
+  date                String   @unique // "YYYY-MM-DD" in Cairo Time
+  limit               Int      @default(250)
+  used                Int      @default(0)
+  signupUsed          Int      @default(0)
+  forgotPasswordUsed  Int      @default(0)
+  purchaseUsed        Int      @default(0)
+  phoneChangeUsed     Int      @default(0)
+  codeRedemptionUsed  Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+/// Deferred Verification Queue for OTP requests when quota is exhausted
+model OtpQueueItem {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone        String
+  actionType   String    // "PASSWORD_RESET" | "COURSE_PURCHASE" | "CODE_REDEMPTION" | "PHONE_CHANGE" | "SIGNUP"
+  priority     Int       @default(5) // 1 (Highest: Reset) -> 5 (Lowest: Signup)
+  status       String    @default("QUEUED") // "QUEUED" | "PROCESSING" | "SENT" | "FAILED" | "EXPIRED"
+  retryCount   Int       @default(0)
+  queuedAt     DateTime  @default(now())
+  processedAt  DateTime?
+
+  @@index([status, priority, queuedAt])
+  @@index([userId])
+}
+
+/// Qualified Server-Side Referral State Machine
+model Referral {
+  id                   String    @id @default(cuid())
+  inviterId            String
+  inviter              User      @relation("ReferralsSent", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitedId            String    @unique // Unique constraint: Only 1 rewarded referral per student
+  invited              User      @relation("ReferralReceived", fields: [invitedId], references: [id], onDelete: Cascade)
+  status               String    @default("PENDING") // "PENDING" | "QUALIFIED" | "REWARDED" | "INVALID"
+  qualifyingPurchaseId String?
+  rewardedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([inviterId])
+  @@index([status])
+}
+
+/// Log of access code redemption attempts for brute-force tracking (NEVER stores raw code)
+model AccessCodeLog {
+  id               String   @id @default(cuid())
+  ip               String
+  userId           String?
+  attemptHash      String   // SHA-256 hash of attempted input
+  first4Characters String   // e.g. "P9X7" for debugging
+  codeLength       Int
+  success          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([ip, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Centralized Security Audit Log for all sensitive platform events
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g. "OTP_REQUESTED", "CODE_BLOCKED", "REFERRAL_REWARDED"
+  ip        String
+  device    String?
+  metadata  String?  // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action, createdAt])
+  @@index([ip, createdAt])
+}
+
+
 

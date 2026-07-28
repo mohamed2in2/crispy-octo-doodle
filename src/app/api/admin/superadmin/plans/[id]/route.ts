@@ -121,17 +121,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "الخطة غير موجودة" }, { status: 404 });
     }
 
-    if (plan._count.enrollments > 0) {
-      return NextResponse.json({ error: "لا يمكن حذف خطة تحتوي على اشتراكات. يرجى أرشفتها بدلاً من ذلك." }, { status: 400 });
-    }
-
     await prisma.plan.delete({ where: { id } });
 
     await logAdminAction({
       adminId: session.id,
       adminName: session.name,
       action: "DELETE_PLAN",
-      targetType: "Plan", targetId: "sys", targetName: "action", metadata: { details: `Deleted plan: ${plan.title} (${plan.id})` },
+      targetType: "Plan", 
+      targetId: "sys", 
+      targetName: "action", 
+      metadata: { details: `Deleted plan: ${plan.title} (${plan.id}) with ${plan._count?.enrollments || 0} enrollments` },
     });
 
     return NextResponse.json({ success: true });

@@ -7,6 +7,7 @@ export const POINTS = {
   FIRST_TRY_BONUS: 15,
   DAILY_EXAM_QUESTION: 5, // 5 points per correct daily exam question
   DAILY_EXAM_FULL_SCORE: 10, // 10 points bonus for perfect daily exam score
+  REFERRAL: 50, // 50 points per qualified referral for inviter and invited student
 };
 
 /**

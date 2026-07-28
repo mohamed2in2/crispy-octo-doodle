@@ -26,15 +26,31 @@ export async function POST(req: NextRequest) {
     const { code } = await req.json();
     if (!code) return NextResponse.json({ error: "الكود مطلوب" }, { status: 400 });
 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const { AccessCodeGuard } = await import("@/services/security/AccessCodeGuard");
+    const { ReferralService } = await import("@/services/referral/ReferralService");
+
+    // Enforce exponential rate limiting
+    const rateCheck = await AccessCodeGuard.verifyRateLimit(clientIp, session.id);
+    if (!rateCheck.allowed) {
+      await AccessCodeGuard.logAttempt({ ip: clientIp, userId: session.id, codeAttempted: String(code), success: false });
+      return NextResponse.json(
+        { error: `تم تجاوز عدد محاولات الكود المسموح بها. يرجى الانتظار ${rateCheck.lockTimeSeconds} ثانية قبل المحاولة مجدداً.` },
+        { status: 429 }
+      );
+    }
+
     const normalizedCode = String(code).trim().toUpperCase();
     
     // Check Course Access Code
     const accessCode = await prisma.accessCode.findUnique({ where: { code: normalizedCode } });
     if (accessCode) {
       if (accessCode.studentId) {
+        await AccessCodeGuard.logAttempt({ ip: clientIp, userId: session.id, codeAttempted: normalizedCode, success: false });
         return NextResponse.json({ error: "هذا الكود مستخدم بالفعل" }, { status: 400 });
       }
       if (!accessCode.isActive) {
+        await AccessCodeGuard.logAttempt({ ip: clientIp, userId: session.id, codeAttempted: normalizedCode, success: false });
         return NextResponse.json({ error: "هذا الكود غير فعال" }, { status: 400 });
       }
 
@@ -80,6 +96,12 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Log successful redemption
+        await AccessCodeGuard.logAttempt({ ip: clientIp, userId: session.id, codeAttempted: normalizedCode, success: true });
+
+        // Qualify student referral upon redeeming valid paid course code
+        void ReferralService.qualifyAndRewardReferral(session.id, accessCode.id).catch(() => {});
+
         return NextResponse.json({
           success: true,
           type: "course",
@@ -88,6 +110,7 @@ export async function POST(req: NextRequest) {
           message: "تم تفعيل الكود وإضافة الكورس إلى مكتبتك",
         });
       } catch (err: any) {
+        await AccessCodeGuard.logAttempt({ ip: clientIp, userId: session.id, codeAttempted: normalizedCode, success: false });
         if (err.message === "ALREADY_USED_OR_INACTIVE") {
           return NextResponse.json({ error: "هذا الكود مستخدم بالفعل أو غير فعال" }, { status: 400 });
         }

@@ -134,9 +134,10 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
 
-    // Save referral link (referral points are awarded only upon qualified enrollment/course redemption)
+    // Save referral link in PENDING state (referral points are awarded only upon qualified enrollment/course redemption)
     if (referredById) {
-      console.log(`[Signup] Linked referral: User ${user.id} referred by ${referredById}`);
+      const { ReferralService } = await import("@/services/referral/ReferralService");
+      await ReferralService.registerPendingReferral(referredById, user.id);
     }
 
     const token = await signToken({ id: user.id, email: user.email, name: user.name, role: user.role });

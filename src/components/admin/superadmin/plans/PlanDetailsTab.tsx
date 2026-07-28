@@ -346,7 +346,7 @@ export function PlanDetailsTab({ planId, onDelete }: { planId: string; onDelete?
       <div className="mt-8 p-6 border border-red-200 bg-red-50/30 dark:bg-red-950/10 rounded-2xl space-y-4">
         <h4 className="font-bold text-base text-red-700 dark:text-red-400">منطقة الخطورة (Danger Zone)</h4>
         <p className="text-xs text-[var(--ink-muted)]">
-          حذف هذه الخطة سيقوم بإزالتها نهائياً من النظام. لا يمكن حذف خطة دراسية نشطة تحتوي على اشتراكات طلاب (يجب أرشفة الخطة بدلاً من ذلك لإخفائها).
+          حذف هذه الخطة سيقوم بإزالتها نهائياً من النظام مع جميع البيانات والاشتراكات المتعلقة بها. لا يمكن التراجع عن هذا الإجراء.
         </p>
         <button
           type="button"
