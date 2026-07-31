@@ -13,7 +13,7 @@
 ### 2. Clerk JS Script oading ✓
 ```
 ✓ https://clerk.code-up.tech/npm/@clerk/clerk-js@6/dist/clerk.browser.js
-✓ Redirects (307) to: clerk.code-up.tech/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
+✓ Redirects (307to: clerk.code-up.tech/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
 ✓ Final URL returns: HTTP/2 200 OK ✓
 ✓ Content-Type: application/javascript ✓
 ✓ CORS headers: Enabled ✓
