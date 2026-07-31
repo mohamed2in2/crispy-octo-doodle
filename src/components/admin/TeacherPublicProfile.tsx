@@ -18,9 +18,11 @@ type Profile = {
   priceMonthly: number | null;
   priceTermly: number | null;
   priceYearly: number | null;
+  discountMonthly: number | null;
+  discountTermly: number | null;
+  discountYearly: number | null;
   courseStartDate: string | null;
   bookingContactUrl: string | null;
-  bookingDiscountPercent: number | null;
 };
 
 type Socials = { facebook?: string; youtube?: string; tiktok?: string };
@@ -291,62 +293,113 @@ export function TeacherPublicProfile() {
           <p className="text-xs text-[var(--ink-muted)] mt-1">حدد أسعار خطط الاشتراك التي ستظهر للطلاب عند الضغط على "احجز الآن" في صفحتك.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className={label}>💳 سعر الاشتراك الشهري (جنيه)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              className={input}
-              value={p.priceMonthly ?? ""}
-              onChange={(e) => set("priceMonthly", e.target.value ? Number(e.target.value) : null)}
-              placeholder="مثال: 100"
-            />
+        <div className="space-y-4">
+          {/* Monthly Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
+            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
+              <span>📅</span> الاشتراك الشهري
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={label}>السعر الأصلي (جنيه)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={input}
+                  value={p.priceMonthly ?? ""}
+                  onChange={(e) => set("priceMonthly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 150"
+                />
+              </div>
+              <div>
+                <label className={label}>🏷️ نسبة الخصم (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  className={input}
+                  value={p.discountMonthly ?? ""}
+                  onChange={(e) => set("discountMonthly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 10"
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className={label}>📚 سعر اشتراك الترم (جنيه)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              className={input}
-              value={p.priceTermly ?? ""}
-              onChange={(e) => set("priceTermly", e.target.value ? Number(e.target.value) : null)}
-              placeholder="مثال: 250"
-            />
+
+          {/* Termly Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
+            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
+              <span>📚</span> اشتراك الترم الكامل
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={label}>السعر الأصلي (جنيه)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={input}
+                  value={p.priceTermly ?? ""}
+                  onChange={(e) => set("priceTermly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 350"
+                />
+              </div>
+              <div>
+                <label className={label}>🏷️ نسبة الخصم (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  className={input}
+                  value={p.discountTermly ?? ""}
+                  onChange={(e) => set("discountTermly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 20"
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className={label}>🎓 سعر الاشتراك السنوي (جنيه)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              className={input}
-              value={p.priceYearly ?? ""}
-              onChange={(e) => set("priceYearly", e.target.value ? Number(e.target.value) : null)}
-              placeholder="مثال: 500"
-            />
+
+          {/* Yearly Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
+            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
+              <span>🎓</span> الاشتراك السنوي
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={label}>السعر الأصلي (جنيه)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={input}
+                  value={p.priceYearly ?? ""}
+                  onChange={(e) => set("priceYearly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 600"
+                />
+              </div>
+              <div>
+                <label className={label}>🏷️ نسبة الخصم (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  className={input}
+                  value={p.discountYearly ?? ""}
+                  onChange={(e) => set("discountYearly", e.target.value ? Number(e.target.value) : null)}
+                  placeholder="مثال: 30"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <p className="text-[10px] text-[var(--ink-muted)] px-1">اترك الحقل فارغاً إذا لم ترد عرض هذه الخطة للطلاب.</p>
+        <p className="text-[10px] text-[var(--ink-muted)] px-1">اترك السعر فارغاً إذا لم ترد عرض هذه الخطة للطلاب. يمكنك تحديد نسبة خصم مختلفة لكل خطة.</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className={label}>🏷️ نسبة الخصم العامة (%)</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              className={input}
-              value={p.bookingDiscountPercent ?? ""}
-              onChange={(e) => set("bookingDiscountPercent", e.target.value ? Number(e.target.value) : null)}
-              placeholder="مثال: 20"
-            />
-            <p className="text-[10px] text-[var(--ink-muted)] mt-1">خصم مئوي ينطبق على جميع خطط الحجز (اتركه فارغاً إن لم يوجد خصم).</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
             <label className={label}>📅 تاريخ بدء أول كورس</label>
             <input

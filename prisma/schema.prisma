@@ -223,14 +223,16 @@ model TeacherProfile {
   priceTermly       Float?
   priceYearly       Float?
 
+  /// Per-plan discount percentages (0-100)
+  discountMonthly   Float?
+  discountTermly    Float?
+  discountYearly    Float?
+
   /// First course start date — shown under "احجز الان" button
   courseStartDate   DateTime?
 
   /// Optional teacher contact/payment link (WhatsApp, payment page, etc.)
   bookingContactUrl String?
-
-  /// Booking discount percentage (0-100)
-  bookingDiscountPercent Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

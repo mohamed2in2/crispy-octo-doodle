@@ -19,7 +19,9 @@ interface BookingModalProps {
   priceMonthly: number | null;
   priceTermly: number | null;
   priceYearly: number | null;
-  bookingDiscountPercent?: number | null;
+  discountMonthly?: number | null;
+  discountTermly?: number | null;
+  discountYearly?: number | null;
   courseStartDate: string | null;
   bookingContactUrl: string | null;
   accentColor: string;
@@ -104,7 +106,9 @@ export function BookingButton({
   priceMonthly,
   priceTermly,
   priceYearly,
-  bookingDiscountPercent,
+  discountMonthly,
+  discountTermly,
+  discountYearly,
   courseStartDate,
   bookingContactUrl,
   accentColor,
@@ -127,26 +131,26 @@ export function BookingButton({
       .catch(() => {});
   }, []);
 
-  const hasDiscount = bookingDiscountPercent != null && bookingDiscountPercent > 0 && bookingDiscountPercent <= 100;
-
   const createPlan = (
     type: "monthly" | "termly" | "yearly",
     label: string,
     sublabel: string,
     rawPrice: number,
+    discountPct: number | null | undefined,
     icon: string,
     accent: string,
     accentBg: string
   ): BookingPlan => {
-    if (hasDiscount) {
-      const discountedPrice = Math.round(rawPrice * (1 - bookingDiscountPercent! / 100));
+    const hasDisc = discountPct != null && discountPct > 0 && discountPct <= 100;
+    if (hasDisc) {
+      const discountedPrice = Math.round(rawPrice * (1 - discountPct! / 100));
       return {
         type,
         label,
         sublabel,
         price: discountedPrice,
         originalPrice: rawPrice,
-        discountPercent: bookingDiscountPercent!,
+        discountPercent: discountPct!,
         icon,
         accent,
         accentBg,
@@ -166,16 +170,19 @@ export function BookingButton({
   const plans: BookingPlan[] = [];
 
   if (priceMonthly != null && priceMonthly > 0) {
-    plans.push(createPlan("monthly", "اشتراك شهري", "شهر واحد", priceMonthly, "📅", "#3B82F6", "rgba(59,130,246,0.1)"));
+    plans.push(createPlan("monthly", "اشتراك شهري", "شهر واحد", priceMonthly, discountMonthly, "📅", "#3B82F6", "rgba(59,130,246,0.1)"));
   }
 
   if (priceTermly != null && priceTermly > 0) {
-    plans.push(createPlan("termly", "اشتراك ترم كامل", "ترم دراسي كامل", priceTermly, "📚", "#F59E0B", "rgba(245,158,11,0.1)"));
+    plans.push(createPlan("termly", "اشتراك ترم كامل", "ترم دراسي كامل", priceTermly, discountTermly, "📚", "#F59E0B", "rgba(245,158,11,0.1)"));
   }
 
   if (priceYearly != null && priceYearly > 0) {
-    plans.push(createPlan("yearly", "اشتراك سنوي", "سنة دراسية كاملة", priceYearly, "🎓", "#10B981", "rgba(16,185,129,0.1)"));
+    plans.push(createPlan("yearly", "اشتراك سنوي", "سنة دراسية كاملة", priceYearly, discountYearly, "🎓", "#10B981", "rgba(16,185,129,0.1)"));
   }
+
+  // Find max discount across active plans for badge
+  const maxDiscount = plans.reduce((max, p) => (p.discountPercent && p.discountPercent > max ? p.discountPercent : max), 0);
 
   // Set initial selected plan to highest value / first plan if not set
   useEffect(() => {
@@ -215,9 +222,9 @@ export function BookingButton({
               boxShadow: `0 8px 32px -8px ${accentColor}80`,
             }}
           >
-            {hasDiscount && (
+            {maxDiscount > 0 && (
               <span className="absolute -top-3 -right-2 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-md animate-bounce">
-                خصم {bookingDiscountPercent}% 🔥
+                خصومات تصل لـ {maxDiscount}% 🔥
               </span>
             )}
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -280,10 +287,10 @@ export function BookingButton({
                   حجز الاشتراك مع {teacherName}
                 </div>
 
-                {hasDiscount && (
+                {maxDiscount > 0 && (
                   <div className="mb-2">
                     <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      🔥 خصم لفترة محدودة: {bookingDiscountPercent}% على جميع خطط الاشتراك!
+                      🔥 عروض خاصة: خصومات تصل لـ {maxDiscount}% على خطط الاشتراك!
                     </span>
                   </div>
                 )}
