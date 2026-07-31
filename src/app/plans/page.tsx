@@ -8,23 +8,15 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 
 const STAGES = [
   { value: "all", label: "الكل" },
-  { value: "primary_6", label: "تأسيسي" },
-  { value: "prep_1", label: "الأول الإعدادي" },
-  { value: "prep_2", label: "الثاني الإعدادي" },
-  { value: "prep_3", label: "الثالث الإعدادي" },
-  { value: "sec_1", label: "الأول الثانوي" },
-  { value: "sec_2", label: "الثاني الثانوي" },
-  { value: "sec_3", label: "الثالث الثانوي" },
+  { value: "sec_1", label: "أولى بكالوريا" },
+  { value: "sec_2", label: "ثانية بكالوريا" },
+  { value: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 const STAGE_LABELS: Record<string, string> = {
-  primary_6: "الصف السادس الابتدائي",
-  prep_1: "الصف الأول الإعدادي",
-  prep_2: "الصف الثاني الإعدادي",
-  prep_3: "الصف الثالث الإعدادي",
-  sec_1: "الصف الأول الثانوي",
-  sec_2: "الصف الثاني الثانوي",
-  sec_3: "الصف الثالث الثانوي",
+  sec_1: "أولى بكالوريا",
+  sec_2: "ثانية بكالوريا",
+  sec_3: "ثالثة بكالوريا",
 };
 
 const DEFAULT_PLAN_FEATURES = [

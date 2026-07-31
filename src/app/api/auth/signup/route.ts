@@ -87,6 +87,25 @@ export async function POST(req: NextRequest) {
           promoCodeUsed = codeUpper;
         }
       }
+    } else {
+      // Auto-attribute if student joined after visiting a teacher's page
+      const teacherRefCookie = req.cookies.get("teacher_ref")?.value;
+      if (teacherRefCookie) {
+        const teacher = await prisma.user.findFirst({
+          where: {
+            id: teacherRefCookie,
+            role: "teacher",
+            promoProgramEnabled: true,
+            isDeleted: false,
+          },
+          select: { id: true, promoCode: true },
+        });
+
+        if (teacher) {
+          referredByTeacherId = teacher.id;
+          promoCodeUsed = teacher.promoCode || "PAGE_VISIT";
+        }
+      }
     }
 
     // Resolve referrer if a valid student referral code was supplied

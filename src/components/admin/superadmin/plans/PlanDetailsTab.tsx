@@ -200,13 +200,9 @@ export function PlanDetailsTab({ planId, onDelete }: { planId: string; onDelete?
               className="w-full p-2 border rounded bg-[var(--surface-2)] text-[var(--ink)]"
               style={{ borderColor: "var(--border)" }}
             >
-              <option value="primary_6">الصف السادس الابتدائي</option>
-              <option value="prep_1">الصف الأول الإعدادي</option>
-              <option value="prep_2">الصف الثاني الإعدادي</option>
-              <option value="prep_3">الصف الثالث الإعدادي</option>
-              <option value="sec_1">الصف الأول الثانوي</option>
-              <option value="sec_2">الصف الثاني الثانوي</option>
-              <option value="sec_3">الصف الثالث الثانوي</option>
+              <option value="sec_1">أولى بكالوريا</option>
+              <option value="sec_2">ثانية بكالوريا</option>
+              <option value="sec_3">ثالثة بكالوريا</option>
             </select>
           </div>
           <div>

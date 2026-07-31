@@ -1,5 +1,5 @@
 export type Role = "student" | "teacher" | "superadmin";
-export type EducationalStage = "primary_6" | "prep_1" | "prep_2" | "prep_3" | "sec_1" | "sec_2" | "sec_3";
+export type EducationalStage = "sec_1" | "sec_2" | "sec_3";
 
 export interface UserSession {
   id: string;
@@ -72,13 +72,9 @@ export interface QuizQuestion {
 }
 
 export const EDUCATIONAL_STAGES = [
-  { value: "primary_6", label: "المستوى الأول (تأسيسي - الصف السادس)" },
-  { value: "prep_1", label: "المستوى الثاني (الصف الأول الإعدادي)" },
-  { value: "prep_2", label: "المستوى الثالث (الصف الثاني الإعدادي)" },
-  { value: "prep_3", label: "المستوى الرابع (الصف الثالث الإعدادي)" },
-  { value: "sec_1", label: "المستوى الخامس (الصف الأول الثانوي)" },
-  { value: "sec_2", label: "المستوى السادس (الصف الثاني الثانوي)" },
-  { value: "sec_3", label: "المستوى المتقدم (الصف الثالث الثانوي)" },
+  { value: "sec_1", label: "أولى بكالوريا" },
+  { value: "sec_2", label: "ثانية بكالوريا" },
+  { value: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 export const SUBJECTS = [

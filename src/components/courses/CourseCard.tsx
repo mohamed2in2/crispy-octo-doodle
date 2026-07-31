@@ -26,9 +26,9 @@ interface CourseCardProps {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  primary_4: "الرابع الابتدائي", primary_5: "الخامس الابتدائي", primary_6: "السادس الابتدائي",
-  prep_1: "الأول الإعدادي",    prep_2: "الثاني الإعدادي",    prep_3: "الثالث الإعدادي",
-  sec_1:  "الأول الثانوي",     sec_2:  "الثاني الثانوي",     sec_3:  "الثالث الثانوي",
+  sec_1: "أولى بكالوريا",
+  sec_2: "ثانية بكالوريا",
+  sec_3: "ثالثة بكالوريا",
 };
 
 const SUBJECT_COLORS: Record<string, { bg: string; text: string }> = {

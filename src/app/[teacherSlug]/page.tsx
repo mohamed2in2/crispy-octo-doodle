@@ -50,17 +50,28 @@ export async function generateMetadata({ params }: { params: Promise<{ teacherSl
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  primary_4: "الرابع الابتدائي", primary_5: "الخامس الابتدائي", primary_6: "السادس الابتدائي",
-  prep_1: "الأول الإعدادي", prep_2: "الثاني الإعدادي", prep_3: "الثالث الإعدادي",
-  sec_1: "الأول الثانوي", sec_2: "الثاني الثانوي", sec_3: "الثالث الثانوي",
+  sec_1: "أولى بكالوريا",
+  sec_2: "ثانية بكالوريا",
+  sec_3: "ثالثة بكالوريا",
 };
 
 const isSafe = (s?: string | null) => !!s && (/^https?:\/\//i.test(s) || s.startsWith("data:image/") || s.startsWith("/"));
+
+import { cookies } from "next/headers";
 
 export default async function TeacherPage({ params }: { params: Promise<{ teacherSlug: string }> }) {
   const { teacherSlug } = await params;
   const p = await getProfile(teacherSlug);
   if (!p) notFound();
+
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set("teacher_ref", p.teacherId, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: "/",
+      sameSite: "lax",
+    });
+  } catch (e) {}
 
   const name = p.displayName ?? p.teacher.name;
   const courses = p.teacher.courses;

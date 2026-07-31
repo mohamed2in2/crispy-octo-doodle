@@ -18,9 +18,9 @@ const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const ROTATING_SUBJECTS = ["برمجه عملي", "برمجه نظري", "مشاريع برمجه"];
 
 const GRADE_SHORTCUTS = [
-  { stage: "sec_1", label: "الأول الثانوي" },
-  { stage: "sec_2", label: "الثاني الثانوي" },
-  { stage: "sec_3", label: "الثالث الثانوي" },
+  { stage: "sec_1", label: "أولى بكالوريا" },
+  { stage: "sec_2", label: "ثانية بكالوريا" },
+  { stage: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 const stagger: Variants = {

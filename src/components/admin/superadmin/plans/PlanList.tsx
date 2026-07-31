@@ -43,13 +43,9 @@ export function PlanList({ onSelectPlan }: { onSelectPlan: (id: string) => void 
 
   const STAGES = [
     { value: "", label: "الكل" },
-    { value: "primary_6", label: "الصف السادس الابتدائي" },
-    { value: "prep_1", label: "الصف الأول الإعدادي" },
-    { value: "prep_2", label: "الصف الثاني الإعدادي" },
-    { value: "prep_3", label: "الصف الثالث الإعدادي" },
-    { value: "sec_1", label: "الصف الأول الثانوي" },
-    { value: "sec_2", label: "الصف الثاني الثانوي" },
-    { value: "sec_3", label: "الصف الثالث الثانوي" },
+    { value: "sec_1", label: "أولى بكالوريا" },
+    { value: "sec_2", label: "ثانية بكالوريا" },
+    { value: "sec_3", label: "ثالثة بكالوريا" },
   ];
 
   const getStageLabel = (stage: string) => {
