@@ -10,7 +10,7 @@
 ✓ Headers show: x-clerk-trace-id (Clerk is responding)
 ```c
 
-### 2. Clerk JS Script Loading ✓
+### 2. Clerk JS Script oading ✓
 ```
 ✓ https://clerk.code-up.tech/npm/@clerk/clerk-js@6/dist/clerk.browser.js
 ✓ Redirects (307) to: clerk.code-up.tech/npm/@clerk/clerk-js@6.12.0/dist/clerk.browser.js
