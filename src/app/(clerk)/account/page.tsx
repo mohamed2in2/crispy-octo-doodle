@@ -456,19 +456,53 @@ export default function AccountPage() {
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 md:py-10">
 
-
+        {/* ── Profile Header Banner ── */}
+        <div className="rounded-2xl overflow-hidden mb-6" style={{ background: "linear-gradient(135deg, rgba(20,184,166,0.15), rgba(16,185,129,0.08))", border: "1px solid rgba(20,184,166,0.2)" }}>
+          <div className="relative px-6 py-6 md:py-8">
+            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-5">
+              {/* Avatar */}
+              <div className="relative">
+                <span className="flex items-center justify-center w-20 h-20 rounded-2xl text-3xl font-black text-white" style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)", boxShadow: "0 8px 24px -8px rgba(16,185,129,0.4)" }}>
+                  {user.name?.[0] ?? "م"}
+                </span>
+                <span className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center text-xs" style={{ background: "var(--gold-2)", color: "#fff", boxShadow: "0 2px 8px rgba(200,146,47,0.3)" }}>✏️</span>
+              </div>
+              {/* Info */}
+              <div className="text-center sm:text-right flex-1">
+                <h2 className="text-xl md:text-2xl font-black mb-1" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>{user.name}</h2>
+                <p className="text-sm mb-2" style={{ color: "var(--ink-2)" }}>{stageLabel}</p>
+                <span className="inline-block px-3 py-1 rounded-lg text-xs font-bold" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.25)" }}>#{user.id.slice(-10)}</span>
+              </div>
+              {/* Gamification Pills */}
+              {isStudent && (
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold" style={{ background: "var(--gold-soft)", color: "var(--gold-2)", border: "1px solid var(--gold-2)" }}>
+                    💎 {stats?.points?.toLocaleString() ?? "0"} نقطة
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.25)" }}>
+                    ⚡ مستوى {stats?.achievementsUnlocked ?? 0}
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>
+                    🔥 {stats?.streak ?? 0} يوم
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* ── Desktop layout: sidebar + content ── */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-[240px_minmax(0,1fr)]">
 
           {/* ── Sidebar (hidden on mobile) ── */}
-          <aside className="hidden md:block rounded-[20px] overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
-            <div className="text-center p-5" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(180deg,var(--brand-soft),transparent)" }}>
-              <span className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3" style={{ background: "var(--brand)", border: "4px solid var(--surface)", boxShadow: "var(--shadow)" }}>
+          <aside className="hidden md:block rounded-2xl overflow-hidden self-start sticky top-24" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
+            <div className="text-center p-5" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(180deg, rgba(20,184,166,0.08), transparent)" }}>
+              <span className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3" style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)", border: "4px solid var(--surface)", boxShadow: "0 8px 20px -6px rgba(16,185,129,0.4)" }}>
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>
               </span>
               <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 15, color: "var(--ink)", margin: "0 0 4px" }}>{user.name}</h2>
-              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand)", fontWeight: 700 }}>
+              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "rgba(20,184,166,0.1)", color: "#14B8A6", fontWeight: 700 }}>
                 {isStudent ? "طالب" : user.role}
               </span>
               {balance !== null && (
@@ -483,8 +517,8 @@ export default function AccountPage() {
                 <button key={s.id} onClick={() => go(s.id)} className="w-full flex items-center gap-3 cursor-pointer border-none transition-colors rounded-[10px]"
                   style={{
                     padding: "10px 12px", marginBottom: 2, textAlign: "right", fontFamily: "var(--font-body)",
-                    background: section === s.id ? "var(--brand-soft)" : "transparent",
-                    color: section === s.id ? "var(--brand)" : "var(--ink-2)",
+                    background: section === s.id ? "rgba(20,184,166,0.1)" : "transparent",
+                    color: section === s.id ? "#14B8A6" : "var(--ink-2)",
                     fontWeight: section === s.id ? 700 : 600, fontSize: 13.5
                   }}>
                   <span className="flex-1 text-right">{s.label}</span>
@@ -552,8 +586,8 @@ export default function AccountPage() {
             {/* ════ PROFILE ════ */}
             {section === "profile" && (
               <div className="space-y-4">
-                <div className="rounded-[20px] overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
-                  <div style={{ height: 80, background: "linear-gradient(120deg,var(--brand),var(--brand-strong))", position: "relative", overflow: "hidden" }}>
+                <div className="rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+                  <div style={{ height: 80, background: "linear-gradient(120deg, #10B981, #14B8A6)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
                   </div>
                   <div style={{ padding: "20px 24px 24px" }}>
@@ -1024,7 +1058,7 @@ export default function AccountPage() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
                       {stats.achievements.map(a => (
-                        <div key={a.id} className="text-center rounded-[14px]" style={{ padding: "18px 10px", border: `1px solid ${a.unlocked ? "var(--brand)" : "var(--border)"}`, background: a.unlocked ? "var(--brand-soft)" : "var(--surface-2)", opacity: a.unlocked ? 1 : 0.5 }}>
+                        <div key={a.id} className="text-center rounded-2xl" style={{ padding: "18px 10px", border: a.unlocked ? "1px solid rgba(20,184,166,0.3)" : "1px solid var(--border)", background: a.unlocked ? "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(16,185,129,0.06))" : "var(--surface-2)", opacity: a.unlocked ? 1 : 0.5, boxShadow: a.unlocked ? "0 4px 16px -4px rgba(16,185,129,0.2)" : "none" }}>
                           <div style={{ fontSize: 32, marginBottom: 6 }}>{ACH_ICON[a.icon] ?? "🏅"}</div>
                           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ink)", marginBottom: 3 }}>{a.title}</div>
                           <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{a.description}</div>

@@ -54,6 +54,10 @@
   --accent-lt:     var(--brand-soft);
   --card:          var(--surface-2);
 
+  /* Feature cards — frosted glass */
+  --feature-card-bg:     rgba(255, 255, 255, 0.85);
+  --feature-card-border: rgba(0, 0, 0, 0.06);
+
   /* Z-index scale */
   --z-dropdown: 40;
   --z-sticky:   50;
@@ -93,6 +97,10 @@ html.dark {
   --shadow-sm:     0 1px 2px rgba(0, 0, 0, .4);
   --shadow:        0 10px 34px -16px rgba(0, 0, 0, .55);
   --shadow-lg:     0 30px 70px -30px rgba(0, 0, 0, .7);
+
+  /* Feature cards — frosted glass (dark) */
+  --feature-card-bg:     rgba(20, 25, 35, 0.80);
+  --feature-card-border: rgba(255, 255, 255, 0.10);
 
   /* Backward compat */
   --ink-muted:     var(--ink-2);

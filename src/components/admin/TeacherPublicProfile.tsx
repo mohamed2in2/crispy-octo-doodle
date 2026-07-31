@@ -168,20 +168,35 @@ export function TeacherPublicProfile() {
         </button>
       </div>
 
-      {/* Identity */}
-      <div className={`${card} space-y-4`}>
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-[var(--bg)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
-            {p.photoUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
-              : <span className="text-2xl font-black text-[var(--ink-muted)]">{(p.displayName || "؟")[0]}</span>}
+      {/* Identity & Photo Section */}
+      <div className={`${card} space-y-5`}>
+        <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/20 flex flex-col sm:flex-row items-center gap-4 justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative w-20 h-20 rounded-full bg-[var(--bg)] border-2 border-sky-500/40 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
+              {p.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.photoUrl} alt="صورة المدرس" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-black text-sky-500">{(p.displayName || "؟")[0]}</span>
+              )}
+            </div>
+            <div>
+              <h3 className="font-bold text-[var(--ink)] text-base">الصورة الشخصية للمدرس 📸</h3>
+              <p className="text-xs text-[var(--ink-muted)] mt-0.5">
+                تظهر للطلاب في صفحة الكورسات وقائمة المدرسين.
+              </p>
+            </div>
           </div>
-          <div>
+          <div className="flex items-center gap-2 shrink-0">
             <input ref={photoInput} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
-            <button onClick={() => photoInput.current?.click()} className={ghostBtn}>رفع صورة</button>
-            {p.photoUrl && <button onClick={() => set("photoUrl", null)} className="ms-2 text-xs text-rose-500 font-semibold">إزالة</button>}
-            <p className="text-[11px] text-[var(--ink-muted)] mt-1.5">تُصغّر تلقائياً إلى 512px</p>
+            <button onClick={() => photoInput.current?.click()} className={primaryBtn}>
+              {p.photoUrl ? "تغيير الصورة" : "إضافة صورة شخصية"}
+            </button>
+            {p.photoUrl && (
+              <button onClick={() => set("photoUrl", null)} className="px-3 py-2 text-xs text-rose-500 hover:text-rose-400 font-bold transition-colors">
+                حذف الصورة
+              </button>
+            )}
           </div>
         </div>
 

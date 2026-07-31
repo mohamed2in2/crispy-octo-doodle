@@ -107,29 +107,40 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
           animate="visible"
           className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center flex flex-col items-center"
         >
-          {/* Status pill */}
+          {/* Status pill — glowing green dot + fire emoji */}
           <motion.div
             variants={rise}
-            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full text-xs md:text-sm font-semibold mb-8 md:mb-10 backdrop-blur-md cursor-default select-none"
+            className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full text-xs md:text-sm font-semibold mb-8 md:mb-10 backdrop-blur-md cursor-default select-none"
             style={{ background: "var(--brand-soft)", border: "1px solid rgba(14,110,98,.3)", color: "var(--brand)" }}
           >
-            <span className="relative flex w-2 h-2 shrink-0" aria-hidden>
-              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-40" />
-              <span className="relative inline-flex w-2 h-2 rounded-full bg-[var(--brand)]" />
+            <span className="relative flex w-2.5 h-2.5 shrink-0" aria-hidden>
+              <span className="motion-reduce:hidden animate-ping absolute inline-flex h-full w-full rounded-full opacity-40" style={{ background: "#10B981" }} />
+              <span className="relative inline-flex w-2.5 h-2.5 rounded-full" style={{ background: "#10B981" }} />
             </span>
-            أكثر من ١٬٠٠٠ طالب يثقون بنا
+            🔥 أكثر من ١٬٠٠٠ طالب يتعلمون معنا
           </motion.div>
 
-          {/* Headline */}
+          {/* Headline — gradient highlight on key phrase */}
           <motion.h1
             variants={rise}
             className="text-balance text-4xl sm:text-5xl md:text-[4.5rem] lg:text-[5rem] font-black tracking-tight leading-[1.2] md:leading-[1.15] mb-6 md:mb-7"
             style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}
           >
-            كل ما تحتاجه للتفوّق
+            كل ما تحتاجه{" "}
+            <span
+              className="hero-gradient-text"
+              style={{
+                backgroundImage: "linear-gradient(to left, #14B8A6, #10B981, #059669)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              للتفوّق
+            </span>
             <br />
             <span>في </span>
-            <span className="sr-only">جميع المواد الدراسية</span>
+            <span className="sr-only">جميع مشاريع البرمجة</span>
             <span
               aria-hidden
               className="relative inline-grid overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]"
@@ -162,18 +173,22 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
             {subtitle || DEFAULT_SUBTITLE}
           </motion.p>
 
-          {/* CTAs */}
+          {/* CTAs — Primary glowing "تصفح الكورسات", secondary login/signup */}
           <motion.div
             variants={rise}
             className="flex flex-col sm:flex-row gap-3 justify-center items-center w-full px-4 sm:px-0"
           >
             <MagneticArea className="w-full sm:w-auto">
               <Link
-                href={isLoggedIn ? "/library" : "/signup"}
+                href="/courses"
+                id="hero-cta-browse"
                 className="group relative px-8 py-4 font-bold rounded-full transition-shadow text-base flex items-center justify-center gap-2 overflow-hidden w-full sm:w-auto text-white hover:opacity-90"
-                style={{ background: "var(--brand)", boxShadow: "0 0 0 0 var(--brand-shadow)" }}
+                style={{
+                  background: "linear-gradient(135deg, #10B981, #14B8A6)",
+                  boxShadow: "0 8px 32px -8px rgba(16, 185, 129, 0.4), 0 0 0 0 rgba(16, 185, 129, 0.15)",
+                }}
               >
-                <span className="relative z-10">{isLoggedIn ? "متابعة التعلم" : "ابدأ الآن مجاناً"}</span>
+                <span className="relative z-10">تصفح الكورسات</span>
                 <svg className="relative z-10 w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
@@ -185,11 +200,23 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
 
             {!isLoggedIn && (
               <Link
-                href="/courses"
+                href="/signup"
+                id="hero-cta-signup"
                 className="px-8 py-4 font-bold rounded-full transition-all text-base flex items-center justify-center w-full sm:w-auto backdrop-blur-sm"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
               >
-                استكشف الكورسات
+                ابدأ الآن مجاناً
+              </Link>
+            )}
+
+            {isLoggedIn && (
+              <Link
+                href="/library"
+                id="hero-cta-continue"
+                className="px-8 py-4 font-bold rounded-full transition-all text-base flex items-center justify-center w-full sm:w-auto backdrop-blur-sm"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
+              >
+                متابعة التعلم
               </Link>
             )}
           </motion.div>
@@ -204,6 +231,7 @@ export function HeroSection({ isLoggedIn, subtitle }: HeroSectionProps) {
               <Link
                 key={g.stage}
                 href={`/courses?stage=${g.stage}`}
+                id={`hero-grade-${g.stage}`}
                 className="group/chip inline-flex items-center gap-1.5 px-4 py-3 rounded-full text-sm font-bold transition-all backdrop-blur-sm"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)", minHeight: 44 }}
                 onMouseEnter={(e) => {

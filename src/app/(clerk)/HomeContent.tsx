@@ -69,12 +69,68 @@ export function HomeContent({ text }: { text: SiteText }) {
       <main className="flex-1">
         <HeroSection isLoggedIn={isLoggedIn} subtitle={text.hero_subtitle} />
         <FeaturesSection />
+
+        {/* ─── Parent Portal Banner ──────────────────────────────────── */}
+        <section
+          id="parent-portal-banner"
+          className="py-16 border-t"
+          style={{ background: "var(--bg-2)", borderColor: "var(--border)" }}
+        >
+          <div className="max-w-4xl mx-auto px-4">
+            <Link
+              href="/parent"
+              id="parent-portal-link"
+              className="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 rounded-2xl px-7 py-6 no-underline transition-all"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(16,185,129,0.1), var(--shadow-sm)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)";
+              }}
+            >
+              <div className="flex items-center gap-5">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={{
+                    background: "var(--brand-soft)",
+                    border: "1px solid var(--brand)",
+                    boxShadow: "0 0 16px rgba(16,185,129,0.12)",
+                  }}
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="var(--brand)" strokeWidth={1.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight mb-0.5" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>بوابة ولي الأمر</h3>
+                  <p className="text-sm" style={{ color: "var(--ink-2)" }}>تابع الأداء الأكاديمي، النقاط، وتقارير الذكاء الاصطناعي للمتعلم.</p>
+                </div>
+              </div>
+              <span className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold transition-colors" style={{ color: "var(--brand)" }}>
+                الدخول لبوابة المتابعة
+                <svg className="w-4 h-4 rotate-180 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </Link>
+          </div>
+        </section>
+
         <ContactSection
           heading={text.contact_heading}
           subtitle={text.contact_subtitle}
           email={text.contact_email}
           phone={text.contact_phone}
         />
+
+        {/* ─── Final CTA (logged-out only) ───────────────────────────── */}
         {!isLoggedIn && (
           <section className="py-28 border-t" style={{ background: "var(--bg-2)", borderColor: "var(--border)" }}>
             <div className="max-w-3xl mx-auto px-4 text-center">
@@ -90,8 +146,12 @@ export function HomeContent({ text }: { text: SiteText }) {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
                   href="/signup"
+                  id="footer-cta-signup"
                   className="group relative px-8 py-4 font-bold rounded-full text-base flex w-full sm:w-auto items-center justify-center overflow-hidden text-white hover:opacity-90 transition-opacity"
-                  style={{ background: "var(--brand)", boxShadow: "0 8px 24px -8px var(--brand-shadow)" }}
+                  style={{
+                    background: "linear-gradient(135deg, #10B981, #14B8A6)",
+                    boxShadow: "0 8px 24px -8px rgba(16,185,129,0.4)",
+                  }}
                 >
                   <span className="relative z-10">إنشاء حساب مجاني</span>
                   <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
@@ -100,47 +160,13 @@ export function HomeContent({ text }: { text: SiteText }) {
                 </Link>
                 <Link
                   href="/courses"
+                  id="footer-cta-courses"
                   className="px-8 py-4 font-bold rounded-full text-base flex w-full sm:w-auto items-center justify-center transition-all hover:border-[var(--brand-strong)]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink-2)" }}
                 >
                   تصفح الكورسات
                 </Link>
               </div>
-            </div>
-          </section>
-        )}
-
-        {isLoggedIn && (
-          <section className="py-16 border-t" style={{ background: "var(--bg-2)", borderColor: "var(--border)" }}>
-            <div className="max-w-4xl mx-auto px-4">
-              <Link
-                href="/parent"
-                className="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 rounded-2xl px-7 py-6 no-underline transition-all"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--brand)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-              >
-                <div className="flex items-center gap-5">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                    style={{ background: "var(--brand-soft)", border: "1px solid var(--brand)" }}
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="var(--brand)" strokeWidth={1.5} aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold tracking-tight mb-0.5" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>بوابة ولي الأمر</h3>
-                    <p className="text-sm" style={{ color: "var(--ink-2)" }}>تابع الأداء الأكاديمي، النقاط، وتقارير الذكاء الاصطناعي للمتعلم.</p>
-                  </div>
-                </div>
-                <span className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold transition-colors" style={{ color: "var(--brand)" }}>
-                  الدخول للبوابة
-                  <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-              </Link>
             </div>
           </section>
         )}

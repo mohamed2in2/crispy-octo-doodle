@@ -61,11 +61,12 @@ const ISSUE_ICON: Record<string, (p: { className?: string }) => React.ReactEleme
 const SEV_DOT: Record<string, string> = { high: "bg-rose-500", med: "bg-amber-500", low: "bg-slate-400" };
 
 export function TeacherOverview({
-  courses, onCreateCourse, loadingCourses,
+  courses, onCreateCourse, loadingCourses, onGoToMyPage,
 }: {
   courses: { id: string; title: string }[];
   onCreateCourse: () => void;
   loadingCourses: boolean;
+  onGoToMyPage?: () => void;
 }) {
   const [period, setPeriod] = useState("30d");
   const [courseId, setCourseId] = useState("");
@@ -96,9 +97,16 @@ export function TeacherOverview({
         </div>
         <p className="font-bold text-[var(--ink)] text-lg">أهلاً بك في Code-UP{firstName ? `، ${firstName}` : ""} 👋</p>
         <p className="text-sm text-[var(--ink-muted)] mt-1.5 max-w-sm mx-auto leading-6">ابدأ بإنشاء كورسك الأول، وستظهر هنا كل إحصائياتك ومخططاتك مباشرة.</p>
-        <button onClick={onCreateCourse} className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors">
-          <IconPlus className="w-4 h-4" /> إنشاء كورس
-        </button>
+        <div className="flex items-center justify-center gap-3 mt-5">
+          <button onClick={onCreateCourse} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors">
+            <IconPlus className="w-4 h-4" /> إنشاء كورس
+          </button>
+          {onGoToMyPage && (
+            <button onClick={onGoToMyPage} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border)] text-[var(--ink)] text-sm font-bold transition-colors hover:bg-[var(--surface-2)]">
+              إضافة صورة شخصية 📸
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -114,11 +122,23 @@ export function TeacherOverview({
     <div className="space-y-5">
       {/* ── Welcome + filters ── */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-xl sm:text-2xl font-black text-[var(--ink)] truncate">
-            أهلاً، {firstName || "أستاذنا"} <span className="inline-block">👋</span>
-          </h2>
-          <p className="text-sm text-[var(--ink-muted)] mt-0.5">نظرة سريعة على أداء كورساتك وتفاعل طلابك.</p>
+        <div className="min-w-0 flex items-center gap-3">
+          {onGoToMyPage && (
+            <button
+              onClick={onGoToMyPage}
+              className="relative group shrink-0 w-12 h-12 rounded-full bg-sky-500/10 border border-sky-500/30 overflow-hidden flex items-center justify-center transition-transform hover:scale-105"
+              title="تعديل الصورة الشخصية"
+            >
+              <span className="text-sm font-black text-sky-500">{(firstName || "م")[0]}</span>
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity">📷</div>
+            </button>
+          )}
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--ink)] truncate">
+              أهلاً، {firstName || "أستاذنا"} <span className="inline-block">👋</span>
+            </h2>
+            <p className="text-sm text-[var(--ink-muted)] mt-0.5">نظرة سريعة على أداء كورساتك وتفاعل طلابك.</p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {/* course filter */}

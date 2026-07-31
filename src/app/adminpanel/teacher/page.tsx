@@ -771,6 +771,7 @@ export default function TeacherDashboardPage() {
             <TeacherOverview
               courses={courses.map((c) => ({ id: c.id, title: c.title }))}
               onCreateCourse={() => setActiveSection("create-course")}
+              onGoToMyPage={() => setActiveSection("my-page")}
               loadingCourses={loading}
             />
           )}

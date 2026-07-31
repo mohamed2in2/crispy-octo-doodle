@@ -141,21 +141,32 @@ export default function LibraryPage() {
 
   return (
     <ProfileGuard>
-    <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] text-gray-900 dark:text-white transition-colors duration-300">
+    <div className="flex flex-col min-h-screen" style={{ background: "var(--bg)", color: "var(--ink)" }}>
       <Navbar user={user} />
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Header Greeting */}
+        {/* ── Header Greeting ── */}
         <motion.div
           className="mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-4xl md:text-5xl font-black mb-2 flex items-center gap-3">
-            مرحباً، <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-blue-500">{user?.name ? user.name.split(' ')[0] : 'طالب'}</span> 👋
+          <h1 className="text-3xl md:text-4xl font-black mb-2 flex items-center gap-3" style={{ fontFamily: "var(--font-head)" }}>
+            مرحباً،{" "}
+            <span
+              style={{
+                backgroundImage: "linear-gradient(to left, #14B8A6, #10B981)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              {user?.name ? user.name.split(' ')[0] : 'طالب'}
+            </span>{" "}
+            👋
           </h1>
-          <p className="text-lg text-gray-500 dark:text-gray-400">لنواصل رحلتك التعليمية اليوم!</p>
+          <p className="text-base font-medium" style={{ color: "var(--ink-2)" }}>واصل رحلتك التعليمية اليوم!</p>
         </motion.div>
 
         {loading ? (
@@ -164,120 +175,78 @@ export default function LibraryPage() {
           </div>
         ) : (
           <>
-            {/* Top Stats Row */}
+            {/* ── Top Stats Row ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
-              {/* Courses Stat */}
-              <div className="bg-white dark:bg-[#151B2B] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] dark:bg-[#11302D] flex items-center justify-center text-[var(--brand)]">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  {courses.length > 0 && (
-                    <span className="text-[10px] font-bold text-[var(--brand)] bg-[var(--brand-soft)] dark:bg-[#11302D] px-2 py-0.5 rounded-lg">
-                      نشط
-                    </span>
-                  )}
-                </div>
-                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{courses.length + plans.length}</div>
-                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">مسارات نشطة</div>
-              </div>
-
-              {/* Achievements Stat */}
-              <div className="bg-white dark:bg-[#151B2B] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-[#33231C] flex items-center justify-center text-orange-500">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                  </div>
-                  {realAchievements > 0 && (
-                    <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-[#33231C] px-2 py-0.5 rounded-lg">
-                      +{realAchievements}
-                    </span>
-                  )}
-                </div>
-                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{realAchievements}</div>
-                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">إنجازات</div>
-              </div>
-
-              {/* Points Stat */}
-              <div className="bg-white dark:bg-[#151B2B] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--gold-soft)] dark:bg-[#241D0E] flex items-center justify-center text-[var(--gold-2)]">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3 6.5 7 .6-5.3 4.6L18.3 21 12 17.3 5.7 21l1.6-7.3L2 9.1l7-.6L12 2z" />
-                    </svg>
-                  </div>
-                  {streak > 0 && (
-                    <span className="text-[10px] font-bold text-[var(--gold-2)] bg-[var(--gold-soft)] dark:bg-[#241D0E] px-2 py-0.5 rounded-lg">
-                      +{streak} أسبوع
-                    </span>
-                  )}
-                </div>
-                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{realPoints.toLocaleString()}</div>
-                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">نقطة</div>
-              </div>
-
-              {/* Hours Stat */}
-              <div className="bg-white dark:bg-[#151B2B] rounded-2xl p-4 md:p-5 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] dark:bg-[#11302D] flex items-center justify-center text-[var(--brand)]">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="font-head font-black text-2xl md:text-3xl text-[var(--ink)] mt-3">{realHours}</div>
-                <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">ساعات تعلّم</div>
-              </div>
+              <StatCard
+                icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>}
+                iconBg="rgba(16,185,129,0.12)" iconColor="#10B981" iconGlow="rgba(16,185,129,0.2)"
+                value={courses.length + plans.length}
+                label="مسارات نشطة"
+                badge={courses.length > 0 ? "نشط" : undefined}
+                badgeBg="var(--brand-soft)" badgeColor="var(--brand)"
+              />
+              <StatCard
+                icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>}
+                iconBg="rgba(245,158,11,0.12)" iconColor="#F59E0B" iconGlow="rgba(245,158,11,0.2)"
+                value={realAchievements}
+                label="إنجازات"
+                badge={realAchievements > 0 ? `+${realAchievements}` : undefined}
+                badgeBg="rgba(245,158,11,0.12)" badgeColor="#F59E0B"
+              />
+              <StatCard
+                icon={<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .6-5.3 4.6L18.3 21 12 17.3 5.7 21l1.6-7.3L2 9.1l7-.6L12 2z" /></svg>}
+                iconBg="var(--gold-soft)" iconColor="var(--gold-2)" iconGlow="rgba(200,146,47,0.15)"
+                value={realPoints.toLocaleString()}
+                label="نقطة"
+                badge={streak > 0 ? `🔥 ${streak} أيام` : undefined}
+                badgeBg="var(--gold-soft)" badgeColor="var(--gold-2)"
+              />
+              <StatCard
+                icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>}
+                iconBg="rgba(16,185,129,0.12)" iconColor="#10B981" iconGlow="rgba(16,185,129,0.2)"
+                value={realHours}
+                label="ساعات تعلّم"
+              />
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* ── Main Content Grid ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              {/* Right Column (Wide) */}
-              <div className="lg:col-span-8 flex flex-col gap-8">
+              {/* ── Right Column (Wide — 8 cols) ── */}
+              <div className="lg:col-span-8 flex flex-col gap-6">
 
                 {/* Focus areas — subjects that need review */}
                 {weaknesses.length > 0 && (
-                  <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-2xl font-bold">نقاط تحتاج إلى تقوية</h3>
-                      <span className="text-2xl" aria-hidden>🎯</span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                  <DashCard title="نقاط تحتاج إلى تقوية" emoji="🎯">
+                    <p className="text-sm mb-5" style={{ color: "var(--ink-2)" }}>
                       أقل المواد في درجات اختباراتك — راجعها لرفع مستواك.
                     </p>
                     <div className="space-y-4">
                       {weaknesses.map((w) => {
                         const low = w.avgScore < 50;
-                        const barColor = low ? "bg-rose-500" : "bg-amber-500";
-                        const scoreColor = low ? "text-rose-500" : "text-amber-500";
                         return (
                           <div key={w.subject} className="flex items-center gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                                <span className="font-bold truncate">{w.subject}</span>
-                                <span className={`font-black text-sm shrink-0 ${scoreColor}`}>
+                                <span className="font-bold" style={{ color: "var(--ink)" }}>{w.subject}</span>
+                                <span className="font-black text-sm shrink-0" style={{ color: low ? "var(--danger)" : "#F59E0B" }}>
                                   {w.avgScore}%
                                 </span>
                               </div>
-                              <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                                 <div
-                                  className={`h-full ${barColor} rounded-full transition-all duration-700`}
-                                  style={{ width: `${Math.max(w.avgScore, 4)}%` }}
+                                  className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${Math.max(w.avgScore, 4)}%`, background: low ? "var(--danger)" : "#F59E0B" }}
                                 />
                               </div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                              <p className="text-xs mt-1 truncate" style={{ color: "var(--ink-3)" }}>
                                 {w.course.title} · {w.quizCount} {w.quizCount === 1 ? "اختبار" : "اختبارات"}
                               </p>
                             </div>
                             <Link
                               href={`/courses/${w.course.id}/learn`}
-                              className="shrink-0 px-4 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-xs hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors"
+                              className="shrink-0 px-4 py-2 rounded-xl font-bold text-xs no-underline transition-colors"
+                              style={{ background: "var(--brand-soft)", color: "var(--brand)", border: "1px solid var(--brand)" }}
                             >
                               راجع الآن
                             </Link>
@@ -285,191 +254,187 @@ export default function LibraryPage() {
                         );
                       })}
                     </div>
-                  </div>
+                  </DashCard>
                 )}
 
                 {/* Continue Learning */}
-                <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-2xl font-bold">واصل التعلم</h3>
-                    <Link href="/courses" className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700">
-                      عرض الكل
-                    </Link>
-                  </div>
-                  
+                <DashCard title="واصل التعلم" titleLink={{ href: "/courses", label: "عرض الكل" }}>
                   {courses.length === 0 && plans.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="text-5xl mb-4">📭</div>
-                      <h4 className="text-lg font-bold mb-2">مكتبتك فارغة</h4>
-                      <p className="text-gray-500 text-sm mb-4">لم تنضم إلى أي كورس أو خطة بعد.</p>
-                      <div className="flex gap-2 justify-center">
-                        <Link href="/courses" className="px-6 py-2.5 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition-colors">
-                          تصفح الكورسات
+                      <h4 className="text-lg font-bold mb-2" style={{ color: "var(--ink)" }}>مكتبتك فارغة</h4>
+                      <p className="text-sm mb-5" style={{ color: "var(--ink-2)" }}>لم تنضم إلى أي كورس أو خطة بعد.</p>
+                      <div className="flex gap-3 justify-center">
+                        <Link href="/courses" className="px-6 py-3 font-bold text-sm rounded-xl text-white no-underline transition-all hover:opacity-90"
+                          style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)", boxShadow: "0 4px 14px -4px rgba(16,185,129,0.4)" }}>
+                          تصفح الكورسات الآن
                         </Link>
-                        <Link href="/plans" className="px-6 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <Link href="/plans" className="px-6 py-3 font-bold text-sm rounded-xl no-underline transition-colors"
+                          style={{ background: "var(--surface-2)", color: "var(--ink-2)", border: "1px solid var(--border)" }}>
                           تصفح الخطط
                         </Link>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {plans.map(p => {
-                        return (
-                          <div key={p.id} className="group relative">
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">خطة دراسية</span>
-                                  <h4 className="font-bold text-lg">{p.title}</h4>
-                                </div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{p.educationalStage}</p>
+                      {plans.map(p => (
+                        <div key={p.id} className="group relative">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: "var(--brand-soft)", color: "var(--brand)" }}>خطة دراسية</span>
+                                <h4 className="font-bold text-lg" style={{ color: "var(--ink)" }}>{p.title}</h4>
                               </div>
-                              <Link href={`/plans/${p.id}/learn`} className="shrink-0 px-5 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-sm flex items-center gap-2 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                متابعة
-                              </Link>
+                              <p className="text-sm" style={{ color: "var(--ink-2)" }}>{p.educationalStage}</p>
                             </div>
-                            
-                            <div className="flex items-center gap-4 text-sm font-medium mb-1">
-                              <span className="w-12">{p.progressPercent}%</span>
-                              <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-1000"
-                                  style={{ width: `${p.progressPercent}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 text-left flex items-center justify-end gap-1">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                              {p.completedLessons} من {p.totalLessons} درس مكتمل
-                            </div>
-                            
-                            <div className="absolute -bottom-3 left-0 right-0 h-px bg-gray-100 dark:bg-gray-800 group-last:hidden"></div>
+                            <Link href={`/plans/${p.id}/learn`} className="shrink-0 px-5 py-2 rounded-xl font-bold text-sm flex items-center gap-2 no-underline transition-colors"
+                              style={{ background: "var(--brand-soft)", color: "var(--brand)", border: "1px solid var(--brand)" }}>
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              متابعة
+                            </Link>
                           </div>
-                        );
-                      })}
+                          <div className="flex items-center gap-4 text-sm font-medium mb-1">
+                            <span className="w-12" style={{ color: "var(--ink)" }}>{p.progressPercent}%</span>
+                            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                              <div className="h-full rounded-full transition-all duration-1000"
+                                style={{ width: `${p.progressPercent}%`, background: "linear-gradient(to left, #10B981, #14B8A6)" }} />
+                            </div>
+                          </div>
+                          <div className="text-xs text-left flex items-center justify-end gap-1" style={{ color: "var(--ink-3)" }}>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            {p.completedLessons} من {p.totalLessons} درس مكتمل
+                          </div>
+                          <div className="absolute -bottom-3 left-0 right-0 h-px group-last:hidden" style={{ background: "var(--border)" }} />
+                        </div>
+                      ))}
                       {courses.map((course: Course) => {
                         const tVideos = course.folders?.reduce((a, f) => a + f.videos.length, 0) || 1;
                         const wVideos = course.folders?.reduce((a, f) => a + f.videos.filter(v => v.watched).length, 0) || 0;
                         const progress = Math.round((wVideos / Math.max(tVideos, 1)) * 100);
-                        
                         return (
                           <div key={course.id} className="group relative">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-3">
                               <div>
-                                <h4 className="font-bold text-lg">{course.title}</h4>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{course.subject}</p>
+                                <h4 className="font-bold text-lg" style={{ color: "var(--ink)" }}>{course.title}</h4>
+                                <p className="text-sm" style={{ color: "var(--ink-2)" }}>{course.subject}</p>
                               </div>
-                              <Link href={`/courses/${course.id}/learn`} className="shrink-0 px-5 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold text-sm flex items-center gap-2 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors">
+                              <Link href={`/courses/${course.id}/learn`} className="shrink-0 px-5 py-2 rounded-xl font-bold text-sm flex items-center gap-2 no-underline transition-colors"
+                                style={{ background: "var(--brand-soft)", color: "var(--brand)", border: "1px solid var(--brand)" }}>
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 متابعة
                               </Link>
                             </div>
-                            
                             <div className="flex items-center gap-4 text-sm font-medium mb-1">
-                              <span className="w-12">{progress}%</span>
-                              <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-1000"
-                                  style={{ width: `${progress}%` }}
-                                ></div>
+                              <span className="w-12" style={{ color: "var(--ink)" }}>{progress}%</span>
+                              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                                <div className="h-full rounded-full transition-all duration-1000"
+                                  style={{ width: `${progress}%`, background: "linear-gradient(to left, #10B981, #14B8A6)" }} />
                               </div>
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 text-left flex items-center justify-end gap-1">
+                            <div className="text-xs text-left flex items-center justify-end gap-1" style={{ color: "var(--ink-3)" }}>
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                               {wVideos} من {tVideos} درس مكتمل
                             </div>
-                            
-                            {/* Divider line except for last item */}
-                            <div className="absolute -bottom-3 left-0 right-0 h-px bg-gray-100 dark:bg-gray-800 group-last:hidden"></div>
+                            <div className="absolute -bottom-3 left-0 right-0 h-px group-last:hidden" style={{ background: "var(--border)" }} />
                           </div>
                         );
                       })}
                     </div>
                   )}
-                </div>
+                </DashCard>
 
-                {/* Activity Graph */}
-                <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm overflow-x-auto">
-                  <h3 className="text-xl font-bold mb-6">نشاطك التعليمي</h3>
+                {/* ── Activity Heatmap ── */}
+                <DashCard title="نشاطك التعليمي">
                   <div className="min-w-[600px]">
                     <div className="grid grid-cols-7 gap-2">
                       {activitySquares.map((intensity, i) => {
-                        // Subtle, low-opacity tints — "entered" days glow softly,
-                        // heavier activity fills in more (never full saturation).
-                        let bgColor = "bg-gray-100 dark:bg-gray-800/60";
-                        if (intensity === 1) bgColor = "bg-purple-400/20 dark:bg-purple-400/15";
-                        if (intensity === 2) bgColor = "bg-purple-400/40 dark:bg-purple-400/35";
-                        if (intensity === 3) bgColor = "bg-purple-500/60 dark:bg-purple-500/55";
-                        if (intensity === 4) bgColor = "bg-purple-500/80 dark:bg-purple-500/75";
-                        
+                        const colors = [
+                          "var(--border)",
+                          "rgba(16,185,129,0.2)",
+                          "rgba(16,185,129,0.4)",
+                          "rgba(16,185,129,0.65)",
+                          "#10B981",
+                        ];
                         return (
-                          <div 
-                            key={i} 
-                            className={`aspect-square rounded-xl ${bgColor} transition-colors hover:ring-2 hover:ring-purple-400`}
+                          <div
+                            key={i}
+                            className="aspect-square rounded-xl transition-colors"
+                            style={{ background: colors[intensity] }}
                             title={`مستوى النشاط: ${intensity}`}
-                          ></div>
+                          />
                         );
                       })}
                     </div>
-                    <div className="flex justify-between items-center mt-4 text-xs text-gray-500 dark:text-gray-400 font-medium px-2">
+                    <div className="flex justify-between items-center mt-4 text-xs font-medium px-2" style={{ color: "var(--ink-3)" }}>
                       <div className="flex items-center gap-2">
                         أقل
                         <div className="flex gap-1">
-                          <div className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800/60"></div>
-                          <div className="w-3 h-3 rounded-sm bg-purple-400/20"></div>
-                          <div className="w-3 h-3 rounded-sm bg-purple-500/60"></div>
-                          <div className="w-3 h-3 rounded-sm bg-purple-500/80"></div>
+                          <div className="w-3 h-3 rounded-sm" style={{ background: "var(--border)" }} />
+                          <div className="w-3 h-3 rounded-sm" style={{ background: "rgba(16,185,129,0.2)" }} />
+                          <div className="w-3 h-3 rounded-sm" style={{ background: "rgba(16,185,129,0.65)" }} />
+                          <div className="w-3 h-3 rounded-sm" style={{ background: "#10B981" }} />
                         </div>
                         أكثر
                       </div>
                       <div>آخر 4 أسابيع</div>
                     </div>
                   </div>
-                </div>
-                
+                </DashCard>
               </div>
 
-              {/* Left Column (Narrow) */}
-              <div className="lg:col-span-4 flex flex-col gap-8">
-                {/* Study Guide Card */}
-                <div className="relative rounded-3xl p-6 overflow-hidden bg-gradient-to-br from-[var(--brand-strong)] to-[#073a35] text-white border-0 shadow-lg shadow-[var(--brand-shadow)] flex flex-col justify-between min-h-[220px]">
-                  <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px)", backgroundSize: "24px 24px" }}></div>
+              {/* ── Left Column (Narrow — 4 cols) ── */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
+
+                {/* ── AI Study Guide Card ── */}
+                <div
+                  className="relative rounded-2xl p-6 overflow-hidden flex flex-col justify-between min-h-[220px]"
+                  style={{
+                    background: "linear-gradient(to bottom right, rgba(20,184,166,0.15), rgba(15,23,42,0.9))",
+                    border: "1px solid rgba(20,184,166,0.3)",
+                    boxShadow: "0 8px 32px -8px rgba(16,185,129,0.2)",
+                  }}
+                >
+                  <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px)", backgroundSize: "24px 24px" }} />
                   <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center text-white text-2xl shrink-0">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", boxShadow: "0 0 20px rgba(16,185,129,0.15)" }}>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#10B981" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8V4H8M4 12a8 8 0 0 1 8-8 8 8 0 0 1 8 8 8 8 0 0 1-8 8c-2 0-3.5-.5-5-2" /><circle cx="12" cy="12" r="2" />
                         </svg>
                       </div>
-                      <div className="text-right">
-                        <h3 className="text-lg font-head font-black text-white mb-0.5">المرشد الدراسي الذكي</h3>
-                        <p className="text-xs text-[#bfe0db] font-medium">اسأل عن أي مفهوم أو مسألة صعبة</p>
+                      <div>
+                        <h3 className="text-lg font-black mb-0.5" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>المرشد الدراسي الذكي</h3>
+                        <p className="text-xs font-medium" style={{ color: "var(--ink-2)" }}>اسأل عن أي مفهوم أو مسألة صعبة</p>
                       </div>
                     </div>
                   </div>
-                  <Link href="/ai-study" className="relative z-10 w-full py-3.5 rounded-2xl bg-[var(--gold-2)] hover:bg-[var(--gold)] text-[#3a2a06] hover:text-white font-head font-black flex items-center justify-center gap-2 shadow-md transition-all duration-200">
+                  <Link href="/ai-study"
+                    className="relative z-10 w-full py-3.5 rounded-2xl font-black flex items-center justify-center gap-2 no-underline transition-all hover:opacity-90 text-sm"
+                    style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)", color: "#fff", boxShadow: "0 4px 14px -4px rgba(16,185,129,0.4)" }}>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-                    ابدأ محادثة
+                    ابدأ محادثة جديدة 💬
                   </Link>
                 </div>
 
-                {/* Daily Streak */}
-                <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold">سلسلة المواظبة</h3>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">سجّل دخولك يومياً</span>
-                  </div>
+                {/* ── Daily Streak ── */}
+                <DashCard title="سلسلة المواظبة" subtitle="سجّل دخولك يومياً">
                   <div className="flex items-center gap-4">
-                    <div className={`relative w-20 h-20 shrink-0 rounded-2xl flex flex-col items-center justify-center ${streak > 0 ? "bg-gradient-to-br from-orange-400 to-red-500 shadow-lg shadow-orange-500/30" : "bg-gray-100 dark:bg-gray-800"}`}>
-                      <svg className={`w-7 h-7 ${streak > 0 ? "text-white" : "text-gray-400"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2s4 4 4 8a4 4 0 11-8 0c0-1 .5-2 1-3 0 0-3 2-3 6a6 6 0 0012 0c0-5-6-11-6-11z" /></svg>
+                    <div className={`relative w-20 h-20 shrink-0 rounded-2xl flex flex-col items-center justify-center ${streak > 0 ? "" : ""}`}
+                      style={{
+                        background: streak > 0 ? "linear-gradient(to bottom right, #F59E0B, #EF4444)" : "var(--surface-2)",
+                        border: streak > 0 ? "none" : "1px solid var(--border)",
+                        boxShadow: streak > 0 ? "0 8px 24px -8px rgba(245,158,11,0.4)" : "none",
+                      }}>
+                      <span className="text-2xl">{streak > 0 ? "🔥" : ""}</span>
+                      {streak === 0 && <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24" style={{ color: "var(--ink-3)" }}><path d="M12 2s4 4 4 8a4 4 0 11-8 0c0-1 .5-2 1-3 0 0-3 2-3 6a6 6 0 0012 0c0-5-6-11-6-11z" /></svg>}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-1.5">
-                        <span className={`text-3xl font-black ${streak > 0 ? "text-orange-500" : "text-gray-400"}`}>{streak}</span>
-                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{streak === 1 ? "يوم متتالي" : "أيام متتالية"}</span>
+                        <span className="text-3xl font-black" style={{ color: streak > 0 ? "#F59E0B" : "var(--ink-3)" }}>{streak}</span>
+                        <span className="text-sm font-bold" style={{ color: "var(--ink-2)" }}>{streak === 1 ? "يوم متتالي" : "أيام متتالية"}</span>
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>
                         {streak === 0 ? "ابدأ سلسلتك اليوم! 🔥" : streak >= 7 ? "مواظبة رائعة! استمر 💪" : "واصل الدخول يومياً للحفاظ على سلسلتك"}
                       </p>
                     </div>
@@ -483,7 +448,15 @@ export default function LibraryPage() {
                       const active = stats?.weekActive?.[i] ?? false;
                       return (
                         <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
-                          <div className={`w-full aspect-square rounded-lg flex items-center justify-center ${active ? "bg-orange-500/90 text-white" : `bg-gray-100 dark:bg-gray-800 text-gray-400 ${isToday ? "ring-2 ring-orange-400/50" : ""}`}`}>
+                          <div
+                            className="w-full aspect-square rounded-lg flex items-center justify-center transition-all"
+                            style={{
+                              background: active ? "linear-gradient(135deg, #F59E0B, #EF4444)" : "var(--surface-2)",
+                              border: active ? "none" : `1px solid ${isToday ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                              color: active ? "#fff" : "var(--ink-3)",
+                              boxShadow: active ? "0 2px 8px rgba(245,158,11,0.3)" : "none",
+                            }}
+                          >
                             {active ? (
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                             ) : <span className="text-[10px]">{dayLetters[date.getDay()]}</span>}
@@ -492,14 +465,10 @@ export default function LibraryPage() {
                       );
                     })}
                   </div>
-                </div>
+                </DashCard>
 
-                {/* Achievements */}
-                <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold">الإنجازات</h3>
-                    <span className="text-sm font-bold text-purple-500">{realAchievements} / {achievements.length || 6}</span>
-                  </div>
+                {/* ── Achievements ── */}
+                <DashCard title="الإنجازات" headerRight={<span className="text-sm font-bold" style={{ color: "var(--brand)" }}>{realAchievements} / {achievements.length || 6}</span>}>
                   <div className="grid grid-cols-3 gap-3">
                     {achievements.map((a) => {
                       const colors: Record<string, string> = {
@@ -514,35 +483,38 @@ export default function LibraryPage() {
                         <div
                           key={a.id}
                           title={`${a.title} — ${a.description}`}
-                          className={`aspect-square rounded-2xl relative flex flex-col items-center justify-center gap-1.5 p-1.5 transition-all ${a.unlocked ? `bg-gradient-to-br ${colors[a.id] ?? "from-purple-500 to-indigo-600"} shadow-md` : "bg-gray-100 dark:bg-gray-800 opacity-60 grayscale"}`}
+                          className={`aspect-square rounded-2xl relative flex flex-col items-center justify-center gap-1.5 p-1.5 transition-all ${a.unlocked ? `bg-gradient-to-br ${colors[a.id] ?? "from-emerald-500 to-teal-600"} shadow-md` : "opacity-60 grayscale"}`}
+                          style={a.unlocked ? {} : { background: "var(--surface-2)", border: "1px solid var(--border)" }}
                         >
                           {a.unlocked && (
                             <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-white/25 rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>
                           )}
-                          <svg className={`w-7 h-7 ${a.unlocked ? "text-white" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">{ACH_ICON[a.icon]}</svg>
-                          <span className={`text-[9px] font-bold text-center leading-tight ${a.unlocked ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>{a.title}</span>
+                          <svg className={`w-7 h-7 ${a.unlocked ? "text-white" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={a.unlocked ? {} : { color: "var(--ink-3)" }}>{ACH_ICON[a.icon]}</svg>
+                          <span className={`text-[9px] font-bold text-center leading-tight ${a.unlocked ? "text-white" : ""}`} style={a.unlocked ? {} : { color: "var(--ink-3)" }}>{a.title}</span>
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                </DashCard>
 
-                {/* Weekly Goal */}
-                <div className="bg-white dark:bg-[#151B2B] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col items-center">
-                  <h3 className="text-xl font-bold mb-6 w-full text-right">هدف الأسبوع</h3>
-                  <div className="relative w-32 h-32 mb-4">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" className="text-gray-100 dark:bg-gray-800" strokeWidth="10" />
-                      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" className="text-purple-500" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * Math.min(realHours / Math.max(realHours + 5, 10), 1))} strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-black">{Math.round(Math.min(realHours / Math.max(realHours + 5, 10), 1) * 100)}%</span>
-                      <span className="text-xs text-gray-500">مكتمل</span>
+                {/* ── Weekly Goal Ring ── */}
+                <DashCard title="هدف الأسبوع">
+                  <div className="flex flex-col items-center">
+                    <div className="relative w-32 h-32 mb-4">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border)" strokeWidth="10" />
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#10B981" strokeWidth="10"
+                          strokeDasharray="283" strokeDashoffset={283 - (283 * Math.min(realHours / Math.max(realHours + 5, 10), 1))} strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-3xl font-black" style={{ color: "var(--ink)" }}>{Math.round(Math.min(realHours / Math.max(realHours + 5, 10), 1) * 100)}%</span>
+                        <span className="text-xs" style={{ color: "var(--ink-3)" }}>مكتمل</span>
+                      </div>
                     </div>
+                    <p className="text-sm font-bold mt-2" style={{ color: "var(--ink)" }}>{realHours} من {Math.max(realHours + 5, 10)} ساعة مكتملة</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>أنت تبلي بلاءً حسناً!</p>
                   </div>
-                  <p className="text-sm font-bold mt-2">{realHours} من {Math.max(realHours + 5, 10)} ساعة مكتملة</p>
-                  <p className="text-xs text-gray-500 mt-1">أنت تبلي بلاءً حسناً!</p>
-                </div>
+                </DashCard>
               </div>
             </div>
           </>
@@ -551,5 +523,62 @@ export default function LibraryPage() {
       <Footer />
     </div>
     </ProfileGuard>
+  );
+}
+
+/* ── Reusable Stat Card ── */
+function StatCard({
+  icon, iconBg, iconColor, iconGlow, value, label, badge, badgeBg, badgeColor,
+}: {
+  icon: React.ReactNode; iconBg: string; iconColor: string; iconGlow: string;
+  value: string | number; label: string;
+  badge?: string; badgeBg?: string; badgeColor?: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl p-4 md:p-5 flex flex-col justify-between relative overflow-hidden transition-all duration-200"
+      style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)"; }}
+    >
+      <div className="flex items-center justify-between">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: iconBg, color: iconColor, boxShadow: `0 0 16px ${iconGlow}` }}>
+          {icon}
+        </div>
+        {badge && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: badgeBg, color: badgeColor }}>{badge}</span>
+        )}
+      </div>
+      <div className="font-black text-2xl md:text-3xl mt-3" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>{value}</div>
+      <div className="text-xs mt-1 font-medium" style={{ color: "var(--ink-3)" }}>{label}</div>
+    </div>
+  );
+}
+
+/* ── Reusable Dashboard Card ── */
+function DashCard({
+  title, subtitle, emoji, titleLink, headerRight, children,
+}: {
+  title: string; subtitle?: string; emoji?: string;
+  titleLink?: { href: string; label: string };
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl p-6 overflow-x-auto" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xl font-bold" style={{ color: "var(--ink)" }}>{title}</h3>
+          {emoji && <span className="text-xl" aria-hidden>{emoji}</span>}
+        </div>
+        {titleLink && (
+          <Link href={titleLink.href} className="text-sm font-medium no-underline transition-colors" style={{ color: "var(--brand)" }}>{titleLink.label}</Link>
+        )}
+        {subtitle && <span className="text-xs" style={{ color: "var(--ink-3)" }}>{subtitle}</span>}
+        {headerRight}
+      </div>
+      {children}
+    </div>
   );
 }

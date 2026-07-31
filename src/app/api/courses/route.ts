@@ -28,9 +28,17 @@ export async function GET(req: NextRequest) {
 
     const courses = await prisma.course.findMany({
       where,
-      include: { teacher: { select: { id: true, name: true } }, _count: { select: { accessCodes: true } } },
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            teacherProfile: { select: { photoUrl: true } },
+          },
+        },
+        _count: { select: { accessCodes: true } },
+      },
       orderBy: { createdAt: "desc" },
-      // allowDirectInstall is needed so CourseCard can show the install button
     });
 
     if (!session) {
