@@ -210,7 +210,7 @@ interface Folder { id: string; name: string; videos?: Array<{ id: string; title:
 
 export function HomeworkManagerSection({
   courses,
-  folders,
+  folders: initialFolders,
   selectedCourse,
   onSelectCourse,
   notify,
@@ -225,11 +225,15 @@ export function HomeworkManagerSection({
   const [loadingHw, setLoadingHw] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [courseFolders, setCourseFolders] = useState<Folder[]>(initialFolders || []);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+
   const [form, setForm] = useState({
     title: "",
     description: "",
     type: "exam" as "link" | "exam" | "terminal" | "upload",
     linkUrl: "",
+    courseId: selectedCourse?.id || "",
     videoId: "",
     dueAt: "",
     timeLimitMinutes: 30,
@@ -248,6 +252,35 @@ export function HomeworkManagerSection({
   const label = "block text-xs font-semibold text-[var(--ink-muted)] mb-1.5";
   const btn = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition-colors disabled:opacity-50";
 
+  // Keep form.courseId updated if selectedCourse changes
+  useEffect(() => {
+    if (selectedCourse?.id) {
+      setForm(f => ({ ...f, courseId: selectedCourse.id }));
+    }
+  }, [selectedCourse]);
+
+  // Fetch folders for the currently selected courseId in the form
+  useEffect(() => {
+    if (!form.courseId) {
+      setCourseFolders([]);
+      return;
+    }
+    let isMounted = true;
+    setLoadingFolders(true);
+    fetch(`/api/admin/courses/${form.courseId}/folders`, { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted) setCourseFolders(data.folders || []);
+      })
+      .catch(() => {
+        if (isMounted) setCourseFolders([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingFolders(false);
+      });
+    return () => { isMounted = false; };
+  }, [form.courseId]);
+
   const fetchHomeworks = useCallback(async () => {
     setLoadingHw(true);
     try {
@@ -259,7 +292,7 @@ export function HomeworkManagerSection({
 
   useEffect(() => { void fetchHomeworks(); }, [fetchHomeworks]);
 
-  const allVideos = folders.flatMap(f => (f.videos ?? []).map(v => ({ ...v, folderName: f.name })));
+  const allVideos = courseFolders.flatMap(f => (f.videos ?? []).map(v => ({ ...v, folderName: f.name })));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,7 +302,7 @@ export function HomeworkManagerSection({
         title: form.title,
         description: form.description || undefined,
         type: form.type,
-        courseId: selectedCourse?.id || undefined,
+        courseId: form.courseId || selectedCourse?.id || undefined,
         videoId: form.videoId || undefined,
         dueAt: form.dueAt || undefined,
         timeLimitMinutes: form.timeLimitMinutes,
@@ -343,7 +376,7 @@ export function HomeworkManagerSection({
       {/* Course context hint */}
       {selectedCourse && (
         <div className="text-xs text-[var(--ink-muted)] bg-sky-500/8 border border-sky-500/20 rounded-xl px-4 py-2.5">
-          سيُربط الواجب بكورس: <strong className="text-sky-500">{selectedCourse.title}</strong>
+          الكورس المختار حالياً: <strong className="text-sky-500">{selectedCourse.title}</strong>
         </div>
       )}
 
@@ -369,6 +402,50 @@ export function HomeworkManagerSection({
             </div>
           </div>
 
+          {/* Course & Lesson Selectors */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={label}>الكورس التابع له الواجب</label>
+              <select
+                value={form.courseId}
+                onChange={e => setForm(f => ({ ...f, courseId: e.target.value, videoId: "" }))}
+                className={input}
+              >
+                <option value="">— اختر الكورس —</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={label}>ربط بدرس محدد (اختياري)</label>
+              <select
+                value={form.videoId}
+                onChange={e => setForm(f => ({ ...f, videoId: e.target.value }))}
+                className={input}
+                disabled={!form.courseId || loadingFolders}
+              >
+                {!form.courseId ? (
+                  <option value="">اختر الكورس أولاً</option>
+                ) : loadingFolders ? (
+                  <option value="">جارٍ تحميل الدروس...</option>
+                ) : allVideos.length === 0 ? (
+                  <option value="">لا توجد دروس في هذا الكورس بعد</option>
+                ) : (
+                  <>
+                    <option value="">— الكورس ككل (بدون تحديد درس) —</option>
+                    {allVideos.map(v => (
+                      <option key={v.id} value={v.id}>
+                        📁 {v.folderName} ← 🎥 {v.title}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+          </div>
+
           <div>
             <label className={label}>عنوان الواجب *</label>
             <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={input} placeholder="مثال: واجب الدرس الأول" />
@@ -378,19 +455,6 @@ export function HomeworkManagerSection({
             <label className={label}>وصف (اختياري)</label>
             <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={`${input} resize-none`} />
           </div>
-
-          {/* Link to specific lesson */}
-          {allVideos.length > 0 && (
-            <div>
-              <label className={label}>ربط بدرس بعينه (اختياري)</label>
-              <select value={form.videoId} onChange={e => setForm(f => ({ ...f, videoId: e.target.value }))} className={input}>
-                <option value="">— الكورس كله —</option>
-                {allVideos.map(v => (
-                  <option key={v.id} value={v.id}>{v.folderName} / {v.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
