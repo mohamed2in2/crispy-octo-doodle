@@ -123,6 +123,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
           priceMonthly={p.priceMonthly}
           priceTermly={p.priceTermly}
           priceYearly={p.priceYearly}
+          bookingDiscountPercent={p.bookingDiscountPercent}
           courseStartDate={p.courseStartDate ? p.courseStartDate.toISOString() : null}
           bookingContactUrl={p.bookingContactUrl}
           accentColor={p.accentColor ?? "#6366f1"}

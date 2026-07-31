@@ -20,6 +20,7 @@ type Profile = {
   priceYearly: number | null;
   courseStartDate: string | null;
   bookingContactUrl: string | null;
+  bookingDiscountPercent: number | null;
 };
 
 type Socials = { facebook?: string; youtube?: string; tiktok?: string };
@@ -331,7 +332,21 @@ export function TeacherPublicProfile() {
 
         <p className="text-[10px] text-[var(--ink-muted)] px-1">اترك الحقل فارغاً إذا لم ترد عرض هذه الخطة للطلاب.</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className={label}>🏷️ نسبة الخصم العامة (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              className={input}
+              value={p.bookingDiscountPercent ?? ""}
+              onChange={(e) => set("bookingDiscountPercent", e.target.value ? Number(e.target.value) : null)}
+              placeholder="مثال: 20"
+            />
+            <p className="text-[10px] text-[var(--ink-muted)] mt-1">خصم مئوي ينطبق على جميع خطط الحجز (اتركه فارغاً إن لم يوجد خصم).</p>
+          </div>
           <div>
             <label className={label}>📅 تاريخ بدء أول كورس</label>
             <input
@@ -350,7 +365,7 @@ export function TeacherPublicProfile() {
               onChange={(e) => set("bookingContactUrl", e.target.value || null)}
               placeholder="https://wa.me/201234567890"
             />
-            <p className="text-[10px] text-[var(--ink-muted)] mt-1">رابط واتساب، صفحة دفع، أو أي رابط تواصل يظهر للطالب عند الحجز.</p>
+            <p className="text-[10px] text-[var(--ink-muted)] mt-1">رابط واتساب أو رقم الهاتف المخصص للحجز.</p>
           </div>
         </div>
       </div>

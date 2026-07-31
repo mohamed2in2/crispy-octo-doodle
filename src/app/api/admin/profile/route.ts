@@ -20,7 +20,7 @@ async function uniqueSlug(name: string, teacherId: string): Promise<string> {
   }
 }
 
-const EDITABLE = ["displayName", "bio", "photoUrl", "bannerUrl", "navColor", "accentColor", "socials", "featuredCourseId", "priceMonthly", "priceTermly", "priceYearly", "courseStartDate", "bookingContactUrl"] as const;
+const EDITABLE = ["displayName", "bio", "photoUrl", "bannerUrl", "navColor", "accentColor", "socials", "featuredCourseId", "priceMonthly", "priceTermly", "priceYearly", "courseStartDate", "bookingContactUrl", "bookingDiscountPercent"] as const;
 
 export async function GET() {
   try {
