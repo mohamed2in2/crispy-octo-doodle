@@ -87,7 +87,9 @@ export default async function TeacherHomeworkHubPage({ params }: Props) {
     });
 
     const termCourseIds = new Set(
-      studentCodes.filter(c => c.accessType === "TERM").map(c => c.courseId)
+      studentCodes
+        .filter(c => c.accessType === "TERM" || !c.accessType || (!c.folderId && !c.videoId))
+        .map(c => c.courseId)
     );
     const folderAccessIds = new Set(
       studentCodes.filter(c => c.accessType === "FOLDER" && c.folderId).map(c => c.folderId!)
@@ -96,17 +98,30 @@ export default async function TeacherHomeworkHubPage({ params }: Props) {
       studentCodes.filter(c => c.accessType === "VIDEO" && c.videoId).map(c => c.videoId!)
     );
 
-    // Also check FolderPurchase and VideoPurchase
-    const [folderPurchases, videoPurchases] = await Promise.all([
+    // Also check FolderPurchase, VideoPurchase, and Free Courses
+    const [folderPurchases, videoPurchases, freeCourses] = await Promise.all([
       prisma.folderPurchase.findMany({ where: { studentId }, select: { folderId: true } }),
       prisma.videoPurchase.findMany({ where: { studentId }, select: { videoId: true } }),
+      prisma.course.findMany({ where: { teacherId, isPaid: false }, select: { id: true } }),
     ]);
     folderPurchases.forEach(fp => folderAccessIds.add(fp.folderId));
     videoPurchases.forEach(vp => videoAccessIds.add(vp.videoId));
 
+    const freeCourseIds = new Set(freeCourses.map(c => c.id));
+
     for (const hw of rawHomeworks) {
+      // Free course check
+      if (hw.courseId && freeCourseIds.has(hw.courseId)) {
+        accessibleHomeworkIds.add(hw.id);
+        continue;
+      }
+      if (hw.video?.folder?.courseId && freeCourseIds.has(hw.video.folder.courseId)) {
+        accessibleHomeworkIds.add(hw.id);
+        continue;
+      }
+
       if (!hw.video) {
-        // Course-level homework: accessible if student has TERM access to any of teacher's courses
+        // Course-level homework: accessible if student has TERM access to the course
         // or if homework has no courseId restriction
         if (!hw.courseId) { accessibleHomeworkIds.add(hw.id); continue; }
         if (termCourseIds.has(hw.courseId)) { accessibleHomeworkIds.add(hw.id); continue; }

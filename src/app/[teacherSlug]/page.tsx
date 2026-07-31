@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RESERVED_SLUGS } from "@/lib/slug";
+import { BookingButton } from "@/components/teacher/BookingModal";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,17 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--surface)] border border-[var(--border)]">{courses.length} كورس</span>
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--surface)] border border-[var(--border)]">{videoCount} محاضرة</span>
         </div>
+
+        {/* Booking Button + Modal */}
+        <BookingButton
+          priceMonthly={p.priceMonthly}
+          priceTermly={p.priceTermly}
+          priceYearly={p.priceYearly}
+          courseStartDate={p.courseStartDate ? p.courseStartDate.toISOString() : null}
+          bookingContactUrl={p.bookingContactUrl}
+          accentColor={p.accentColor ?? "#6366f1"}
+          teacherName={name}
+        />
 
         {/* Demo CTA */}
         {demo && (

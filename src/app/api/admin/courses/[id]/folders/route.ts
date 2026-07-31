@@ -41,3 +41,64 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   return NextResponse.json({ folder }, { status: 201 });
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+
+  if (session && session.role === "superadmin") {
+    try {
+      await logAdminAction({
+        adminId: session.id,
+        adminName: session.name,
+        action: "SUPERADMIN_ACTION",
+        targetType: "API_ROUTE",
+        targetId: req.nextUrl ? req.nextUrl.pathname : req.url,
+        targetName: req.method,
+      });
+    } catch { /* ignore */ }
+  }
+
+  if (!session || session.role !== "teacher") {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+  }
+
+  try {
+    const { id: courseId } = await params;
+    const { folderId } = (await req.json()) as { folderId?: string };
+
+    if (!folderId) {
+      return NextResponse.json({ error: "معرف المحاضرة (folderId) مطلوب" }, { status: 400 });
+    }
+
+    // Verify course belongs to teacher
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, teacherId: session.id },
+    });
+
+    if (!course) {
+      return NextResponse.json({ error: "الكورس غير موجود أو غير مصرح" }, { status: 404 });
+    }
+
+    // Verify folder belongs to this course
+    const folder = await prisma.folder.findFirst({
+      where: { id: folderId, courseId },
+    });
+
+    if (!folder) {
+      return NextResponse.json({ error: "المحاضرة غير موجودة في هذا الكورس" }, { status: 404 });
+    }
+
+    // Delete folder
+    await prisma.folder.delete({
+      where: { id: folderId },
+    });
+
+    return NextResponse.json({ success: true, message: "تم حذف المحاضرة بنجاح" });
+  } catch (error) {
+    console.error("Failed to delete folder:", error);
+    return NextResponse.json({ error: "تعذر حذف المحاضرة" }, { status: 500 });
+  }
+}

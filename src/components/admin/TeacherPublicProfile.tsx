@@ -15,6 +15,11 @@ type Profile = {
   socials: string | null; // JSON
   featuredCourseId: string | null;
   isPublished: boolean;
+  priceMonthly: number | null;
+  priceTermly: number | null;
+  priceYearly: number | null;
+  courseStartDate: string | null;
+  bookingContactUrl: string | null;
 };
 
 type Socials = { facebook?: string; youtube?: string; tiktok?: string };
@@ -270,6 +275,83 @@ export function TeacherPublicProfile() {
               <input className={`${input} font-mono`} dir="ltr" value={socials[key] ?? ""} onChange={(e) => setSocials((s) => ({ ...s, [key]: e.target.value }))} placeholder="https://…" />
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Subscription Pricing & Booking Section */}
+      <div className={`${card} space-y-5`}>
+        <div>
+          <h3 className="font-bold text-[var(--ink)] flex items-center gap-2">
+            <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            إعدادات الحجز والاشتراك
+          </h3>
+          <p className="text-xs text-[var(--ink-muted)] mt-1">حدد أسعار خطط الاشتراك التي ستظهر للطلاب عند الضغط على "احجز الآن" في صفحتك.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className={label}>💳 سعر الاشتراك الشهري (جنيه)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              className={input}
+              value={p.priceMonthly ?? ""}
+              onChange={(e) => set("priceMonthly", e.target.value ? Number(e.target.value) : null)}
+              placeholder="مثال: 100"
+            />
+          </div>
+          <div>
+            <label className={label}>📚 سعر اشتراك الترم (جنيه)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              className={input}
+              value={p.priceTermly ?? ""}
+              onChange={(e) => set("priceTermly", e.target.value ? Number(e.target.value) : null)}
+              placeholder="مثال: 250"
+            />
+          </div>
+          <div>
+            <label className={label}>🎓 سعر الاشتراك السنوي (جنيه)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              className={input}
+              value={p.priceYearly ?? ""}
+              onChange={(e) => set("priceYearly", e.target.value ? Number(e.target.value) : null)}
+              placeholder="مثال: 500"
+            />
+          </div>
+        </div>
+
+        <p className="text-[10px] text-[var(--ink-muted)] px-1">اترك الحقل فارغاً إذا لم ترد عرض هذه الخطة للطلاب.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={label}>📅 تاريخ بدء أول كورس</label>
+            <input
+              type="date"
+              className={input}
+              value={p.courseStartDate ? p.courseStartDate.slice(0, 10) : ""}
+              onChange={(e) => set("courseStartDate", e.target.value ? new Date(e.target.value).toISOString() : null)}
+            />
+          </div>
+          <div>
+            <label className={label}>🔗 رابط التواصل / الحجز</label>
+            <input
+              className={`${input} font-mono`}
+              dir="ltr"
+              value={p.bookingContactUrl ?? ""}
+              onChange={(e) => set("bookingContactUrl", e.target.value || null)}
+              placeholder="https://wa.me/201234567890"
+            />
+            <p className="text-[10px] text-[var(--ink-muted)] mt-1">رابط واتساب، صفحة دفع، أو أي رابط تواصل يظهر للطالب عند الحجز.</p>
+          </div>
         </div>
       </div>
 

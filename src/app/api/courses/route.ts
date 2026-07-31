@@ -26,23 +26,47 @@ export async function GET(req: NextRequest) {
 
     const session = await getStudentSession();
 
-    const courses = await prisma.course.findMany({
-      where,
-      include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            teacherProfile: { select: { photoUrl: true } },
+    const [courses, allTeachers] = await Promise.all([
+      prisma.course.findMany({
+        where,
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              teacherProfile: { select: { photoUrl: true, displayName: true, slug: true, isPublished: true } },
+            },
           },
+          _count: { select: { accessCodes: true } },
         },
-        _count: { select: { accessCodes: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "teacher", isDeleted: false },
+        select: {
+          id: true,
+          name: true,
+          teacherProfile: { select: { photoUrl: true, displayName: true, slug: true, isPublished: true } },
+          _count: { select: { courses: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const formattedTeachers = allTeachers.map((t) => ({
+      id: t.id,
+      name: t.teacherProfile?.displayName || t.name,
+      photoUrl: t.teacherProfile?.photoUrl || null,
+      courseCount: t._count?.courses || 0,
+      slug: t.teacherProfile?.slug || null,
+      hasPublicPage: !!(t.teacherProfile?.isPublished && t.teacherProfile?.slug),
+    }));
 
     if (!session) {
-      const response = NextResponse.json({ courses: courses.map((course) => ({ ...course, hasAccess: false })) });
+      const response = NextResponse.json({
+        courses: courses.map((course) => ({ ...course, hasAccess: false })),
+        teachers: formattedTeachers,
+      });
       response.headers.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=600");
       return response;
     }
@@ -58,7 +82,7 @@ export async function GET(req: NextRequest) {
     const accessMap = new Set(accessCodes.map((code) => code.courseId));
     const coursesWithAccess = courses.map((course) => ({ ...course, hasAccess: accessMap.has(course.id) }));
 
-    const response = NextResponse.json({ courses: coursesWithAccess });
+    const response = NextResponse.json({ courses: coursesWithAccess, teachers: formattedTeachers });
     response.headers.set("Cache-Control", "private, no-cache, no-store, max-age=0, must-revalidate");
     return response;
   } catch (error) {

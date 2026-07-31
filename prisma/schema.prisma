@@ -218,6 +218,17 @@ model TeacherProfile {
   featuredCourseId String?
   isPublished      Boolean @default(false)
 
+  /// "احجز الان" subscription plan prices (null = plan not offered)
+  priceMonthly      Float?
+  priceTermly       Float?
+  priceYearly       Float?
+
+  /// First course start date — shown under "احجز الان" button
+  courseStartDate   DateTime?
+
+  /// Optional teacher contact/payment link (WhatsApp, payment page, etc.)
+  bookingContactUrl String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

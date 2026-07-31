@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
@@ -11,6 +12,8 @@ interface Teacher {
   name: string;
   photoUrl?: string | null;
   courseCount?: number;
+  slug?: string | null;
+  hasPublicPage?: boolean;
 }
 
 interface Course {
@@ -55,6 +58,7 @@ function writeTeacherParam(teacherId: string) {
 }
 
 export default function CoursesPage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,16 +90,28 @@ export default function CoursesPage() {
       }
 
       const allCourses: Course[] = data.courses || [];
+      const apiTeachers: Teacher[] = data.teachers || [];
       setCourses(allCourses);
 
-      // Extract unique teachers with their course counts & photos
+      // Extract & merge all teachers (both from API list of registered teachers and courses)
       const teacherMap = new Map<string, Teacher>();
+
+      for (const t of apiTeachers) {
+        teacherMap.set(t.id, {
+          id: t.id,
+          name: t.name,
+          photoUrl: t.photoUrl || null,
+          courseCount: t.courseCount || 0,
+          slug: t.slug || null,
+          hasPublicPage: t.hasPublicPage || false,
+        });
+      }
+
       for (const c of allCourses) {
         if (c.teacher?.id) {
           const existing = teacherMap.get(c.teacher.id);
           const photoUrl = c.teacher.teacherProfile?.photoUrl || null;
           if (existing) {
-            existing.courseCount = (existing.courseCount || 0) + 1;
             if (!existing.photoUrl && photoUrl) existing.photoUrl = photoUrl;
           } else {
             teacherMap.set(c.teacher.id, {
@@ -249,7 +265,13 @@ export default function CoursesPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.04 }}
-                    onClick={() => writeTeacherParam(teacher.id)}
+                    onClick={() => {
+                      if (teacher.hasPublicPage && teacher.slug) {
+                        router.push(`/${teacher.slug}`);
+                      } else {
+                        writeTeacherParam(teacher.id);
+                      }
+                    }}
                     className="group relative flex items-center justify-between h-[76px] px-5 rounded-[20px] transition-all duration-200 cursor-pointer select-none"
                     style={{
                       background: "var(--surface)",
