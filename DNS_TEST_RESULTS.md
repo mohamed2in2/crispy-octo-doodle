@@ -8,7 +8,7 @@
 ✓ HTTP Status: 405 (Method Not Allowed - expected for root)
 ✓ Server: Cloudflare CDN
 ✓ Headers show: x-clerk-trace-id (Clerk is responding)
-```
+```c
 
 ### 2. Clerk JS Script Loading ✓
 ```
