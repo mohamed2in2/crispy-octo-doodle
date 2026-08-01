@@ -23,7 +23,7 @@ Code-UP is a premium Egyptian EdTech platform targeting secondary students (4th 
 │  │  /api        │   │  ContextBuilder  BudgetManager               
  
 │  │  /components │   │  PromptBuilder   ProviderMonitor             │   │
-│  └──────┬───────┘   │  RAG / Memory    AlertCenter                 │   │
+│  └──────┬───────┘   │  RAG / Memory    AlertCenter                 │  
              └──────────────────────────────────────────────┘   │
 │  ┌──────────────┐                      │                                │
 │  │  Prisma ORM  │◄─────────────────────┘                               │
