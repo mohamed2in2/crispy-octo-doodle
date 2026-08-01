@@ -20,13 +20,11 @@ Code-UP is a premium Egyptian EdTech platform targeting secondary students (4th 
 │  │  (React 19)  │   │  AIGateway → ProviderManager → Providers    │   │
 │  │              │   │       ↓              ↓                       │   │
 │  │  /app        │   │  ToolFramework  GeminiPoolManager            │   │
-│  │  /api        │   │  ContextBuilder  BudgetManager               │   │  
-
+│  │  /api        │   │  ContextBuilder  BudgetManager               
  
 │  │  /components │   │  PromptBuilder   ProviderMonitor             │   │
 │  └──────┬───────┘   │  RAG / Memory    AlertCenter                 │   │
-│         │           │  StateMachine    AIOperationsConfig           │   │
-│         ▼           └──────────────────────────────────────────────┘   │
+          └──────────────────────────────────────────────┘   │
 │  ┌──────────────┐                      │                                │
 │  │  Prisma ORM  │◄─────────────────────┘                               │
 │  │  SQLite(dev) │   (AI Engine reads platform data through Tools only) │
