@@ -80,7 +80,12 @@ export default function CourseProductPage() {
   const [applying, setApplying] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [payMode, setPayMode] = useState<"code" | "balance">("code");
+  const [payMode, setPayMode] = useState<"balance" | "wallet" | "whatsapp" | "code">("wallet");
+  const [walletPhone, setWalletPhone] = useState("");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletMsg, setWalletMsg] = useState("");
+  const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   // Free/demo inline player
   const [demo, setDemo] = useState<{ title: string; embedUrl: string; provider?: string } | null>(null);
@@ -503,23 +508,107 @@ export default function CourseProductPage() {
                     </p>
                   </div>
                 ) : (
-                  /* Paid course — balance purchase OR code/WhatsApp */
+                  /* Paid course — wallet / balance / whatsapp / code choices */
                   <div className="space-y-3">
                     {/* Pay mode toggle */}
-                    <div className="flex gap-1 p-1 rounded-[12px]" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <button onClick={() => setPayMode("wallet")}
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "wallet" ? "var(--brand)" : "transparent", color: payMode === "wallet" ? "#fff" : "var(--ink-3)" }}>
+                        📱 محفظة إلكترونية
+                      </button>
                       <button onClick={() => setPayMode("balance")}
-                        className="flex-1 rounded-[10px] text-sm font-bold cursor-pointer border-none transition-colors"
-                        style={{ padding: "10px", background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
                         💰 شراء بالرصيد
                       </button>
+                      <button onClick={() => setPayMode("whatsapp")}
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "whatsapp" ? "#25D366" : "transparent", color: payMode === "whatsapp" ? "#fff" : "var(--ink-3)" }}>
+                        💬 طُرق أخرى (واتسآب)
+                      </button>
                       <button onClick={() => setPayMode("code")}
-                        className="flex-1 rounded-[10px] text-sm font-bold cursor-pointer border-none transition-colors"
-                        style={{ padding: "10px", background: payMode === "code" ? "var(--brand)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
-                        🔑 كود / واتساب
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "code" ? "var(--ink-2)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
+                        🔑 كود تفعيل
                       </button>
                     </div>
 
-                    {payMode === "balance" ? (
+                    {/* Mode 1: Mobile Wallet via Sha7nawy */}
+                    {payMode === "wallet" && (
+                      <div className="p-3.5 rounded-xl space-y-3" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                        <div>
+                          <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-2)" }}>اختر المحفظة:</label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                              { id: "or_cash", label: "أورنج كاش", color: "#FF7900" },
+                              { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
+                            ].map(m => (
+                              <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
+                                className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center"
+                                style={{
+                                  borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
+                                  background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
+                                  color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
+                                }}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
+                          <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
+                            placeholder="01xxxxxxxxx" dir="ltr"
+                            className="w-full p-2 rounded-lg text-center font-mono text-sm border focus:outline-none"
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                        </div>
+
+                        <button onClick={async () => {
+                          if (!user) { router.push(`/login?redirect_url=/courses/${courseId}`); return; }
+                          if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
+                          setWalletLoading(true); setWalletMsg("");
+                          try {
+                            const res = await fetch("/api/payments/sha7nawy/create", {
+                              method: "POST", credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                number: walletPhone.trim(),
+                                amount: course.effectivePrice,
+                                method: selectedWalletMethod,
+                                courseId: course.id,
+                                courseTitle: course.title,
+                              }),
+                            });
+                            const d = await res.json().catch(() => ({}));
+                            setWalletLoading(false);
+                            if (res.ok && d.success) {
+                              setWalletModal({
+                                reference: d.reference || "SH-PENDING",
+                                instructions: d.instructions,
+                                methodLabel: d.methodLabel,
+                                amount: course.effectivePrice,
+                              });
+                            } else {
+                              setWalletMsg(`❌ ${d.error || "تعذر بدء عملية الدفع"}`);
+                            }
+                          } catch {
+                            setWalletLoading(false);
+                            setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
+                          }
+                        }} disabled={walletLoading || userLoading}
+                          className="w-full py-2.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md"
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          {walletLoading ? "جارٍ إرسال طلب السحب..." : `ادفع ${course.effectivePrice} جنيه بالمحفظة`}
+                        </button>
+                        {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
+                      </div>
+                    )}
+
+                    {/* Mode 2: Balance Purchase */}
+                    {payMode === "balance" && (
                       <>
                         <button onClick={purchaseCourse} disabled={purchasing || userLoading}
                           className="w-full py-3 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-60 hover:opacity-90"
@@ -533,8 +622,12 @@ export default function CourseProductPage() {
                         {!user && <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}><button onClick={() => router.push(`/login?redirect_url=/courses/${courseId}`)} className="underline" style={{ color: "var(--brand)" }}>سجّل الدخول</button> أولاً</p>}
                         <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}>يمكنك إضافة رصيد من قسم "رصيدي" في حسابك</p>
                       </>
-                    ) : (
-                      <>
+                    )}
+
+                    {/* Mode 3: WhatsApp Assistance */}
+                    {payMode === "whatsapp" && (
+                      <div className="space-y-2 text-center">
+                        <p className="text-xs text-gray-500 font-medium">تواصل معنا لشراء الكورس عبر InstaPay، التحويل البنكي، أو الكاش:</p>
                         <a href={buildWhatsAppUrl(
                             process.env.NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD || "+201285353604",
                             [
@@ -546,12 +639,17 @@ export default function CourseProductPage() {
                               user?.parentPhone ? `رقم ولي الأمر: ${user.parentPhone}` : null,
                             ].filter(Boolean).join("\n"),
                           )} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-base transition-colors hover:opacity-90"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-colors hover:opacity-90 no-underline"
                           style={{ background: "#25D366" }}>
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                          تواصل للشراء عبر واتسآب
+                          💬 تواصل للشراء عبر واتسآب
                         </a>
-                        <p className="text-sm font-medium" style={{ color: "var(--ink-2)" }}>بعد الحصول على الكود فعّله هنا:</p>
+                      </div>
+                    )}
+
+                    {/* Mode 4: Access Code */}
+                    {payMode === "code" && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-center" style={{ color: "var(--ink-2)" }}>أدخل كود الوصول المكون من 16 حرفاً:</p>
                         <div className="flex gap-2">
                           <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
                             onKeyDown={e => e.key === "Enter" && applyCode()} placeholder="كود الوصول" maxLength={16} dir="ltr"
@@ -564,8 +662,58 @@ export default function CourseProductPage() {
                           </button>
                         </div>
                         {!user && <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}><button onClick={() => router.push("/login")} className="underline" style={{ color: "var(--brand)" }}>سجّل الدخول</button> أولاً</p>}
-                      </>
+                      </div>
                     )}
+                  </div>
+                )}
+
+                {/* Sha7nawy Instruction Modal */}
+                {walletModal && (
+                  <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.6)" }} onClick={() => setWalletModal(null)}>
+                    <div className="w-full max-w-md rounded-2xl p-6 text-center space-y-4 shadow-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+                      <div className="text-4xl">📲</div>
+                      <h3 className="text-lg font-bold" style={{ color: "var(--ink)" }}>تم إرسال طلب الخصم بنجاح!</h3>
+                      <p className="text-xs text-gray-500 font-mono">رقم المرجع: {walletModal.reference}</p>
+                      
+                      <div className="p-4 rounded-xl space-y-2 text-right text-sm" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                        <p className="font-bold text-center" style={{ color: "var(--brand)" }}>تعليمات إتمام العملية:</p>
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>{walletModal.instructions}</p>
+                      </div>
+
+                      <div className="pt-2 space-y-2">
+                        <button onClick={async () => {
+                          setWalletLoading(true);
+                          try {
+                            const res = await fetch("/api/payments/sha7nawy/confirm", {
+                              method: "POST", credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ref_code: walletModal.reference }),
+                            });
+                            const d = await res.json().catch(() => ({}));
+                            setWalletLoading(false);
+                            if (res.ok && d.success) {
+                              setWalletModal(null);
+                              toastSuccess("تم تأكيد السحب وشحن حسابك بنجاح!");
+                            } else {
+                              setWalletMsg(`⚠️ ${d.error || "العملية معلقة بانتظار موافقة العميل من المحفظة"}`);
+                            }
+                          } catch {
+                            setWalletLoading(false);
+                            setWalletMsg("❌ تعذر الاتصال بسيرفر التأكيد");
+                          }
+                        }} disabled={walletLoading}
+                          className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md"
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          {walletLoading ? "جارٍ التحقق والتأكيد..." : "تأكيد واستعلام حالة الدفع 🔄"}
+                        </button>
+
+                        <button onClick={() => setWalletModal(null)}
+                          className="w-full py-2.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors"
+                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--ink-2)" }}>
+                          إغلاق النافذة
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 

@@ -275,6 +275,15 @@ export default function AccountPage() {
   const [redeeming, setRedeeming] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState("");
 
+  // Sha7nawy Mobile Wallet Top-up state
+  const [topupTab, setTopupTab] = useState<"wallet" | "whatsapp" | "code">("wallet");
+  const [walletPhone, setWalletPhone] = useState("");
+  const [walletAmount, setWalletAmount] = useState("100");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletMsg, setWalletMsg] = useState("");
+  const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
+
   // Results pagination + modal
   const PAGE_SIZE = 10;
   const [resultPage, setResultPage] = useState(1);
@@ -1008,22 +1017,198 @@ export default function AccountPage() {
                     <div style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 48, color: "#fff" }}>{balance ?? "—"}</div>
                     <div style={{ fontSize: 16, color: "rgba(255,255,255,.8)", marginTop: 4 }}>جنيه مصري</div>
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>شحن كود رصيد</label>
-                    <div className="flex gap-3">
-                      <input type="text" value={redeemCode} onChange={e => { setRedeemCode(e.target.value.toUpperCase()); setRedeemMsg(""); }}
-                        placeholder="أدخل كود الشحن" dir="ltr"
-                        className="flex-1 rounded-[10px] text-center font-mono tracking-widest focus:outline-none"
-                        style={{ padding: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 15 }} />
-                      <button onClick={redeemBalance} disabled={redeeming || !redeemCode.trim()}
-                        className="shrink-0 cursor-pointer border-none rounded-[10px] text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-                        style={{ padding: "12px 20px", background: "var(--brand)", fontWeight: 700, fontSize: 14 }}>
-                        {redeeming ? "..." : "تفعيل"}
+                  {/* Top-up options selector */}
+                  <div className="mb-6">
+                    <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 10 }}>اختر طريقة شحن الرصيد:</label>
+                    <div className="flex gap-2 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <button onClick={() => setTopupTab("wallet")}
+                        className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
+                        style={{ background: topupTab === "wallet" ? "var(--brand)" : "transparent", color: topupTab === "wallet" ? "#fff" : "var(--ink-2)" }}>
+                        📱 محفظة إلكترونية
+                      </button>
+                      <button onClick={() => setTopupTab("whatsapp")}
+                        className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
+                        style={{ background: topupTab === "whatsapp" ? "#25D366" : "transparent", color: topupTab === "whatsapp" ? "#fff" : "var(--ink-2)" }}>
+                        💬 طُرق أخرى (واتسآب)
+                      </button>
+                      <button onClick={() => setTopupTab("code")}
+                        className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
+                        style={{ background: topupTab === "code" ? "var(--gold-2)" : "transparent", color: topupTab === "code" ? "#fff" : "var(--ink-2)" }}>
+                        🔑 كود شحن
                       </button>
                     </div>
-                    {redeemMsg && <p style={{ fontSize: 13.5, marginTop: 10, color: redeemMsg.startsWith("✅") ? "var(--brand)" : "var(--danger)" }}>{redeemMsg}</p>}
                   </div>
+
+                  {/* TAB 1: Mobile Wallets via Sha7nawy */}
+                  {topupTab === "wallet" && (
+                    <div className="p-4 rounded-2xl space-y-4" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <div>
+                        <label className="block text-xs font-bold mb-2" style={{ color: "var(--ink-2)" }}>اختر نوع المحفظة:</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                            { id: "or_cash", label: "أورنج كاش", color: "#FF7900" },
+                            { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
+                          ].map(m => (
+                            <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
+                              className="py-2.5 px-1 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center"
+                              style={{
+                                borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
+                                background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
+                                color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
+                              }}>
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
+                          <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
+                            placeholder="01xxxxxxxxx" dir="ltr"
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>المبلغ (جنيه مصري):</label>
+                          <input type="number" value={walletAmount} onChange={e => setWalletAmount(e.target.value)}
+                            placeholder="100" min="5" max="10000" dir="ltr"
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                        </div>
+                      </div>
+
+                      <button onClick={async () => {
+                        if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
+                        const amt = Number(walletAmount);
+                        if (!amt || amt < 5) { setWalletMsg("❌ المبلغ يجب أن يكون 5 جنيه على الأقل"); return; }
+                        setWalletLoading(true); setWalletMsg("");
+                        try {
+                          const res = await fetch("/api/payments/sha7nawy/create", {
+                            method: "POST", credentials: "include",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ number: walletPhone.trim(), amount: amt, method: selectedWalletMethod }),
+                          });
+                          const d = await res.json().catch(() => ({}));
+                          setWalletLoading(false);
+                          if (res.ok && d.success) {
+                            setWalletModal({
+                              reference: d.reference || "SH-PENDING",
+                              instructions: d.instructions,
+                              methodLabel: d.methodLabel,
+                              amount: amt,
+                            });
+                          } else {
+                            setWalletMsg(`❌ ${d.error || "تعذر إرسال طلب الشحن"}`);
+                          }
+                        } catch {
+                          setWalletLoading(false);
+                          setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
+                        }
+                      }} disabled={walletLoading}
+                        className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md"
+                        style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                        {walletLoading ? "جارٍ طلب السحب..." : `شحن ${walletAmount || 0} جنيه من المحفظة`}
+                      </button>
+
+                      {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
+                    </div>
+                  )}
+
+                  {/* TAB 2: WhatsApp Assistance */}
+                  {topupTab === "whatsapp" && (
+                    <div className="p-4 rounded-2xl space-y-3 text-center" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <p className="text-xs sm:text-sm font-medium" style={{ color: "var(--ink-2)" }}>
+                        تواصل معنا مباشرة عبر واتسآب لشحن رصيدك عبر InstaPay، التحويلات البنكية، أو الكاش:
+                      </p>
+                      <a href={`https://wa.me/${(process.env.NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD || "+201285353604").replace(/\D/g, "")}?text=${encodeURIComponent(`مرحباً، أريد شحن رصيد بقيمة ${walletAmount || 100} جنيه لحساب الطالب: ${user?.name || "طالب"} (رقم: ${user?.phone || "غير مسجل"}). ما هي طُرق الدفع المتاحة؟`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm no-underline hover:opacity-90 transition-opacity"
+                        style={{ background: "#25D366" }}>
+                        💬 تواصل عبر واتسآب لشحن الرصيد
+                      </a>
+                    </div>
+                  )}
+
+                  {/* TAB 3: Code Redemption */}
+                  {topupTab === "code" && (
+                    <div>
+                      <label style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink-2)", marginBottom: 8 }}>شحن كود رصيد</label>
+                      <div className="flex gap-3">
+                        <input type="text" value={redeemCode} onChange={e => { setRedeemCode(e.target.value.toUpperCase()); setRedeemMsg(""); }}
+                          placeholder="أدخل كود الشحن" dir="ltr"
+                          className="flex-1 rounded-[10px] text-center font-mono tracking-widest focus:outline-none"
+                          style={{ padding: "12px", border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 15 }} />
+                        <button onClick={redeemBalance} disabled={redeeming || !redeemCode.trim()}
+                          className="shrink-0 cursor-pointer border-none rounded-[10px] text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
+                          style={{ padding: "12px 20px", background: "var(--brand)", fontWeight: 700, fontSize: 14 }}>
+                          {redeeming ? "..." : "تفعيل"}
+                        </button>
+                      </div>
+                      {redeemMsg && <p style={{ fontSize: 13.5, marginTop: 10, color: redeemMsg.startsWith("✅") ? "var(--brand)" : "var(--danger)" }}>{redeemMsg}</p>}
+                    </div>
+                  )}
                 </div>
+
+                {/* Sha7nawy Instruction Modal */}
+                {walletModal && (
+                  <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.6)" }} onClick={() => setWalletModal(null)}>
+                    <div className="w-full max-w-md rounded-2xl p-6 text-center space-y-4 shadow-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+                      <div className="text-4xl">📲</div>
+                      <h3 className="text-lg font-bold" style={{ color: "var(--ink)" }}>تم إرسال طلب الشحن بنجاح!</h3>
+                      <p className="text-xs text-gray-500 font-mono">رقم المرجع: {walletModal.reference}</p>
+                      
+                      <div className="p-4 rounded-xl space-y-2 text-right text-sm" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                        <p className="font-bold text-center" style={{ color: "var(--brand)" }}>تعليمات إتمام عملية الشحن:</p>
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>{walletModal.instructions}</p>
+                      </div>
+
+                      <div className="pt-2 space-y-2">
+                        <button onClick={async () => {
+                          setWalletLoading(true);
+                          try {
+                            const res = await fetch("/api/payments/sha7nawy/confirm", {
+                              method: "POST", credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ref_code: walletModal.reference }),
+                            });
+                            const d = await res.json().catch(() => ({}));
+                            setWalletLoading(false);
+                            if (res.ok && d.success) {
+                              setWalletModal(null);
+                              // Refresh balance
+                              fetch("/api/student/balance", { credentials: "include" })
+                                .then(r => r.ok ? r.json() : null)
+                                .then(d => { if (d) { setBalance(d.balance ?? 0); setBalanceTx(d.transactions ?? []); } });
+                            } else {
+                              setWalletMsg(`⚠️ ${d.error || "العملية معلقة بانتظار تأكيدك من الهاتف"}`);
+                            }
+                          } catch {
+                            setWalletLoading(false);
+                            setWalletMsg("❌ تعذر الاستعلام من الخادم");
+                          }
+                        }} disabled={walletLoading}
+                          className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md"
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          {walletLoading ? "جارٍ التحقق والتأكيد..." : "تأكيد واستعلام حالة الدفع 🔄"}
+                        </button>
+
+                        <button onClick={() => {
+                          setWalletModal(null);
+                          fetch("/api/student/balance", { credentials: "include" })
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => { if (d) { setBalance(d.balance ?? 0); setBalanceTx(d.transactions ?? []); } });
+                        }}
+                          className="w-full py-2.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors"
+                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--ink-2)" }}>
+                          إغلاق النافذة
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {balanceTx.length > 0 && (
                   <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden" }}>
                     <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
