@@ -49,7 +49,12 @@ export default function PlanProductPage() {
   const [code, setCode] = useState("");
   const [applying, setApplying] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [payMode, setPayMode] = useState<"code" | "balance">("code");
+  const [payMode, setPayMode] = useState<"balance" | "wallet" | "whatsapp" | "code">("wallet");
+  const [walletPhone, setWalletPhone] = useState("");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletMsg, setWalletMsg] = useState("");
+  const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -299,21 +304,106 @@ export default function PlanProductPage() {
                     )}
                   </div>
                 ) : (
+                  /* Paid plan — wallet / balance / whatsapp / code choices */
                   <div className="space-y-3">
-                    <div className="flex gap-1 p-1 rounded-[12px]" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                    {/* Pay mode toggle */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <button onClick={() => setPayMode("wallet")}
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "wallet" ? "var(--brand)" : "transparent", color: payMode === "wallet" ? "#fff" : "var(--ink-3)" }}>
+                        📱 محفظة إلكترونية
+                      </button>
                       <button onClick={() => setPayMode("balance")}
-                        className="flex-1 rounded-[10px] text-sm font-bold cursor-pointer border-none transition-colors"
-                        style={{ padding: "10px", background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
-                        💰 رصيد
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
+                        💰 شراء بالرصيد
+                      </button>
+                      <button onClick={() => setPayMode("whatsapp")}
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "whatsapp" ? "#25D366" : "transparent", color: payMode === "whatsapp" ? "#fff" : "var(--ink-3)" }}>
+                        💬 طُرق أخرى (واتسآب)
                       </button>
                       <button onClick={() => setPayMode("code")}
-                        className="flex-1 rounded-[10px] text-sm font-bold cursor-pointer border-none transition-colors"
-                        style={{ padding: "10px", background: payMode === "code" ? "var(--brand)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
-                        🔑 كود
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "code" ? "var(--ink-2)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
+                        🔑 كود تفعيل
                       </button>
                     </div>
 
-                    {payMode === "balance" ? (
+                    {/* Mode 1: Mobile Wallet via Sha7nawy */}
+                    {payMode === "wallet" && (
+                      <div className="p-3.5 rounded-xl space-y-3" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                        <div>
+                          <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-2)" }}>اختر المحفظة:</label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                              { id: "or_cash", label: "أورنج كاش", color: "#FF7900" },
+                              { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
+                            ].map(m => (
+                              <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
+                                className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center"
+                                style={{
+                                  borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
+                                  background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
+                                  color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
+                                }}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
+                          <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
+                            placeholder="01xxxxxxxxx" dir="ltr"
+                            className="w-full p-2 rounded-lg text-center font-mono text-sm border focus:outline-none"
+                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                        </div>
+
+                        <button onClick={async () => {
+                          if (!user) { router.push(`/login?redirect_url=/plans/${planId}`); return; }
+                          if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
+                          setWalletLoading(true); setWalletMsg("");
+                          try {
+                            const res = await fetch("/api/payments/sha7nawy/create", {
+                              method: "POST", credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                number: walletPhone.trim(),
+                                amount: plan.effectivePrice,
+                                method: selectedWalletMethod,
+                                courseTitle: `خطة: ${plan.title}`,
+                              }),
+                            });
+                            const d = await res.json().catch(() => ({}));
+                            setWalletLoading(false);
+                            if (res.ok && d.success) {
+                              setWalletModal({
+                                reference: d.reference || "SH-PENDING",
+                                instructions: d.instructions,
+                                methodLabel: d.methodLabel,
+                                amount: plan.effectivePrice,
+                              });
+                            } else {
+                              setWalletMsg(`❌ ${d.error || "تعذر بدء عملية الدفع"}`);
+                            }
+                          } catch {
+                            setWalletLoading(false);
+                            setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
+                          }
+                        }} disabled={walletLoading || userLoading}
+                          className="w-full py-2.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md"
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          {walletLoading ? "جارٍ إرسال طلب السحب..." : `ادفع ${plan.effectivePrice} جنيه بالمحفظة`}
+                        </button>
+                        {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
+                      </div>
+                    )}
+
+                    {/* Mode 2: Balance Purchase */}
+                    {payMode === "balance" && (
                       <>
                         <button onClick={purchasePlan} disabled={purchasing || userLoading}
                           className="w-full py-3 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-60 hover:opacity-90"
@@ -322,8 +412,24 @@ export default function PlanProductPage() {
                         </button>
                         {!user && <p className="text-xs text-center text-gray-500"><button onClick={() => router.push(`/login?redirect_url=/plans/${planId}`)} className="text-indigo-600 underline">سجّل الدخول</button> أولاً</p>}
                       </>
-                    ) : (
-                      <>
+                    )}
+
+                    {/* Mode 3: WhatsApp Assistance */}
+                    {payMode === "whatsapp" && (
+                      <div className="space-y-2 text-center">
+                        <p className="text-xs text-gray-500 font-medium">تواصل معنا لشراء الخطة عبر InstaPay، التحويل البنكي، أو الكاش:</p>
+                        <a href={`https://wa.me/${(process.env.NEXT_PUBLIC_PAYMENT_ACCESS_PASSWORD || "+201285353604").replace(/\D/g, "")}?text=${encodeURIComponent(`مرحباً، أريد الاشتراك في خطة "${plan.title}" بسعر ${plan.effectivePrice} جنيه. اسم الطالب: ${user?.name || "غير مسجل"}`)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-bold text-sm transition-colors hover:opacity-90 no-underline"
+                          style={{ background: "#25D366" }}>
+                          💬 تواصل للشراء عبر واتسآب
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Mode 4: Access Code */}
+                    {payMode === "code" && (
+                      <div className="space-y-2">
                         <p className="text-sm font-medium text-gray-600 text-center">أدخل كود الاشتراك الخاص بالخطة:</p>
                         <div className="flex gap-2">
                           <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
@@ -335,8 +441,58 @@ export default function PlanProductPage() {
                           </button>
                         </div>
                         {!user && <p className="text-xs text-center text-gray-500"><button onClick={() => router.push("/login")} className="text-indigo-600 underline">سجّل الدخول</button> أولاً</p>}
-                      </>
+                      </div>
                     )}
+                  </div>
+                )}
+
+                {/* Sha7nawy Instruction Modal */}
+                {walletModal && (
+                  <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.6)" }} onClick={() => setWalletModal(null)}>
+                    <div className="w-full max-w-md rounded-2xl p-6 text-center space-y-4 shadow-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+                      <div className="text-4xl">📲</div>
+                      <h3 className="text-lg font-bold" style={{ color: "var(--ink)" }}>تم إرسال طلب الخصم بنجاح!</h3>
+                      <p className="text-xs text-gray-500 font-mono">رقم المرجع: {walletModal.reference}</p>
+                      
+                      <div className="p-4 rounded-xl space-y-2 text-right text-sm" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                        <p className="font-bold text-center" style={{ color: "var(--brand)" }}>تعليمات إتمام العملية:</p>
+                        <p className="text-xs leading-relaxed" style={{ color: "var(--ink-2)" }}>{walletModal.instructions}</p>
+                      </div>
+
+                      <div className="pt-2 space-y-2">
+                        <button onClick={async () => {
+                          setWalletLoading(true);
+                          try {
+                            const res = await fetch("/api/payments/sha7nawy/confirm", {
+                              method: "POST", credentials: "include",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ref_code: walletModal.reference }),
+                            });
+                            const d = await res.json().catch(() => ({}));
+                            setWalletLoading(false);
+                            if (res.ok && d.success) {
+                              setWalletModal(null);
+                              toastSuccess("تم تأكيد السحب وشحن حسابك بنجاح!");
+                            } else {
+                              setWalletMsg(`⚠️ ${d.error || "العملية معلقة بانتظار موافقة العميل من المحفظة"}`);
+                            }
+                          } catch {
+                            setWalletLoading(false);
+                            setWalletMsg("❌ تعذر الاتصال بسيرفر التأكيد");
+                          }
+                        }} disabled={walletLoading}
+                          className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md"
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          {walletLoading ? "جارٍ التحقق والتأكيد..." : "تأكيد واستعلام حالة الدفع 🔄"}
+                        </button>
+
+                        <button onClick={() => setWalletModal(null)}
+                          className="w-full py-2.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors"
+                          style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--ink-2)" }}>
+                          إغلاق النافذة
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
