@@ -124,6 +124,9 @@ export default function TeacherDashboardPage() {
   const [courseTab, setCourseTab] = useState<"content" | "settings" | "pricing">("content");
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [plans, setPlans] = useState<Array<{ id: string; title: string; price: number; educationalStage: string; _count?: { accessCodes?: number } }>>([]);
+  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [codeCategory, setCodeCategory] = useState<"courses" | "plans">("courses");
   const [folders, setFolders] = useState<Folder[]>([]);
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,26 +216,33 @@ export default function TeacherDashboardPage() {
     setFolders(data?.folders || []);
   };
 
-  const fetchCodes = async (courseId: string) => {
-    const res = await fetch(`/api/admin/codes?courseId=${courseId}`, { credentials: "include" });
+  const fetchCodes = async (targetId: string, isPlan = false) => {
+    const param = isPlan ? `planId=${targetId}` : `courseId=${targetId}`;
+    const res = await fetch(`/api/admin/codes?${param}`, { credentials: "include" });
     const data = await readJson<{ codes?: AccessCode[] }>(res);
     setCodes(data?.codes || []);
   };
 
   useEffect(() => {
-    const loadCourses = async () => {
+    const loadCoursesAndPlans = async () => {
       try {
-        const res = await fetch("/api/admin/courses", { credentials: "include" });
-        if (res.status === 403) { router.push("/adminpanel"); return; }
-        const data = await readJson<{ courses?: Course[] }>(res);
-        setCourses(data?.courses || []);
+        const [resCourses, resPlans] = await Promise.all([
+          fetch("/api/admin/courses", { credentials: "include" }),
+          fetch("/api/plans"),
+        ]);
+        if (resCourses.status === 403) { router.push("/adminpanel"); return; }
+        const dataCourses = await readJson<{ courses?: Course[] }>(resCourses);
+        const dataPlans = await readJson<{ plans?: any[] }>(resPlans);
+        setCourses(dataCourses?.courses || []);
+        setPlans(dataPlans?.plans || []);
       } catch {
         setCourses([]);
+        setPlans([]);
       } finally {
         setLoading(false);
       }
     };
-    void loadCourses();
+    void loadCoursesAndPlans();
   }, [router]);
 
   const handleLogout = async () => {
@@ -439,32 +449,34 @@ export default function TeacherDashboardPage() {
     }
   };
 
-  const generateCodes = async (courseId: string, count: number) => {
+  const generateCodes = async (targetId: string, count: number, isPlan = false) => {
+    const body = isPlan ? { planId: targetId, count } : { courseId: targetId, count };
     const res = await fetch("/api/admin/codes", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ courseId, count }),
+      body: JSON.stringify(body),
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
-      fetchCodes(courseId);
+      fetchCodes(targetId, isPlan);
       notify("success", `تم إنشاء ${count} كود بنجاح`);
     } else {
       notify("error", data?.error || "تعذر إنشاء الأكواد");
     }
   };
 
-  const toggleCode = async (codeId: string, isActive: boolean) => {
+  const toggleCode = async (codeId: string, isActive: boolean, isPlan = false) => {
     const res = await fetch("/api/admin/codes", {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codeId, isActive }),
+      body: JSON.stringify({ codeId, isActive, isPlanCode: isPlan }),
     });
     const data = await readJson<{ error?: string }>(res);
     if (res.ok) {
-      if (selectedCourse) fetchCodes(selectedCourse.id);
+      const targetId = isPlan ? selectedPlan?.id : selectedCourse?.id;
+      if (targetId) fetchCodes(targetId, isPlan);
       notify("success", isActive ? "تم تفعيل الكود" : "تم تعطيل الكود");
     } else {
       notify("error", data?.error || "تعذر تحديث الكود");
@@ -472,19 +484,19 @@ export default function TeacherDashboardPage() {
   };
 
   const handleBulkGenerate = async () => {
-    if (!selectedCourse) return;
+    if (!selectedCourse && !selectedPlan) return;
+    const targetId = selectedPlan ? selectedPlan.id : selectedCourse!.id;
+    const isPlan = !!selectedPlan;
     setBulkGenerating(true);
     try {
+      const body = isPlan
+        ? { planId: targetId, count: bulkCount, prefix: bulkPrefix, format: "csv" }
+        : { courseId: targetId, count: bulkCount, prefix: bulkPrefix, format: "csv" };
       const response = await fetch("/api/admin/codes/bulk", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseId: selectedCourse.id,
-          count: bulkCount,
-          prefix: bulkPrefix,
-          format: "csv",
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -501,14 +513,14 @@ export default function TeacherDashboardPage() {
       a.href = url;
       const contentDisposition = response.headers.get("content-disposition");
       const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
-      a.download = filenameMatch?.[1] || `codes-${selectedCourse.id}.csv`;
+      a.download = filenameMatch?.[1] || `codes-${targetId}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
 
       notify("success", `تم توليد ${bulkCount} كود وتحميل الملف بنجاح`);
-      fetchCodes(selectedCourse.id);
+      fetchCodes(targetId, isPlan);
     } catch (err) {
       notify("error", "حدث خطأ أثناء الاتصال بالخادم");
     } finally {
@@ -1582,103 +1594,252 @@ export default function TeacherDashboardPage() {
 
           {/* ════════ CODES ════════ */}
           {activeSection === "codes" && (
-            !selectedCourse ? (
-              <CoursePicker courses={courses} onSelect={(c) => selectCourse(c, "codes")} hint="اختر كورساً لإدارة أكواده:" sub={(c) => `${c._count?.accessCodes || 0} كود`} />
-            ) : (
-              <div className="space-y-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-bold text-[var(--ink)] me-auto">{selectedCourse.title} — الأكواد</h2>
-                  {[1, 5, 10].map((n) => (
-                    <button key={n} onClick={() => generateCodes(selectedCourse.id, n)} className={ghostBtn}>
-                      <IconPlus className="w-4 h-4" /> {n}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Bulk generate panel */}
-                <div className={`${cardPad} space-y-4`}>
-                  <h3 className="font-bold text-[var(--ink)] text-xs flex items-center gap-2">
-                    <IconKey className="w-4 h-4 text-sky-500" />
-                    <span>توليد أكواد بكميات كبيرة (تحميل ملف CSV)</span>
-                  </h3>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="w-24 shrink-0">
-                      <label className={label}>عدد الأكواد</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={bulkCount}
-                        onChange={(e) => setBulkCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
-                        className={input}
-                      />
-                    </div>
-                    <div className="w-36 shrink-0">
-                      <label className={label}>البادئة (اختياري)</label>
-                      <input
-                        type="text"
-                        placeholder="مثال: MATH"
-                        maxLength={10}
-                        value={bulkPrefix}
-                        onChange={(e) => setBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                        className={input}
-                        dir="ltr"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      disabled={bulkGenerating}
-                      onClick={handleBulkGenerate}
-                      className={primaryBtn}
-                    >
-                      {bulkGenerating ? "جارٍ التوليد..." : "إنشاء وتحميل CSV"}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-[var(--ink-muted)]">
-                    يمكنك توليد حتى 200 كود دفعة واحدة ببادئة مخصصة. سيتم تحميل ملف يحتوي على الأكواد الناتجة مباشرة.
-                  </p>
-                </div>
-
-                <div className={`${card} overflow-hidden`}>
-                  {codes.length === 0 ? (
-                    <EmptyState icon={<IconKey className="w-7 h-7" />} title="لا توجد أكواد بعد" hint="أنشئ أكواداً من الأزرار بالأعلى لتوزيعها على الطلاب." />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[480px]">
-                        <thead>
-                          <tr className="text-xs text-[var(--ink-muted)] border-b border-[var(--border)]">
-                            <th className="text-start font-semibold px-4 py-3">الكود</th>
-                            <th className="text-start font-semibold px-4 py-3">المتعلم</th>
-                            <th className="text-start font-semibold px-4 py-3">الحالة</th>
-                            <th className="text-start font-semibold px-4 py-3">إجراء</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--border)]">
-                          {codes.map((c) => (
-                            <tr key={c.id}>
-                              <td className="px-4 py-3 font-mono text-sky-500 dark:text-sky-300 text-xs" dir="ltr">{c.code}</td>
-                              <td className="px-4 py-3 text-[var(--ink)] truncate max-w-[140px]">{c.student?.name || "—"}</td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${!c.student ? (c.isActive ? "text-emerald-500" : "text-[var(--ink-muted)]") : c.isActive ? "text-emerald-500" : "text-[var(--error)]"}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${!c.student ? (c.isActive ? "bg-emerald-500" : "bg-[var(--ink-muted)]") : c.isActive ? "bg-emerald-500" : "bg-[var(--error)]"}`} />
-                                  {!c.student ? (c.isActive ? "متاح" : "معطل") : c.isActive ? "مسجل" : "محظور"}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <button onClick={() => toggleCode(c.id, !c.isActive)}
-                                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${c.isActive ? "text-[var(--error)] hover:bg-[var(--error)]/10" : "text-emerald-500 hover:bg-emerald-500/10"}`}>
-                                  {c.isActive ? "تعطيل" : "تفعيل"}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+            <div className="space-y-5">
+              {/* Category Switcher Tab */}
+              <div className="flex gap-2 p-1 rounded-xl bg-[var(--surface)] border border-[var(--border)] w-full sm:w-fit">
+                <button
+                  onClick={() => { setCodeCategory("courses"); setSelectedPlan(null); }}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    codeCategory === "courses" ? "bg-sky-500 text-white" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  📚 أكواد الكورسات
+                </button>
+                <button
+                  onClick={() => { setCodeCategory("plans"); setSelectedCourse(null); }}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    codeCategory === "plans" ? "bg-emerald-600 text-white" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  🎓 أكواد الخطط والاشتراكات
+                </button>
               </div>
-            )
+
+              {/* COURSE CODES CATEGORY */}
+              {codeCategory === "courses" && (
+                !selectedCourse ? (
+                  <CoursePicker courses={courses} onSelect={(c) => { setSelectedCourse(c); fetchCodes(c.id, false); }} hint="اختر كورساً لإدارة أكواده:" sub={(c) => `${c._count?.accessCodes || 0} كود`} />
+                ) : (
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button onClick={() => setSelectedCourse(null)} className="text-xs font-bold text-sky-500 hover:underline me-2">← تغيير الكورس</button>
+                      <h2 className="font-bold text-[var(--ink)] me-auto">{selectedCourse.title} — الأكواد</h2>
+                      {[1, 5, 10].map((n) => (
+                        <button key={n} onClick={() => generateCodes(selectedCourse.id, n, false)} className={ghostBtn}>
+                          <IconPlus className="w-4 h-4" /> {n}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Bulk generate panel */}
+                    <div className={`${cardPad} space-y-4`}>
+                      <h3 className="font-bold text-[var(--ink)] text-xs flex items-center gap-2">
+                        <IconKey className="w-4 h-4 text-sky-500" />
+                        <span>توليد أكواد بكميات كبيرة (تحميل ملف CSV)</span>
+                      </h3>
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="w-24 shrink-0">
+                          <label className={label}>عدد الأكواد</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={200}
+                            value={bulkCount}
+                            onChange={(e) => setBulkCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                            className={input}
+                          />
+                        </div>
+                        <div className="w-36 shrink-0">
+                          <label className={label}>البادئة (اختياري)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: MATH"
+                            maxLength={10}
+                            value={bulkPrefix}
+                            onChange={(e) => setBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                            className={input}
+                            dir="ltr"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={bulkGenerating}
+                          onClick={handleBulkGenerate}
+                          className={primaryBtn}
+                        >
+                          {bulkGenerating ? "جارٍ التوليد..." : "إنشاء وتحميل CSV"}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-[var(--ink-muted)]">
+                        يمكنك توليد حتى 200 كود دفعة واحدة ببادئة مخصصة. سيتم تحميل ملف يحتوي على الأكواد الناتجة مباشرة.
+                      </p>
+                    </div>
+
+                    <div className={`${card} overflow-hidden`}>
+                      {codes.length === 0 ? (
+                        <EmptyState icon={<IconKey className="w-7 h-7" />} title="لا توجد أكواد بعد" hint="أنشئ أكواداً من الأزرار بالأعلى لتوزيعها على الطلاب." />
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm min-w-[480px]">
+                            <thead>
+                              <tr className="text-xs text-[var(--ink-muted)] border-b border-[var(--border)]">
+                                <th className="text-start font-semibold px-4 py-3">الكود</th>
+                                <th className="text-start font-semibold px-4 py-3">المتعلم</th>
+                                <th className="text-start font-semibold px-4 py-3">الحالة</th>
+                                <th className="text-start font-semibold px-4 py-3">إجراء</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)]">
+                              {codes.map((c) => (
+                                <tr key={c.id}>
+                                  <td className="px-4 py-3 font-mono text-sky-500 dark:text-sky-300 text-xs" dir="ltr">{c.code}</td>
+                                  <td className="px-4 py-3 text-[var(--ink)] truncate max-w-[140px]">{c.student?.name || "—"}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${!c.student ? (c.isActive ? "text-emerald-500" : "text-[var(--ink-muted)]") : c.isActive ? "text-emerald-500" : "text-[var(--error)]"}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${!c.student ? (c.isActive ? "bg-emerald-500" : "bg-[var(--ink-muted)]") : c.isActive ? "bg-emerald-500" : "bg-[var(--error)]"}`} />
+                                      {!c.student ? (c.isActive ? "متاح" : "معطل") : c.isActive ? "مسجل" : "محظور"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button onClick={() => toggleCode(c.id, !c.isActive, false)}
+                                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${c.isActive ? "text-[var(--error)] hover:bg-[var(--error)]/10" : "text-emerald-500 hover:bg-emerald-500/10"}`}>
+                                      {c.isActive ? "تعطيل" : "تفعيل"}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+
+              {/* PLAN CODES CATEGORY */}
+              {codeCategory === "plans" && (
+                !selectedPlan ? (
+                  <div className={`${card} overflow-hidden p-5 space-y-4`}>
+                    <h3 className="font-bold text-[var(--ink)] text-sm">اختر خطة دراسية أو اشتراكاً لإدارة أكواده:</h3>
+                    {plans.length === 0 ? (
+                      <EmptyState icon={<IconBook className="w-7 h-7" />} title="لا توجد خطط منشورة" hint="تواصل مع إدارة المنصة لنشر الخطط الدراسية." />
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {plans.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => { setSelectedPlan(p); fetchCodes(p.id, true); }}
+                            className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-right transition-all hover:border-emerald-500 hover:shadow-md cursor-pointer"
+                          >
+                            <div className="font-bold text-sm text-[var(--ink)]">{p.title}</div>
+                            <div className="text-xs text-[var(--ink-muted)] mt-1 flex justify-between">
+                              <span>المرحلة: {p.educationalStage}</span>
+                              <span className="font-bold text-emerald-500">{p.price} جنيه</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button onClick={() => setSelectedPlan(null)} className="text-xs font-bold text-emerald-500 hover:underline me-2">← تغيير الخطة</button>
+                      <h2 className="font-bold text-[var(--ink)] me-auto">{selectedPlan.title} — أكواد الاشتراك</h2>
+                      {[1, 5, 10].map((n) => (
+                        <button key={n} onClick={() => generateCodes(selectedPlan.id, n, true)} className={ghostBtn}>
+                          <IconPlus className="w-4 h-4" /> {n}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Bulk generate panel */}
+                    <div className={`${cardPad} space-y-4`}>
+                      <h3 className="font-bold text-[var(--ink)] text-xs flex items-center gap-2">
+                        <IconKey className="w-4 h-4 text-emerald-500" />
+                        <span>توليد أكواد اشتراك بكميات كبيرة (تحميل ملف CSV)</span>
+                      </h3>
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="w-24 shrink-0">
+                          <label className={label}>عدد الأكواد</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={200}
+                            value={bulkCount}
+                            onChange={(e) => setBulkCount(Math.min(200, Math.max(1, parseInt(e.target.value) || 1)))}
+                            className={input}
+                          />
+                        </div>
+                        <div className="w-36 shrink-0">
+                          <label className={label}>البادئة (اختياري)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: SUB"
+                            maxLength={10}
+                            value={bulkPrefix}
+                            onChange={(e) => setBulkPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                            className={input}
+                            dir="ltr"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={bulkGenerating}
+                          onClick={handleBulkGenerate}
+                          className={`${primaryBtn} bg-emerald-600 hover:bg-emerald-500`}
+                        >
+                          {bulkGenerating ? "جارٍ التوليد..." : "إنشاء وتحميل CSV"}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-[var(--ink-muted)]">
+                        سيتم توليد أكواد تفعيل وتنزيل ملف CSV جاهز لطباعته وتوزيعه على الطلاب مباشرة.
+                      </p>
+                    </div>
+
+                    <div className={`${card} overflow-hidden`}>
+                      {codes.length === 0 ? (
+                        <EmptyState icon={<IconKey className="w-7 h-7" />} title="لا توجد أكواد بعد" hint="أنشئ أكواد اشتراك من الأزرار بالأعلى لتوزيعها على الطلاب." />
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm min-w-[480px]">
+                            <thead>
+                              <tr className="text-xs text-[var(--ink-muted)] border-b border-[var(--border)]">
+                                <th className="text-start font-semibold px-4 py-3">كود الاشتراك</th>
+                                <th className="text-start font-semibold px-4 py-3">المستخدم</th>
+                                <th className="text-start font-semibold px-4 py-3">الحالة</th>
+                                <th className="text-start font-semibold px-4 py-3">إجراء</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)]">
+                              {codes.map((c: any) => (
+                                <tr key={c.id}>
+                                  <td className="px-4 py-3 font-mono text-emerald-500 text-xs font-bold" dir="ltr">{c.code}</td>
+                                  <td className="px-4 py-3 text-[var(--ink)] truncate max-w-[140px]">{c.usedById ? "تم الاستخدام" : "—"}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${!c.usedById ? (c.isActive ? "text-emerald-500" : "text-[var(--ink-muted)]") : "text-amber-500"}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${!c.usedById ? (c.isActive ? "bg-emerald-500" : "bg-[var(--ink-muted)]") : "bg-amber-500"}`} />
+                                      {!c.usedById ? (c.isActive ? "متاح" : "معطل") : "مستخدَم"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button onClick={() => toggleCode(c.id, !c.isActive, true)}
+                                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${c.isActive ? "text-[var(--error)] hover:bg-[var(--error)]/10" : "text-emerald-500 hover:bg-emerald-500/10"}`}>
+                                      {c.isActive ? "تعطيل" : "تفعيل"}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
           )}
 
           {/* ════════ STUDENTS ════════ */}

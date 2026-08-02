@@ -1039,7 +1039,7 @@ export default function AccountPage() {
                     </div>
                   </div>
 
-                  {/* TAB 1: Mobile Wallets via Sha7nawy */}
+                  {/* TAB 1: Mobile Wallets */}
                   {topupTab === "wallet" && (
                     <div className="p-4 rounded-2xl space-y-4" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
                       <div>
@@ -1047,7 +1047,7 @@ export default function AccountPage() {
                         <div className="grid grid-cols-3 gap-2">
                           {[
                             { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                            { id: "or_cash", label: "أورنج كاش", color: "#FF7900" },
+                            { id: "or_cash", label: "أورنج كاش (صيانة)", color: "#FF7900" },
                             { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
                           ].map(m => (
                             <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
@@ -1063,24 +1063,52 @@ export default function AccountPage() {
                         </div>
                       </div>
 
+                      {/* Orange Cash Maintenance Reassuring Notice */}
+                      {selectedWalletMethod === "or_cash" && (
+                        <p className="p-3 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed text-center">
+                          ⚠️ محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يُرجى اختيار <strong>فودافون كاش</strong> أو <strong>اتصالات كاش</strong> لإتمام عملية الشحن بسهولة دون قلق.
+                        </p>
+                      )}
+
+                      {/* 2% Tax / Fee Breakdown */}
+                      {selectedWalletMethod !== "or_cash" && Number(walletAmount) > 0 && (
+                        <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex justify-between" style={{ color: "var(--ink-2)" }}>
+                            <span>رصيد الشحن المضاف لحسابك:</span>
+                            <span className="font-bold">{Number(walletAmount)} جنيه</span>
+                          </div>
+                          <div className="flex justify-between" style={{ color: "var(--ink-3)" }}>
+                            <span>رسوم الخصم والخدمة (2%):</span>
+                            <span className="font-bold">{Math.round(Number(walletAmount) * 0.02 * 100) / 100} جنيه</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-[var(--border)]" style={{ color: "var(--brand)" }}>
+                            <span className="font-black">إجمالي الخصم من المحفظة:</span>
+                            <span className="font-black text-sm">{Math.round((Number(walletAmount) * 1.02) * 100) / 100} جنيه</span>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
                           <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
                             placeholder="01xxxxxxxxx" dir="ltr"
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                            disabled={selectedWalletMethod === "or_cash"}
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
                             style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
                         </div>
                         <div>
                           <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>المبلغ (جنيه مصري):</label>
                           <input type="number" value={walletAmount} onChange={e => setWalletAmount(e.target.value)}
                             placeholder="100" min="5" max="10000" dir="ltr"
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                            disabled={selectedWalletMethod === "or_cash"}
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
                             style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
                         </div>
                       </div>
 
                       <button onClick={async () => {
+                        if (selectedWalletMethod === "or_cash") return;
                         if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
                         const amt = Number(walletAmount);
                         if (!amt || amt < 5) { setWalletMsg("❌ المبلغ يجب أن يكون 5 جنيه على الأقل"); return; }
@@ -1107,10 +1135,10 @@ export default function AccountPage() {
                           setWalletLoading(false);
                           setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
                         }
-                      }} disabled={walletLoading}
-                        className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md"
-                        style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
-                        {walletLoading ? "جارٍ طلب السحب..." : `شحن ${walletAmount || 0} جنيه من المحفظة`}
+                      }} disabled={walletLoading || selectedWalletMethod === "or_cash"}
+                        className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
+                        style={{ background: selectedWalletMethod === "or_cash" ? "var(--ink-3)" : "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                        {walletLoading ? "جارٍ طلب السحب..." : selectedWalletMethod === "or_cash" ? "أورنج كاش قيد الصيانة" : `خصم ${Math.round((Number(walletAmount || 0) * 1.02) * 100) / 100} جنيه من المحفظة`}
                       </button>
 
                       {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { createSha7nawyPayment, Sha7nawyWalletMethod, WALLET_INSTRUCTIONS, WALLET_METHOD_LABELS } from "@/lib/sha7nawy";
+import { createSha7nawyPayment, Sha7nawyWalletMethod, WALLET_INSTRUCTIONS, WALLET_METHOD_LABELS, calculateAmountWithTax } from "@/lib/sha7nawy";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -30,16 +30,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "نوع المحفظة غير مدعوم" }, { status: 400 });
     }
 
+    if (method === "or_cash") {
+      return NextResponse.json(
+        { error: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام العملية دون قلق." },
+        { status: 400 }
+      );
+    }
+
+    // Calculate 2% tax / service fee
+    const { baseAmount, taxAmount, totalAmount } = calculateAmountWithTax(amount);
+
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://code-up.tech").replace(/\/$/, "");
     const webhookUrl = `${appUrl}/api/payments/sha7nawy/webhook`;
 
     const details = courseTitle
-      ? `شراء كورس: ${courseTitle} (طالب: ${session.name || session.id})`
-      : `شحن رصيد: ${amount} جنيه (طالب: ${session.name || session.id})`;
+      ? `شراء: ${courseTitle} (${baseAmount} جنيه + 2% رسوم) = ${totalAmount} جنيه`
+      : `شحن رصيد: ${baseAmount} جنيه (+ 2% رسوم = ${totalAmount} جنيه)`;
 
     const result = await createSha7nawyPayment({
       number,
-      amount,
+      amount: totalAmount,
       method,
       client: session.id,
       details,
@@ -55,12 +65,14 @@ export async function POST(req: NextRequest) {
       reference: result.data?.reference,
       method: method,
       methodLabel: WALLET_METHOD_LABELS[method],
-      amount: amount,
+      baseAmount,
+      taxAmount,
+      totalAmount,
       instructions: result.message || WALLET_INSTRUCTIONS[method],
       data: result.data,
     });
   } catch (error: any) {
-    console.error("[Sha7nawy Create Payment API] Error:", error);
+    console.error("[Create Payment API] Error:", error);
     return NextResponse.json({ error: "حدث خطأ غير متوقع أثناء بدء عملية الدفع" }, { status: 500 });
   }
 }

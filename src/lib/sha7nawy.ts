@@ -1,8 +1,8 @@
 /**
- * Sha7nawy Payment Gateway SDK Service
+ * Mobile Wallet Gateway SDK Service
  * Handles mobile wallet transactions for Egyptian carriers:
  * - Vodafone Cash (vf_cash) -> *9*1# prompt
- * - Orange Cash (or_cash)   -> Orange Cash App prompt
+ * - Orange Cash (or_cash)   -> Under maintenance notice
  * - Etisalat Cash (et_cash) -> e& Money App prompt
  */
 
@@ -44,15 +44,24 @@ export interface Sha7nawyCreateResponse {
 
 export const WALLET_METHOD_LABELS: Record<Sha7nawyWalletMethod, string> = {
   vf_cash: "فودافون كاش",
-  or_cash: "أورنج كاش",
+  or_cash: "أورنج كاش (قيد الصيانة ⚠️)",
   et_cash: "اتصالات كاش (e& Money)",
 };
 
 export const WALLET_INSTRUCTIONS: Record<Sha7nawyWalletMethod, string> = {
   vf_cash: "اطلب *9*1# خلال دقيقة واحدة واكتب الرقم السري لتأكيد عملية الخصم",
-  or_cash: "افتَح تطبيق Orange Cash واقبل طلب الدفع المعلق فوراً",
+  or_cash: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً — يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام الدفع بسهولة.",
   et_cash: "افتَح تطبيق e& Money واقبل طلب الدفع المعلق فوراً",
 };
+
+/**
+ * Calculates 2% tax/fee on base payment amount
+ */
+export function calculateAmountWithTax(baseAmount: number): { baseAmount: number; taxAmount: number; totalAmount: number } {
+  const taxAmount = Math.round(baseAmount * 0.02 * 100) / 100;
+  const totalAmount = Math.round((baseAmount + taxAmount) * 100) / 100;
+  return { baseAmount, taxAmount, totalAmount };
+}
 
 /**
  * Validates an Egyptian mobile wallet phone number (11 digits starting with 01)
@@ -77,7 +86,7 @@ export function normalizeEgyptianPhone(phone: string): string {
 }
 
 /**
- * Creates a mobile wallet payment request via Sha7nawy Gateway API
+ * Creates a mobile wallet payment request via Payment Gateway API
  */
 export async function createSha7nawyPayment(
   params: CreatePaymentParams
@@ -95,6 +104,14 @@ export async function createSha7nawyPayment(
       status: false,
       code: 400,
       message: "رقم المحفظة غير صحيح — يجب أن يكون رقم مصري مكون من 11 رقماً يبدأ بـ 01",
+    };
+  }
+
+  if (params.method === "or_cash") {
+    return {
+      status: false,
+      code: 400,
+      message: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام عملية الدفع بسهولة دون قلق.",
     };
   }
 
@@ -132,7 +149,7 @@ export async function createSha7nawyPayment(
       return {
         status: false,
         code: res.status,
-        message: data.message || data.error || `خطأ من بوابة الدفع (${res.status})`,
+        message: data.message || data.error || `تعذر الخصم من المحفظة حالياً (${res.status})`,
       };
     }
 
@@ -143,18 +160,17 @@ export async function createSha7nawyPayment(
       data: data.data,
     };
   } catch (error: any) {
-    console.error("[Sha7nawy API] Error calling create payment:", error);
+    console.error("[Gateway API] Error calling create payment:", error);
     return {
       status: false,
       code: 500,
-      message: "تعذر الاتصال ببوابة الدفع Sha7nawy — حاول مرة أخرى لاحقاً",
+      message: "تعذر الاتصال ببوابة الدفع الإلكتروني — حاول مرة أخرى لاحقاً",
     };
   }
 }
 
 /**
- * Confirms a payment transaction using ref_code (Public Key Auth)
- * POST https://gate.sha7nawy.com/api/payment/confirm
+ * Confirms a payment transaction using ref_code
  */
 export async function confirmSha7nawyPayment(ref_code: string): Promise<Sha7nawyCreateResponse> {
   const baseUrl = (process.env.SHA7NAWY_BASE_URL || "https://gate.sha7nawy.com").replace(/\/$/, "");
@@ -183,14 +199,13 @@ export async function confirmSha7nawyPayment(ref_code: string): Promise<Sha7nawy
       data: data.data,
     };
   } catch (error: any) {
-    console.error("[Sha7nawy API] Error calling confirm payment:", error);
-    return { status: false, code: 500, message: "تعذر الاتصال بسيرفر Sha7nawy" };
+    console.error("[Gateway API] Error calling confirm payment:", error);
+    return { status: false, code: 500, message: "تعذر الاتصال بسيرفر التأكيد" };
   }
 }
 
 /**
  * Server-to-server payment verification (Secret Key Auth)
- * GET https://gate.sha7nawy.com/api/payment/info/{transaction_id}
  */
 export async function getSha7nawyPaymentInfo(transaction_id: string | number): Promise<Sha7nawyCreateResponse> {
   const baseUrl = (process.env.SHA7NAWY_BASE_URL || "https://gate.sha7nawy.com").replace(/\/$/, "");
@@ -217,7 +232,7 @@ export async function getSha7nawyPaymentInfo(transaction_id: string | number): P
       data: data.data,
     };
   } catch (error: any) {
-    console.error("[Sha7nawy API] Error querying payment info:", error);
-    return { status: false, code: 500, message: "تعذر الاستعلام من سيرفر Sha7nawy" };
+    console.error("[Gateway API] Error querying payment info:", error);
+    return { status: false, code: 500, message: "تعذر الاستعلام من سيرفر التأكيد" };
   }
 }

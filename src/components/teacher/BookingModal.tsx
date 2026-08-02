@@ -111,15 +111,23 @@ export function BookingButton({
   const [isOpen, setIsOpen] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [studentGrade, setStudentGrade] = useState("sec_1");
+  const [userBalance, setUserBalance] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedPlanType, setSelectedPlanType] = useState<"monthly" | "termly" | "yearly" | null>(null);
 
   // Booking & Payment Mode State
-  const [payMode, setPayMode] = useState<"wallet" | "whatsapp" | "code">("wallet");
+  const [payMode, setPayMode] = useState<"wallet" | "balance" | "whatsapp" | "code">("wallet");
+  
+  // Wallet state
   const [walletPhone, setWalletPhone] = useState("");
   const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
   const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
+
+  // Balance state
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceMsg, setBalanceMsg] = useState("");
 
   // Code state
   const [code, setCode] = useState("");
@@ -131,12 +139,23 @@ export function BookingButton({
       .then((r) => r.json())
       .then((d) => {
         if (d?.user) {
+          setIsLoggedIn(true);
           if (d.user.name) setStudentName(d.user.name);
           if (d.user.educationalStage) setStudentGrade(d.user.educationalStage);
+          if (typeof d.user.balance === "number") setUserBalance(d.user.balance);
         }
       })
       .catch(() => {});
   }, []);
+
+  const refreshBalance = () => {
+    fetch("/api/student/balance", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.balance === "number") setUserBalance(d.balance);
+      })
+      .catch(() => {});
+  };
 
   const createPlan = (
     type: "monthly" | "termly" | "yearly",
@@ -251,6 +270,37 @@ export function BookingButton({
     }
   };
 
+  const handlePayViaBalance = async (plan: BookingPlan) => {
+    if (!isLoggedIn) {
+      setBalanceMsg("❌ يجب تسجيل الدخول للشراء بالرصيد");
+      return;
+    }
+    setBalanceLoading(true);
+    setBalanceMsg("");
+    try {
+      const res = await fetch("/api/teacher/subscribe-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: plan.price,
+          planLabel: plan.label,
+          teacherName,
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setBalanceLoading(false);
+      if (res.ok && d.success) {
+        setBalanceMsg(`✅ ${d.message}`);
+        if (typeof d.newBalance === "number") setUserBalance(d.newBalance);
+      } else {
+        setBalanceMsg(`❌ ${d.error || "تعذر خصم الرصيد"}`);
+      }
+    } catch {
+      setBalanceLoading(false);
+      setBalanceMsg("❌ حدث خطأ أثناء الاتصال بالسيرفر");
+    }
+  };
+
   const handleApplyCode = async () => {
     if (!code.trim()) return;
     setCodeApplying(true);
@@ -265,6 +315,7 @@ export function BookingButton({
       setCodeApplying(false);
       if (res.ok) {
         setCodeMsg("✅ تم تفعيل الكود بنجاح!");
+        refreshBalance();
       } else {
         setCodeMsg(`❌ ${data.error || "كود غير صحيح أو مستخدم من قبل"}`);
       }
@@ -280,7 +331,7 @@ export function BookingButton({
       <div className="flex flex-col items-center gap-2 mt-6">
         {plans.length > 0 && (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={() => { refreshBalance(); setIsOpen(true); }}
             className="relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-black text-white text-base border-none cursor-pointer transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98]"
             style={{
               background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
@@ -479,16 +530,16 @@ export function BookingButton({
                 </p>
               )}
 
-              {/* Payment Method Tabs (Wallet / WhatsApp / Code) */}
+              {/* Payment Method Tabs (Wallet / Balance / WhatsApp / Code) */}
               <div className="space-y-3 pt-2 border-t border-[var(--border,rgba(255,255,255,0.1))]">
                 <label className="block text-xs font-bold text-center" style={{ color: "var(--ink-muted, #aaa)" }}>
                   اختر طريقة الحجز والدفع:
                 </label>
 
-                <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
+                <div className="grid grid-cols-4 gap-1 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
                   <button
                     onClick={() => setPayMode("wallet")}
-                    className="py-2.5 px-2 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
+                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
                     style={{
                       background: payMode === "wallet" ? "var(--brand, #6366f1)" : "transparent",
                       color: payMode === "wallet" ? "#fff" : "var(--ink-muted, #aaa)",
@@ -498,8 +549,19 @@ export function BookingButton({
                   </button>
 
                   <button
+                    onClick={() => setPayMode("balance")}
+                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
+                    style={{
+                      background: payMode === "balance" ? "#D97706" : "transparent",
+                      color: payMode === "balance" ? "#fff" : "var(--ink-muted, #aaa)",
+                    }}
+                  >
+                    💰 بالرصيد
+                  </button>
+
+                  <button
                     onClick={() => setPayMode("whatsapp")}
-                    className="py-2.5 px-2 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
+                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
                     style={{
                       background: payMode === "whatsapp" ? "#25D366" : "transparent",
                       color: payMode === "whatsapp" ? "#fff" : "var(--ink-muted, #aaa)",
@@ -510,9 +572,9 @@ export function BookingButton({
 
                   <button
                     onClick={() => setPayMode("code")}
-                    className="py-2.5 px-2 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
+                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
                     style={{
-                      background: payMode === "code" ? "#F59E0B" : "transparent",
+                      background: payMode === "code" ? "#10B981" : "transparent",
                       color: payMode === "code" ? "#fff" : "var(--ink-muted, #aaa)",
                     }}
                   >
@@ -520,7 +582,7 @@ export function BookingButton({
                   </button>
                 </div>
 
-                {/* Option 1: Mobile Wallet Payment (Sha7nawy) */}
+                {/* Option 1: Mobile Wallet Payment */}
                 {payMode === "wallet" && activePlan && (
                   <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
                     <div>
@@ -528,7 +590,7 @@ export function BookingButton({
                       <div className="grid grid-cols-3 gap-1.5">
                         {[
                           { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                          { id: "or_cash", label: "أورنج كاش", color: "#FF7900" },
+                          { id: "or_cash", label: "أورنج كاش (صيانة)", color: "#FF7900" },
                           { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
                         ].map(m => (
                           <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
@@ -544,27 +606,79 @@ export function BookingButton({
                       </div>
                     </div>
 
+                    {/* Orange Cash Maintenance Reassuring Notice */}
+                    {selectedWalletMethod === "or_cash" && (
+                      <p className="p-3 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed text-center">
+                        ⚠️ محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يُرجى اختيار <strong>فودافون كاش</strong> أو <strong>اتصالات كاش</strong> لإتمام الدفع بسهولة دون قلق.
+                      </p>
+                    )}
+
+                    {/* 2% Tax / Fee Breakdown */}
+                    {selectedWalletMethod !== "or_cash" && (
+                      <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.06))" }}>
+                        <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
+                          <span>المبلغ الأصلي:</span>
+                          <span className="font-bold">{activePlan.price} جنيه</span>
+                        </div>
+                        <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
+                          <span>رسوم المعاملة والخدمة (2%):</span>
+                          <span className="font-bold">{Math.round(activePlan.price * 0.02 * 100) / 100} جنيه</span>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-[var(--border,rgba(255,255,255,0.1))]" style={{ color: "var(--brand, #6366f1)" }}>
+                          <span className="font-black">الإجمالي المطلوب خصمه:</span>
+                          <span className="font-black text-sm">{Math.round((activePlan.price * 1.02) * 100) / 100} جنيه</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>رقم المحفظة (11 رقماً):</label>
                       <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
                         placeholder="01xxxxxxxxx" dir="ltr"
-                        className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                        disabled={selectedWalletMethod === "or_cash"}
+                        className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
                         style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
                     </div>
 
                     <button
                       onClick={() => handlePayViaWallet(activePlan)}
-                      disabled={walletLoading}
-                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2"
-                      style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
+                      disabled={walletLoading || selectedWalletMethod === "or_cash"}
+                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: selectedWalletMethod === "or_cash" ? "#6b7280" : "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
                     >
-                      {walletLoading ? "جارٍ إرسال طلب السحب..." : `ادفع ${activePlan.price} جنيه بالمحفظة 📲`}
+                      {walletLoading ? "جارٍ إرسال الطلب..." : selectedWalletMethod === "or_cash" ? "أورنج كاش قيد الصيانة" : `خصم ${Math.round((activePlan.price * 1.02) * 100) / 100} جنيه من المحفظة 📱`}
                     </button>
                     {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
                   </div>
                 )}
 
-                {/* Option 2: WhatsApp Booking */}
+                {/* Option 2: Account Balance Payment */}
+                {payMode === "balance" && activePlan && (
+                  <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                    <div className="flex items-center justify-between text-xs p-3 rounded-xl" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
+                      <span style={{ color: "var(--ink-muted, #aaa)" }}>رصيدك الحالي في المنصة:</span>
+                      <span className="font-black text-amber-400 text-sm">{userBalance !== null ? `${userBalance} جنيه` : "غير معروف"}</span>
+                    </div>
+
+                    <button
+                      onClick={() => handlePayViaBalance(activePlan)}
+                      disabled={balanceLoading || (userBalance !== null && userBalance < activePlan.price)}
+                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg, #D97706, #B45309)" }}
+                    >
+                      {balanceLoading ? "جارٍ خصم الرصيد وتأكيد الحجز..." : `شراء بـ ${activePlan.price} جنيه من رصيدك 💰`}
+                    </button>
+                    
+                    {userBalance !== null && userBalance < activePlan.price && (
+                      <p className="text-xs text-center text-amber-400 font-semibold">
+                        ⚠️ رصيدك لا يكفي. يمكنك التبديل إلى تبويب المحفظة 📱 أو الكود 🔑 للشحن.
+                      </p>
+                    )}
+                    {balanceMsg && <p className="text-xs font-semibold text-center" style={{ color: balanceMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{balanceMsg}</p>}
+                  </div>
+                )}
+
+                {/* Option 3: WhatsApp Booking */}
                 {payMode === "whatsapp" && activePlan && (
                   <button
                     onClick={() => handleBookViaWhatsApp(activePlan)}
@@ -581,7 +695,7 @@ export function BookingButton({
                   </button>
                 )}
 
-                {/* Option 3: Access Code */}
+                {/* Option 4: Access Code */}
                 {payMode === "code" && (
                   <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
                     <p className="text-xs font-medium text-center" style={{ color: "var(--ink-muted, #aaa)" }}>أدخل كود تفعيل الاشتراك:</p>
@@ -592,7 +706,7 @@ export function BookingButton({
                         style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
                       <button onClick={handleApplyCode} disabled={codeApplying || !code.trim()}
                         className="rounded-xl px-4 py-2.5 text-white font-bold text-sm transition-colors disabled:opacity-50"
-                        style={{ background: "#F59E0B" }}>
+                        style={{ background: "#10B981" }}>
                         {codeApplying ? "..." : "تفعيل"}
                       </button>
                     </div>
@@ -628,6 +742,7 @@ export function BookingButton({
                           if (res.ok && d.success) {
                             setWalletModal(null);
                             setWalletMsg("✅ تم تأكيد السحب وشحن حسابك بنجاح!");
+                            refreshBalance();
                           } else {
                             setWalletMsg(`⚠️ ${d.error || "العملية معلقة بانتظار موافقة العميل من المحفظة"}`);
                           }
