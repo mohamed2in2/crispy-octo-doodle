@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
         amount: totalAmount,
         method: methodConfig.id,
         client: session.id,
+        customerName: session.name || "Student",
+        customerEmail: session.email || undefined,
         details,
         webhook_url: webhookUrl,
       });
