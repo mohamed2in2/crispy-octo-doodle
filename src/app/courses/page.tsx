@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Navbar } from "@/components/ui/Navbar";
 import { Footer } from "@/components/ui/Footer";
@@ -259,64 +260,82 @@ export default function CoursesPage() {
               className="space-y-3.5 max-w-3xl"
             >
               {teachers.length > 0 ? (
-                teachers.map((teacher, i) => (
-                  <motion.div
-                    key={teacher.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.04 }}
-                    onClick={() => {
-                      if (teacher.hasPublicPage && teacher.slug) {
-                        router.push(`/${teacher.slug}`);
-                      } else {
-                        writeTeacherParam(teacher.id);
-                      }
-                    }}
-                    className="group relative flex items-center justify-between h-[76px] px-5 rounded-[20px] transition-all duration-200 cursor-pointer select-none"
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      boxShadow: "var(--shadow-sm)",
-                    }}
-                    whileHover={{
-                      scale: 1.01,
-                      borderColor: "rgba(56,189,248,0.8)",
-                      boxShadow: "0 0 20px rgba(56,189,248,0.3)",
-                    }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    {/* Right side in RTL: Avatar Photo + Name */}
-                    <div className="flex items-center gap-4">
-                      {/* Circular Teacher Photo (56-60px) */}
-                      <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10" style={{ background: "rgba(255,255,255,0.05)" }}>
-                        {teacher.photoUrl ? (
-                          <img
-                            src={teacher.photoUrl}
-                            alt={teacher.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center font-black text-xl text-white" style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)" }}>
-                            {teacher.name.trim().charAt(0)}
-                          </div>
-                        )}
+                teachers.map((teacher, i) => {
+                  const targetHref = teacher.hasPublicPage && teacher.slug ? `/${teacher.slug}` : `/courses?teacher=${teacher.id}`;
+                  const isPublic = teacher.hasPublicPage && teacher.slug;
+
+                  const cardContent = (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.04 }}
+                      onClick={(e) => {
+                        if (!isPublic) {
+                          e.preventDefault();
+                          writeTeacherParam(teacher.id);
+                        }
+                      }}
+                      onMouseEnter={() => {
+                        if (isPublic) {
+                          router.prefetch(`/${teacher.slug}`);
+                        }
+                      }}
+                      className="group relative flex items-center justify-between h-[76px] px-5 rounded-[20px] transition-all duration-200 cursor-pointer select-none"
+                      style={{
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        boxShadow: "var(--shadow-sm)",
+                      }}
+                      whileHover={{
+                        scale: 1.01,
+                        borderColor: "rgba(56,189,248,0.8)",
+                        boxShadow: "0 0 20px rgba(56,189,248,0.3)",
+                      }}
+                      whileTap={{ scale: 0.99 }}
+                    >
+                      {/* Right side in RTL: Avatar Photo + Name */}
+                      <div className="flex items-center gap-4">
+                        {/* Circular Teacher Photo (56-60px) */}
+                        <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10" style={{ background: "rgba(255,255,255,0.05)" }}>
+                          {teacher.photoUrl ? (
+                            <img
+                              src={teacher.photoUrl}
+                              alt={teacher.name}
+                              className="w-full h-full object-cover"
+                              loading="eager"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center font-black text-xl text-white" style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)" }}>
+                              {teacher.name.trim().charAt(0)}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Teacher Name Only */}
+                        <span className="font-bold text-lg text-[var(--ink)] tracking-tight">
+                          {teacher.name}
+                        </span>
                       </div>
 
-                      {/* Teacher Name Only */}
-                      <span className="font-bold text-lg text-[var(--ink)] tracking-tight">
-                        {teacher.name}
-                      </span>
-                    </div>
+                      {/* Left side: subtle arrow indicator on hover */}
+                      <div className="text-slate-400 group-hover:text-sky-400 transition-colors">
+                        <svg className="w-5 h-5 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </motion.div>
+                  );
 
-                    {/* Left side: subtle arrow indicator on hover */}
-                    <div className="text-slate-400 group-hover:text-sky-400 transition-colors">
-                      <svg className="w-5 h-5 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
+                  return isPublic ? (
+                    <Link key={teacher.id} href={targetHref} prefetch={true} className="block no-underline">
+                      {cardContent}
+                    </Link>
+                  ) : (
+                    <div key={teacher.id} className="block">
+                      {cardContent}
                     </div>
-                  </motion.div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-16">
                   <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>

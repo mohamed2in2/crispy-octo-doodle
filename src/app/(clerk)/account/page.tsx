@@ -279,7 +279,7 @@ export default function AccountPage() {
   const [topupTab, setTopupTab] = useState<"wallet" | "whatsapp" | "code">("wallet");
   const [walletPhone, setWalletPhone] = useState("");
   const [walletAmount, setWalletAmount] = useState("100");
-  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry" | "bank_card" | "meeza">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
   const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
@@ -1066,73 +1066,109 @@ export default function AccountPage() {
                         </div>
                       </div>
 
-                      {/* 2% Tax / Fee Breakdown */}
-                      {Number(walletAmount) > 0 && (
-                        <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                          <div className="flex justify-between" style={{ color: "var(--ink-2)" }}>
-                            <span>رصيد الشحن المضاف لحسابك:</span>
-                            <span className="font-bold">{Number(walletAmount)} جنيه</span>
-                          </div>
-                          <div className="flex justify-between" style={{ color: "var(--ink-3)" }}>
-                            <span>رسوم الخصم والخدمة (2%):</span>
-                            <span className="font-bold">{Math.round(Number(walletAmount) * 0.02 * 100) / 100} جنيه</span>
-                          </div>
-                          <div className="flex justify-between pt-1 border-t border-[var(--border)]" style={{ color: "var(--brand)" }}>
-                            <span className="font-black">إجمالي الخصم من المحفظة:</span>
-                            <span className="font-black text-sm">{Math.round((Number(walletAmount) * 1.02) * 100) / 100} جنيه</span>
-                          </div>
-                        </div>
-                      )}
+                      {(() => {
+                        const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash" || selectedWalletMethod === "or_cash";
+                        const isFawry = selectedWalletMethod === "fawry";
+                        const isCard = selectedWalletMethod === "bank_card" || selectedWalletMethod === "meeza";
+                        const feeRate = isFawry ? 0.025 : isCard ? 0.025 : 0.02;
+                        const baseAmt = Number(walletAmount) || 0;
+                        const totalAmt = Math.round((baseAmt * (1 + feeRate)) * 100) / 100;
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
-                          <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
-                            placeholder="01xxxxxxxxx" dir="ltr"
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
-                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>المبلغ (جنيه مصري):</label>
-                          <input type="number" value={walletAmount} onChange={e => setWalletAmount(e.target.value)}
-                            placeholder="100" min="5" max="10000" dir="ltr"
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
-                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
-                        </div>
-                      </div>
+                        return (
+                          <>
+                            {baseAmt > 0 && (
+                              <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                                <div className="flex justify-between" style={{ color: "var(--ink-2)" }}>
+                                  <span>رصيد الشحن المضاف لحسابك:</span>
+                                  <span className="font-bold">{baseAmt} جنيه</span>
+                                </div>
+                                <div className="flex justify-between" style={{ color: "var(--ink-3)" }}>
+                                  <span>رسوم الخصم والخدمة ({(feeRate * 100).toFixed(1)}%):</span>
+                                  <span className="font-bold">{Math.round(baseAmt * feeRate * 100) / 100} جنيه</span>
+                                </div>
+                                <div className="flex justify-between pt-1 border-t border-[var(--border)]" style={{ color: "var(--brand)" }}>
+                                  <span className="font-black">إجمالي الخصم/المطلوب:</span>
+                                  <span className="font-black text-sm">{totalAmt} جنيه</span>
+                                </div>
+                              </div>
+                            )}
 
-                      <button onClick={async () => {
-                        if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
-                        const amt = Number(walletAmount);
-                        if (!amt || amt < 5) { setWalletMsg("❌ المبلغ يجب أن يكون 5 جنيه على الأقل"); return; }
-                        setWalletLoading(true); setWalletMsg("");
-                        try {
-                          const res = await fetch("/api/payments/sha7nawy/create", {
-                            method: "POST", credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ number: walletPhone.trim(), amount: amt, method: selectedWalletMethod }),
-                          });
-                          const d = await res.json().catch(() => ({}));
-                          setWalletLoading(false);
-                          if (res.ok && d.success) {
-                            setWalletModal({
-                              reference: d.reference || "SH-PENDING",
-                              instructions: d.instructions,
-                              methodLabel: d.methodLabel,
-                              amount: amt,
-                            });
-                          } else {
-                            setWalletMsg(`❌ ${d.error || "تعذر إرسال طلب الشحن"}`);
-                          }
-                        } catch {
-                          setWalletLoading(false);
-                          setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
-                        }
-                      }} disabled={walletLoading}
-                        className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-                        style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
-                        {walletLoading ? "جارٍ طلب السحب والتأكيد..." : `خصم ${Math.round((Number(walletAmount || 0) * 1.02) * 100) / 100} جنيه بالوسيلة المختارة 💳`}
-                      </button>
+                            {isFawry && (
+                              <div className="p-3 rounded-xl text-xs text-amber-600 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 text-center leading-relaxed font-bold">
+                                🏪 خيار فوري كشك: سيتم إصدار كود شحن مرجعي (Fawry Code) لتدفعه كاش في أي كشك فوري أو سوبرماركت دون الحاجة لرقم محفظة.
+                              </div>
+                            )}
+
+                            {isCard && (
+                              <div className="p-3 rounded-xl text-xs text-blue-600 dark:text-blue-300 bg-blue-500/10 border border-blue-500/20 text-center leading-relaxed font-bold">
+                                💳 خيار الفيزا والماستركارد وميزة: سيتم توجيهك إلى صفحة البنك المشفرة 100% لإدخال كارتك وشحن حسابك فوراً.
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {isWallet && (
+                                <div>
+                                  <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
+                                  <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
+                                    placeholder="01xxxxxxxxx" dir="ltr"
+                                    className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                                    style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                                </div>
+                              )}
+                              <div className={isWallet ? "" : "sm:col-span-2"}>
+                                <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>مبلغ الشحن (جنيه مصري):</label>
+                                <input type="number" value={walletAmount} onChange={e => setWalletAmount(e.target.value)}
+                                  placeholder="100" min="5" max="10000" dir="ltr"
+                                  className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                                  style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
+                              </div>
+                            </div>
+
+                            <button onClick={async () => {
+                              if (isWallet && !walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
+                              const amt = Number(walletAmount);
+                              if (!amt || amt < 5) { setWalletMsg("❌ المبلغ يجب أن يكون 5 جنيه على الأقل"); return; }
+                              setWalletLoading(true); setWalletMsg("");
+                              try {
+                                const res = await fetch("/api/payments/sha7nawy/create", {
+                                  method: "POST", credentials: "include",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ number: isWallet ? walletPhone.trim() : "", amount: amt, method: selectedWalletMethod }),
+                                });
+                                const d = await res.json().catch(() => ({}));
+                                setWalletLoading(false);
+                                if (res.ok && d.success) {
+                                  if (d.data?.payment_page_url || d.data?.url) {
+                                    window.location.href = d.data.payment_page_url || d.data.url;
+                                    return;
+                                  }
+                                  setWalletModal({
+                                    reference: d.reference || "SH-PENDING",
+                                    instructions: d.instructions,
+                                    methodLabel: d.methodLabel,
+                                    amount: amt,
+                                  });
+                                } else {
+                                  setWalletMsg(`❌ ${d.error || "تعذر إرسال طلب الشحن"}`);
+                                }
+                              } catch {
+                                setWalletLoading(false);
+                                setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
+                              }
+                            }} disabled={walletLoading}
+                              className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
+                              style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                              {walletLoading
+                                ? "جارٍ تجهيز طلب الشحن..."
+                                : isWallet
+                                ? `خصم ${totalAmt} جنيه من المحفظة 📱`
+                                : isFawry
+                                ? `إصدار كود شحن فوري كاش بقيمة ${totalAmt} جنيه 🏪`
+                                : `الانتقال للبوابة البنكية للشحن (${totalAmt} جنيه) 💳`}
+                            </button>
+                          </>
+                        );
+                      })()}
 
                       {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
                     </div>

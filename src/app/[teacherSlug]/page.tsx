@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -5,10 +6,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RESERVED_SLUGS } from "@/lib/slug";
 import { BookingButton } from "@/components/teacher/BookingModal";
+import { SetTeacherRefCookie } from "@/components/teacher/SetTeacherRefCookie";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache page for 60s for lightning fast <10ms loads
 
-async function getProfile(slug: string) {
+const getProfile = cache(async (slug: string) => {
   if (RESERVED_SLUGS.has(slug.toLowerCase())) return null;
   return prisma.teacherProfile.findFirst({
     where: { slug, isPublished: true, teacher: { isDeleted: false } },
@@ -25,7 +27,7 @@ async function getProfile(slug: string) {
       },
     },
   });
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ teacherSlug: string }> }): Promise<Metadata> {
   const { teacherSlug } = await params;
@@ -33,10 +35,6 @@ export async function generateMetadata({ params }: { params: Promise<{ teacherSl
   if (!p) return { title: "صفحة غير موجودة — Code-UP" };
   const name = p.displayName ?? p.teacher.name;
   const description = p.bio ?? `كورسات ${name} على Code-UP`;
-  // Note: do NOT set openGraph.images here. The teacher photo is a base64 data
-  // URL which social scrapers can't fetch — the file-based `opengraph-image.tsx`
-  // route generates a real PNG (photo + name + Code-UP mark) and Next wires it
-  // into og:image + twitter:image automatically.
   return {
     title: `${name} — Code-UP`,
     description,
@@ -56,21 +54,10 @@ const STAGE_LABELS: Record<string, string> = {
 
 const isSafe = (s?: string | null) => !!s && (/^https?:\/\//i.test(s) || s.startsWith("data:image/") || s.startsWith("/"));
 
-import { cookies } from "next/headers";
-
 export default async function TeacherPage({ params }: { params: Promise<{ teacherSlug: string }> }) {
   const { teacherSlug } = await params;
   const p = await getProfile(teacherSlug);
   if (!p) notFound();
-
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set("teacher_ref", p.teacherId, {
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: "/",
-      sameSite: "lax",
-    });
-  } catch (e) {}
 
   const name = p.displayName ?? p.teacher.name;
   const courses = p.teacher.courses;
@@ -94,6 +81,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
 
   return (
     <main dir="rtl" style={theme} className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
+      <SetTeacherRefCookie teacherId={p.teacherId} />
       {/* Top bar */}
       <nav style={{ background: "var(--nav)" }} className="px-5 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">

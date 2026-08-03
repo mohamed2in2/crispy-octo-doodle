@@ -119,7 +119,7 @@ export function BookingButton({
   
   // Wallet state
   const [walletPhone, setWalletPhone] = useState("");
-  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash">("vf_cash");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry" | "bank_card" | "meeza">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
   const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
@@ -237,7 +237,8 @@ export function BookingButton({
       window.location.href = `/login?redirect_url=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    if (!walletPhone.trim()) {
+    const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash" || selectedWalletMethod === "or_cash";
+    if (isWallet && !walletPhone.trim()) {
       setWalletMsg("❌ رقم المحفظة مطلوب");
       return;
     }
@@ -248,7 +249,7 @@ export function BookingButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          number: walletPhone.trim(),
+          number: isWallet ? walletPhone.trim() : "",
           amount: plan.price,
           method: selectedWalletMethod,
           client: studentName || "Student",
@@ -258,6 +259,10 @@ export function BookingButton({
       const d = await res.json().catch(() => ({}));
       setWalletLoading(false);
       if (res.ok && d.success) {
+        if (d.data?.payment_page_url || d.data?.url) {
+          window.location.href = d.data.payment_page_url || d.data.url;
+          return;
+        }
         setWalletModal({
           reference: d.reference || "SH-PENDING",
           instructions: d.instructions,
@@ -265,7 +270,7 @@ export function BookingButton({
           amount: plan.price,
         });
       } else {
-        setWalletMsg(`❌ ${d.error || "تعذر بدء عملية الدفع بالمحفظة"}`);
+        setWalletMsg(`❌ ${d.error || "تعذر بدء عملية الدفع"}`);
       }
     } catch {
       setWalletLoading(false);
@@ -628,22 +633,55 @@ export function BookingButton({
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>رقم المحفظة / الهاتف (11 رقماً):</label>
-                      <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
-                        placeholder="01xxxxxxxxx" dir="ltr"
-                        className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
-                        style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
-                    </div>
+                    {(() => {
+                      const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash" || selectedWalletMethod === "or_cash";
+                      const isFawry = selectedWalletMethod === "fawry";
+                      const isCard = selectedWalletMethod === "bank_card" || selectedWalletMethod === "meeza";
+                      const totalAmount = Math.round((activePlan.price * (isFawry ? 1.025 : isCard ? 1.025 : 1.02)) * 100) / 100;
 
-                    <button
-                      onClick={() => handlePayViaWallet(activePlan)}
-                      disabled={walletLoading}
-                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
-                    >
-                      {walletLoading ? "جارٍ إرسال الطلب..." : `خصم ${Math.round((activePlan.price * 1.02) * 100) / 100} جنيه بالوسيلة المختارة 📱`}
-                    </button>
+                      return (
+                        <>
+                          {isWallet && (
+                            <div>
+                              <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>
+                                رقم المحفظة (11 رقماً):
+                              </label>
+                              <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
+                                placeholder="01xxxxxxxxx" dir="ltr"
+                                className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
+                                style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
+                            </div>
+                          )}
+
+                          {isFawry && (
+                            <div className="p-3 rounded-xl text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 text-center leading-relaxed font-bold">
+                              🏪 خيار فوري كشك: سيتم إصدار كود مرجعي (Fawry Code). يمكنك الدفع كاش بهذا الكود في أي منفذ فوري أو سوبرماركت دون الحاجة لرقم محفظة.
+                            </div>
+                          )}
+
+                          {isCard && (
+                            <div className="p-3 rounded-xl text-xs text-blue-300 bg-blue-500/10 border border-blue-500/20 text-center leading-relaxed font-bold">
+                              💳 خيار الفيزا والماستركارد وميزة: سيتم تحويلك للبوابة البنكية المأمنة 100% لإدخال بيانات الكارت وإتمام الشراء بنجاح دون الحاجة لرقم محفظة.
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => handlePayViaWallet(activePlan)}
+                            disabled={walletLoading}
+                            className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
+                          >
+                            {walletLoading
+                              ? "جارٍ المعالجة..."
+                              : isWallet
+                              ? `خصم ${totalAmount} جنيه من المحفظة 📱`
+                              : isFawry
+                              ? `إصدار كود الدفع كاش بقيمة ${totalAmount} جنيه 🏪`
+                              : `الانتقال للبوابة البنكية للدفع (${totalAmount} جنيه) 💳`}
+                          </button>
+                        </>
+                      );
+                    })()}
                     {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
                   </div>
                 )}

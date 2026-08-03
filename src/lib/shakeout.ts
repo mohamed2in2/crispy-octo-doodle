@@ -84,7 +84,7 @@ export async function createShakeOutPayment(
         "Authorization": publicKey,
       },
       body: JSON.stringify({
-        number: params.number || "",
+        number: (params.number && params.number.trim()) ? params.number.trim() : "01000000000",
         amount: params.amount,
         method: params.method,
         client: params.client || "codeup-user",
