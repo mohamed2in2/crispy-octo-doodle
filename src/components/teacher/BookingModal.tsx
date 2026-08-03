@@ -585,15 +585,18 @@ export function BookingButton({
                 {payMode === "wallet" && activePlan && (
                   <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
                     <div>
-                      <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>اختر المحفظة:</label>
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>اختر طريقة الدفع المباشر:</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {[
                           { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                          { id: "or_cash", label: "أورنج كاش (صيانة)", color: "#FF7900" },
-                          { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
+                          { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
+                          { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
+                          { id: "fawry", label: "فوري كشك", color: "#FFCC00" },
+                          { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
+                          { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
                         ].map(m => (
-                          <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
-                            className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center"
+                          <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
+                            className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
                             style={{
                               borderColor: selectedWalletMethod === m.id ? m.color : "var(--border, rgba(255,255,255,0.1))",
                               background: selectedWalletMethod === m.id ? `${m.color}20` : "var(--surface, #1a1f2e)",
@@ -605,47 +608,37 @@ export function BookingButton({
                       </div>
                     </div>
 
-                    {/* Orange Cash Maintenance Reassuring Notice */}
-                    {selectedWalletMethod === "or_cash" && (
-                      <p className="p-3 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed text-center">
-                        ⚠️ محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يُرجى اختيار <strong>فودافون كاش</strong> أو <strong>اتصالات كاش</strong> لإتمام الدفع بسهولة دون قلق.
-                      </p>
-                    )}
-
                     {/* 2% Tax / Fee Breakdown */}
-                    {selectedWalletMethod !== "or_cash" && (
-                      <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.06))" }}>
-                        <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
-                          <span>المبلغ الأصلي:</span>
-                          <span className="font-bold">{activePlan.price} جنيه</span>
-                        </div>
-                        <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
-                          <span>رسوم المعاملة والخدمة (2%):</span>
-                          <span className="font-bold">{Math.round(activePlan.price * 0.02 * 100) / 100} جنيه</span>
-                        </div>
-                        <div className="flex justify-between pt-1 border-t border-[var(--border,rgba(255,255,255,0.1))]" style={{ color: "var(--brand, #6366f1)" }}>
-                          <span className="font-black">الإجمالي المطلوب خصمه:</span>
-                          <span className="font-black text-sm">{Math.round((activePlan.price * 1.02) * 100) / 100} جنيه</span>
-                        </div>
+                    <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.06))" }}>
+                      <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
+                        <span>المبلغ الأصلي:</span>
+                        <span className="font-bold">{activePlan.price} جنيه</span>
                       </div>
-                    )}
+                      <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
+                        <span>رسوم المعاملة والخدمة (2%):</span>
+                        <span className="font-bold">{Math.round(activePlan.price * 0.02 * 100) / 100} جنيه</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-[var(--border,rgba(255,255,255,0.1))]" style={{ color: "var(--brand, #6366f1)" }}>
+                        <span className="font-black">الإجمالي المطلوب خصمه:</span>
+                        <span className="font-black text-sm">{Math.round((activePlan.price * 1.02) * 100) / 100} جنيه</span>
+                      </div>
+                    </div>
 
                     <div>
-                      <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>رقم المحفظة (11 رقماً):</label>
+                      <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>رقم المحفظة / الهاتف (11 رقماً):</label>
                       <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
                         placeholder="01xxxxxxxxx" dir="ltr"
-                        disabled={selectedWalletMethod === "or_cash"}
-                        className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
+                        className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
                         style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
                     </div>
 
                     <button
                       onClick={() => handlePayViaWallet(activePlan)}
-                      disabled={walletLoading || selectedWalletMethod === "or_cash"}
+                      disabled={walletLoading}
                       className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: selectedWalletMethod === "or_cash" ? "#6b7280" : "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
+                      style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
                     >
-                      {walletLoading ? "جارٍ إرسال الطلب..." : selectedWalletMethod === "or_cash" ? "أورنج كاش قيد الصيانة" : `خصم ${Math.round((activePlan.price * 1.02) * 100) / 100} جنيه من المحفظة 📱`}
+                      {walletLoading ? "جارٍ إرسال الطلب..." : `خصم ${Math.round((activePlan.price * 1.02) * 100) / 100} جنيه بالوسيلة المختارة 📱`}
                     </button>
                     {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
                   </div>

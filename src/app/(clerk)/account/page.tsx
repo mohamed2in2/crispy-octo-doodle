@@ -1044,14 +1044,17 @@ export default function AccountPage() {
                     <div className="p-4 rounded-2xl space-y-4" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
                       <div>
                         <label className="block text-xs font-bold mb-2" style={{ color: "var(--ink-2)" }}>اختر نوع المحفظة:</label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {[
                             { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                            { id: "or_cash", label: "أورنج كاش (صيانة)", color: "#FF7900" },
-                            { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
+                            { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
+                            { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
+                            { id: "fawry", label: "فوري كشك", color: "#FFCC00" },
+                            { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
+                            { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
                           ].map(m => (
-                            <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
-                              className="py-2.5 px-1 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center"
+                            <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
+                              className="py-2.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
                               style={{
                                 borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
                                 background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
@@ -1063,15 +1066,8 @@ export default function AccountPage() {
                         </div>
                       </div>
 
-                      {/* Orange Cash Maintenance Reassuring Notice */}
-                      {selectedWalletMethod === "or_cash" && (
-                        <p className="p-3 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed text-center">
-                          ⚠️ محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يُرجى اختيار <strong>فودافون كاش</strong> أو <strong>اتصالات كاش</strong> لإتمام عملية الشحن بسهولة دون قلق.
-                        </p>
-                      )}
-
                       {/* 2% Tax / Fee Breakdown */}
-                      {selectedWalletMethod !== "or_cash" && Number(walletAmount) > 0 && (
+                      {Number(walletAmount) > 0 && (
                         <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                           <div className="flex justify-between" style={{ color: "var(--ink-2)" }}>
                             <span>رصيد الشحن المضاف لحسابك:</span>
@@ -1093,22 +1089,19 @@ export default function AccountPage() {
                           <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
                           <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
                             placeholder="01xxxxxxxxx" dir="ltr"
-                            disabled={selectedWalletMethod === "or_cash"}
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
                             style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
                         </div>
                         <div>
                           <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>المبلغ (جنيه مصري):</label>
                           <input type="number" value={walletAmount} onChange={e => setWalletAmount(e.target.value)}
                             placeholder="100" min="5" max="10000" dir="ltr"
-                            disabled={selectedWalletMethod === "or_cash"}
-                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
+                            className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
                             style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
                         </div>
                       </div>
 
                       <button onClick={async () => {
-                        if (selectedWalletMethod === "or_cash") return;
                         if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
                         const amt = Number(walletAmount);
                         if (!amt || amt < 5) { setWalletMsg("❌ المبلغ يجب أن يكون 5 جنيه على الأقل"); return; }
@@ -1135,10 +1128,10 @@ export default function AccountPage() {
                           setWalletLoading(false);
                           setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
                         }
-                      }} disabled={walletLoading || selectedWalletMethod === "or_cash"}
+                      }} disabled={walletLoading}
                         className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-                        style={{ background: selectedWalletMethod === "or_cash" ? "var(--ink-3)" : "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
-                        {walletLoading ? "جارٍ طلب السحب..." : selectedWalletMethod === "or_cash" ? "أورنج كاش قيد الصيانة" : `خصم ${Math.round((Number(walletAmount || 0) * 1.02) * 100) / 100} جنيه من المحفظة`}
+                        style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                        {walletLoading ? "جارٍ طلب السحب والتأكيد..." : `خصم ${Math.round((Number(walletAmount || 0) * 1.02) * 100) / 100} جنيه بالوسيلة المختارة 💳`}
                       </button>
 
                       {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
