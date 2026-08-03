@@ -82,7 +82,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: true, message: "تم شراء الخطة بنجاح" });
     } catch (e: any) {
       if (e.message === "INSUFFICIENT_FUNDS") {
-        return NextResponse.json({ error: "الرصيد غير كافٍ لإتمام العملية" }, { status: 400 });
+        return NextResponse.json(
+          { code: "INSUFFICIENT_FUNDS", error: "الرصيد غير كافٍ لإتمام العملية", effectivePrice },
+          { status: 400 }
+        );
       }
       throw e;
     }

@@ -120,7 +120,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
     }
     if (err.message === "INSUFFICIENT_FUNDS") {
-      return NextResponse.json({ error: "رصيدك غير كافٍ لإتمام العملية" }, { status: 400 });
+      return NextResponse.json(
+        { code: "INSUFFICIENT_FUNDS", error: "رصيدك غير كافٍ لإتمام العملية", effectivePrice },
+        { status: 400 }
+      );
     }
     throw err;
   }

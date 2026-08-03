@@ -100,6 +100,11 @@ export default function PlanProductPage() {
       if (res.ok) {
         toastSuccess(data.message || "تم الشراء بنجاح!");
         router.push("/library");
+      } else if (data.code === "INSUFFICIENT_FUNDS") {
+        // Not enough balance → send the student to the Payment page to top up,
+        // then they get returned here automatically after a successful payment.
+        const price = typeof data.effectivePrice === "number" ? data.effectivePrice : 0;
+        router.push(`/payment?amount=${price}&return=${encodeURIComponent(`/plans/${planId}`)}&context=${encodeURIComponent(`شراء خطة — ${price} جنيه`)}`);
       } else {
         toastError(data.error || "تعذر إتمام الشراء");
       }
@@ -329,102 +334,20 @@ export default function PlanProductPage() {
                       </button>
                     </div>
 
-                    {/* Mode 1: Mobile Wallet via Sha7nawy */}
+                    {/* Mode 1: Mobile Wallet via Sha7nawy — redirects to the unified Payment page */}
                     {payMode === "wallet" && (
                       <div className="p-3.5 rounded-xl space-y-3" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                        <div>
-                          <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-2)" }}>اختر المحفظة:</label>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {[
-                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                              { id: "or_cash", label: "أورنج كاش (صيانة)", color: "#FF7900" },
-                              { id: "et_cash", label: "اتصالات كاش", color: "#78BE20" },
-                            ].map(m => (
-                              <button key={m.id} onClick={() => setSelectedWalletMethod(m.id as any)}
-                                className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center"
-                                style={{
-                                  borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
-                                  background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
-                                  color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
-                                }}>
-                                {m.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Orange Cash Maintenance Reassuring Notice */}
-                        {selectedWalletMethod === "or_cash" && (
-                          <p className="p-3 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed text-center">
-                            ⚠️ محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يُرجى اختيار <strong>فودافون كاش</strong> أو <strong>اتصالات كاش</strong> لإتمام عملية الشراء بسهولة دون قلق.
-                          </p>
-                        )}
-
-                        {/* 2% Tax / Fee Breakdown */}
-                        {selectedWalletMethod !== "or_cash" && (
-                          <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                            <div className="flex justify-between" style={{ color: "var(--ink-2)" }}>
-                              <span>سعر الخطة الأصلي:</span>
-                              <span className="font-bold">{plan.effectivePrice} جنيه</span>
-                            </div>
-                            <div className="flex justify-between" style={{ color: "var(--ink-3)" }}>
-                              <span>رسوم المعاملة والخدمة (2%):</span>
-                              <span className="font-bold">{Math.round(plan.effectivePrice * 0.02 * 100) / 100} جنيه</span>
-                            </div>
-                            <div className="flex justify-between pt-1 border-t border-[var(--border)]" style={{ color: "var(--brand)" }}>
-                              <span className="font-black">الإجمالي المطلوب خصمه:</span>
-                              <span className="font-black text-sm">{Math.round((plan.effectivePrice * 1.02) * 100) / 100} جنيه</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-2)" }}>رقم المحفظة (11 رقماً):</label>
-                          <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
-                            placeholder="01xxxxxxxxx" dir="ltr"
-                            disabled={selectedWalletMethod === "or_cash"}
-                            className="w-full p-2 rounded-lg text-center font-mono text-sm border focus:outline-none disabled:opacity-50"
-                            style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)" }} />
-                        </div>
-
-                        <button onClick={async () => {
-                          if (selectedWalletMethod === "or_cash") return;
+                        <p className="text-xs text-center leading-relaxed" style={{ color: "var(--ink-2)" }}>
+                          سيتم تحويلك لصفحة الدفع الموحّدة لاختيار المحفظة المناسبة (فودافون كاش، اتصالات كاش) وإتمام العملية بأمان.
+                        </p>
+                        <button onClick={() => {
                           if (!user) { router.push(`/login?redirect_url=/plans/${planId}`); return; }
-                          if (!walletPhone.trim()) { setWalletMsg("❌ رقم المحفظة مطلوب"); return; }
-                          setWalletLoading(true); setWalletMsg("");
-                          try {
-                            const res = await fetch("/api/payments/sha7nawy/create", {
-                              method: "POST", credentials: "include",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                number: walletPhone.trim(),
-                                amount: plan.effectivePrice,
-                                method: selectedWalletMethod,
-                                courseTitle: `خطة: ${plan.title}`,
-                              }),
-                            });
-                            const d = await res.json().catch(() => ({}));
-                            setWalletLoading(false);
-                            if (res.ok && d.success) {
-                              setWalletModal({
-                                reference: d.reference || "SH-PENDING",
-                                instructions: d.instructions,
-                                methodLabel: d.methodLabel,
-                                amount: plan.effectivePrice,
-                              });
-                            } else {
-                              setWalletMsg(`❌ ${d.error || "تعذر بدء عملية الدفع"}`);
-                            }
-                          } catch {
-                            setWalletLoading(false);
-                            setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
-                          }
-                        }} disabled={walletLoading || userLoading || selectedWalletMethod === "or_cash"}
+                          router.push(`/payment?amount=${plan.effectivePrice}&return=${encodeURIComponent(`/plans/${planId}`)}&context=${encodeURIComponent(`شراء خطة — ${plan.effectivePrice} جنيه`)}`);
+                        }} disabled={userLoading}
                           className="w-full py-2.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shadow-md"
-                          style={{ background: selectedWalletMethod === "or_cash" ? "var(--ink-3)" : "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
-                          {walletLoading ? "جارٍ إرسال طلب السحب..." : selectedWalletMethod === "or_cash" ? "أورنج كاش قيد الصيانة" : `خصم ${Math.round((plan.effectivePrice * 1.02) * 100) / 100} جنيه من المحفظة 📱`}
+                          style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-strong))" }}>
+                          الدفع عبر المحفظة 📱
                         </button>
-                        {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "var(--danger)" : "var(--brand)" }}>{walletMsg}</p>}
                       </div>
                     )}
 

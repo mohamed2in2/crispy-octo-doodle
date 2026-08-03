@@ -42,16 +42,24 @@ export interface Sha7nawyCreateResponse {
   error?: string;
 }
 
+/**
+ * Backward‑compatible helpers that pull label and instruction text from the
+ * central PAYMENT_METHODS configuration (src/lib/payment-methods.ts).
+ * These are used by the existing create‑payment API and by external imports
+ * that expect the previous constant names.
+ */
+import { getPaymentMethod } from "./payment-methods";
+
 export const WALLET_METHOD_LABELS: Record<Sha7nawyWalletMethod, string> = {
-  vf_cash: "فودافون كاش",
-  or_cash: "أورنج كاش (قيد الصيانة ⚠️)",
-  et_cash: "اتصالات كاش (e& Money)",
+  vf_cash: getPaymentMethod("vf_cash")?.label ?? "فودافون كاش",
+  or_cash: getPaymentMethod("or_cash")?.label ?? "أورنج كاش",
+  et_cash: getPaymentMethod("et_cash")?.label ?? "اتصالات كاش",
 };
 
 export const WALLET_INSTRUCTIONS: Record<Sha7nawyWalletMethod, string> = {
-  vf_cash: "اطلب *9*1# خلال دقيقة واحدة واكتب الرقم السري لتأكيد عملية الخصم",
-  or_cash: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً — يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام الدفع بسهولة.",
-  et_cash: "افتَح تطبيق e& Money واقبل طلب الدفع المعلق فوراً",
+  vf_cash: getPaymentMethod("vf_cash")?.shortNote ?? "",
+  or_cash: getPaymentMethod("or_cash")?.shortNote ?? "",
+  et_cash: getPaymentMethod("et_cash")?.shortNote ?? "",
 };
 
 // Ledger types + note format used to bind Sha7nawy webhooks to the pending

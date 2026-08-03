@@ -197,6 +197,13 @@ export default function CourseProductPage() {
     if (res.ok) {
       toastSuccess(data.message || "تم الشراء بنجاح!");
       router.push("/library");
+    } else if (data.code === "INSUFFICIENT_FUNDS") {
+      // Redirect to the payment wizard with the effective price prefilled
+      const price = data.effectivePrice ?? 0;
+      const ctx = encodeURIComponent(`شراء كورس ${courseId} — ${price} جنيه`);
+      router.push(
+        `/payment?amount=${price}&return=${encodeURIComponent(`/courses/${courseId}`)}&context=${ctx}`
+      );
     } else {
       toastError(data.error || "تعذر إتمام الشراء");
     }

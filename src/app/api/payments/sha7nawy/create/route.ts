@@ -35,13 +35,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "المبلغ مطلوب (الحد الأدنى 5 جنيه)" }, { status: 400 });
     }
 
+    // Validate payment method against the central configuration
     if (!method || !["vf_cash", "or_cash", "et_cash"].includes(method)) {
       return NextResponse.json({ error: "نوع المحفظة غير مدعوم" }, { status: 400 });
     }
+    const walletMethod = method as Sha7nawyWalletMethod;
 
-    if (method === "or_cash") {
+    const { getPaymentMethod } = await import("@/lib/payment-methods");
+    const methodConfig = getPaymentMethod(walletMethod);
+    if (!methodConfig) {
+      return NextResponse.json({ error: "نوع المحفظة غير مدعوم" }, { status: 400 });
+    }
+    if (!methodConfig.available) {
       return NextResponse.json(
-        { error: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام العملية دون قلق." },
+        { error: methodConfig.unavailableNote ?? "طريقة الدفع غير متاحة حالياً" },
         { status: 400 }
       );
     }
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
     const result = await createSha7nawyPayment({
       number,
       amount: totalAmount,
-      method,
+      method: walletMethod,
       client: session.id,
       details,
       webhook_url: webhookUrl,
@@ -86,12 +93,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       reference: result.data?.reference,
-      method: method,
-      methodLabel: WALLET_METHOD_LABELS[method],
+      method: walletMethod,
+      methodLabel: WALLET_METHOD_LABELS[walletMethod],
       baseAmount,
       taxAmount,
       totalAmount,
-      instructions: result.message || WALLET_INSTRUCTIONS[method],
+      instructions: result.message || WALLET_INSTRUCTIONS[walletMethod],
       data: result.data,
     });
   } catch (error: any) {
