@@ -35,13 +35,13 @@ export default function PaymentMethodsPage() {
           <div className="rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10 max-w-3xl space-y-4">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3.5 py-1 text-xs font-bold backdrop-blur-md">
-                ⚡ بوابة الدفع الإلكتروني الشاملة — Shake-Out Gateway
+                ⚡ بوابات الدفع الإلكترونية المعتمدة — Shake-Out & Sha7nawy
               </span>
               <h1 className="text-3xl font-black tracking-tight sm:text-5xl leading-tight">
-                جميع طرق الدفع ووسائل الشحن المتوفرة
+                طرق الدفع والشحن المعتمدة والآمنة
               </h1>
               <p className="text-sm sm:text-base text-emerald-100 leading-relaxed font-medium">
-                ادفع شحن رصيدك أو اشترك في كورساتك بسهولة تامة عبر المحافظ الإلكترونية، تطبيق إنستاباي، فوري كشك، أو بطاقتك البنكية. جميع العمليات مشفرة ومؤمنة 100%.
+                ادفع شحن رصيدك أو اشترك في كورساتك بسهولة عبر فوري، البطاقات البنكية، ومحفظة أورانج (عبر Shake-Out) أو فودافون كاش واتصالات كاش (عبر Sha7nawy). جميع العمليات مشفرة ومؤمنة 100%.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">

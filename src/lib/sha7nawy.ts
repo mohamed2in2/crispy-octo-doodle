@@ -132,7 +132,12 @@ export async function createSha7nawyPayment(
   const publicKey = process.env.SHA7NAWY_PUBLIC_KEY;
 
   if (!publicKey) {
-    throw new Error("SHA7NAWY_PUBLIC_KEY is not configured in environment");
+    console.warn("[Sha7nawy API] SHA7NAWY_PUBLIC_KEY is not configured in environment");
+    return {
+      status: false,
+      code: 400,
+      message: "بوابة Sha7nawy (gate.sha7nawy.com) قيد التفعيل. يرجى تجربة فوري أو البطاقات أو أورانج كاش عبر Shake-Out.",
+    };
   }
 
   const methodConfig = getPaymentMethod(params.method);
@@ -222,7 +227,7 @@ export async function confirmSha7nawyPayment(ref_code: string): Promise<Sha7nawy
   const publicKey = process.env.SHA7NAWY_PUBLIC_KEY;
 
   if (!publicKey) {
-    throw new Error("SHA7NAWY_PUBLIC_KEY is not configured");
+    return { status: false, code: 400, message: "مفتاح الربط مع Sha7nawy غير مهيأ" };
   }
 
   try {
@@ -257,7 +262,7 @@ export async function getSha7nawyPaymentInfo(transaction_id: string | number): P
   const secretKey = process.env.SHA7NAWY_SECRET_KEY;
 
   if (!secretKey) {
-    throw new Error("SHA7NAWY_SECRET_KEY is not configured");
+    return { status: false, code: 400, message: "مفتاح الاستعلام مع Sha7nawy غير مهيأ" };
   }
 
   try {

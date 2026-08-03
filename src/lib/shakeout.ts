@@ -56,7 +56,12 @@ export async function createShakeOutPayment(
   const publicKey = process.env.SHAKEOUT_PUBLIC_KEY;
 
   if (!publicKey) {
-    throw new Error("SHAKEOUT_PUBLIC_KEY is not configured in environment");
+    console.warn("[Shake-Out API] SHAKEOUT_PUBLIC_KEY is not configured in environment");
+    return {
+      status: false,
+      code: 400,
+      message: "بوابة Shake-Out (dash.shake-out.com) قيد التفعيل. يرجى تجربة فودافون كاش أو اتصالات كاش عبر Sha7nawy.",
+    };
   }
 
   const methodConfig = getPaymentMethod(params.method);
@@ -122,7 +127,7 @@ export async function confirmShakeOutPayment(ref_code: string): Promise<ShakeOut
   const publicKey = process.env.SHAKEOUT_PUBLIC_KEY;
 
   if (!publicKey) {
-    throw new Error("SHAKEOUT_PUBLIC_KEY is not configured");
+    return { status: false, code: 400, message: "مفتاح الربط مع Shake-Out غير مهيأ" };
   }
 
   try {
@@ -157,7 +162,7 @@ export async function getShakeOutPaymentInfo(transaction_id: string | number): P
   const secretKey = process.env.SHAKEOUT_SECRET_KEY;
 
   if (!secretKey) {
-    throw new Error("SHAKEOUT_SECRET_KEY is not configured");
+    return { status: false, code: 400, message: "مفتاح الاستعلام مع Shake-Out غير مهيأ" };
   }
 
   try {
