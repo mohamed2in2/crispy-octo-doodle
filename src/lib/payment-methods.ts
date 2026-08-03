@@ -1,27 +1,77 @@
 /**
  * Centralized Payment Methods Configuration
  *
- * Single source of truth for every payment method exposed by the platform's
- * payment provider (Shake-Out / sha7nawy). The frontend renders its payment
- * method cards from PAYMENT_METHODS and all server-side validation resolves
- * methods through getPaymentMethod().
+ * Single source of truth for every payment method supported by the platform
+ * across its dual payment providers: Sha7nawy (gate.sha7nawy.com) and Shake-Out (dash.shake-out.com).
  *
- * Only methods actually supported by the gateway belong here. Shake-Out
- * currently supports Egyptian mobile wallets only (verified against its API
- * and public documentation) — Vodafone Cash, Etisalat Cash (e& Money), and
- * Orange Cash (marked unavailable while under provider maintenance).
- *
- * Adding a future method (e.g. Fawry reference payment, Meeza, bank cards)
- * means adding ONE object to PAYMENT_METHODS — no UI or route changes:
- * - needsPhone=false   -> the wizard skips the phone step
- * - requiresReference  -> the instructions step shows the reference number
- * - category="branch"  -> used for "pay at a branch" instruction styling
+ * Both payment gateways work together side-by-side.
  */
 
-export type PaymentMethodCategory = "wallet" | "card" | "branch";
+export type PaymentMethodCategory =
+  | "wallet"
+  | "instant"
+  | "kiosk"
+  | "card"
+  | "balance"
+  | "voucher"
+  | "bank";
+
+export type PaymentProvider = "sha7nawy" | "shakeout" | "internal" | "bank";
+
+export interface PaymentCategoryMetadata {
+  id: PaymentMethodCategory;
+  label: string;
+  labelEn: string;
+  description: string;
+}
+
+export const PAYMENT_CATEGORIES: readonly PaymentCategoryMetadata[] = [
+  {
+    id: "wallet",
+    label: "المحافظ الإلكترونية",
+    labelEn: "Mobile Wallets",
+    description: "فودافون كاش، اتصالات كاش، أورانج كاش، و WE Pay عبر الهاتف المحمول",
+  },
+  {
+    id: "instant",
+    label: "شبكة المدفوعات اللحظية (إنستاباي)",
+    labelEn: "Instant Payment Network (InstaPay)",
+    description: "تحويل فوري ومباشر بدون رسوم عبر تطبيق InstaPay مصر",
+  },
+  {
+    id: "kiosk",
+    label: "فوري ومنافذ التحصيل",
+    labelEn: "Fawry & Retail Kiosks",
+    description: "ادفع كاش برقم مرجعي في أي منفذ فوري أو سوبرماركت",
+  },
+  {
+    id: "card",
+    label: "البطاقات البنكية",
+    labelEn: "Debit & Credit Cards",
+    description: "فيزا، ماستركارد، وبطاقات ميزة الوطنية",
+  },
+  {
+    id: "balance",
+    label: "رصيد الحساب",
+    labelEn: "Platform Balance",
+    description: "الشراء الفوري والمباشر باستخدام رصيدك المشحون في الموقع",
+  },
+  {
+    id: "voucher",
+    label: "أكواد وقسائم الشحن",
+    labelEn: "Vouchers & Gift Codes",
+    description: "شحن رصيد فورياً باستخدام كود قسيمة الشحن",
+  },
+  {
+    id: "bank",
+    label: "التحويل البنكي المباشر",
+    labelEn: "Direct Bank Transfer",
+    description: "تحويل مباشر لحساباتنا البنكية في البنك الأهلي / التجاري الدولي",
+  },
+];
 
 export interface PaymentMethodConfig {
-  /** Gateway method identifier sent to the Shake-Out API. */
+  /** Gateway method identifier sent to the provider API or internal router. */
   id: string;
   /** Arabic display name (UI is RTL Arabic-first). */
   label: string;
@@ -29,13 +79,15 @@ export interface PaymentMethodConfig {
   labelEn: string;
   /** One-line description shown on the method card. */
   description: string;
-  /** Grouping used for layout/future filtering. */
+  /** Grouping used for layout & category filtering. */
   category: PaymentMethodCategory;
+  /** Active payment gateway provider handling this method. */
+  provider: PaymentProvider;
   /** Brand color used for icon background & accents. */
   brandColor: string;
   /** Foreground color readable on brandColor. */
   brandForeground: string;
-  /** Two-letter monogram rendered when no logo asset is available. */
+  /** Two/Three letter monogram rendered when no SVG image is available. */
   monogram: string;
   /** True when this method requires the payer's wallet phone number. */
   needsPhone: boolean;
@@ -47,26 +99,37 @@ export interface PaymentMethodConfig {
   unavailableNote?: string;
   /** Human-readable confirmation speed for the user. */
   processingSpeed: string;
+  /** Gateway fee percentage added (e.g. 2%). */
+  feePercentage: number;
+  /** Minimum amount permitted in EGP. */
+  minAmount: number;
+  /** Maximum amount permitted in EGP. */
+  maxAmount: number;
   /** Compact one-line note used as API messages / legacy instruction text. */
   shortNote: string;
-  /** Step-by-step Arabic instructions rendered on the instructions step. */
+  /** Step-by-step Arabic instructions rendered on the instructions step or modal. */
   instructions: string[];
 }
 
 export const PAYMENT_METHODS: readonly PaymentMethodConfig[] = [
+  /* ─── Sha7nawy & Shake-Out Mobile Wallets ────────────────────────────── */
   {
     id: "vf_cash",
     label: "فودافون كاش",
     labelEn: "Vodafone Cash",
-    description: "ادفع فوراً من محفظة فودافون كاش عبر طلب دفع على هاتفك.",
+    description: "ادفع فوراً من محفظة فودافون كاش عبر طلب دفع مباشر على هاتفك.",
     category: "wallet",
+    provider: "sha7nawy",
     brandColor: "#E60000",
     brandForeground: "#FFFFFF",
     monogram: "VF",
     needsPhone: true,
     requiresReference: false,
     available: true,
-    processingSpeed: "تأكيد فوري",
+    processingSpeed: "تأكيد فوري (خلال دقيقة)",
+    feePercentage: 2,
+    minAmount: 5,
+    maxAmount: 10000,
     shortNote: "اطلب *9*1# خلال دقيقة واحدة واكتب الرقم السري لتأكيد عملية الخصم",
     instructions: [
       "سيصلك إشعار بطلب الدفع على رقم محفظتك خلال ثوانٍ.",
@@ -79,8 +142,9 @@ export const PAYMENT_METHODS: readonly PaymentMethodConfig[] = [
     id: "et_cash",
     label: "اتصالات كاش (e& Money)",
     labelEn: "Etisalat Cash / e& Money",
-    description: "ادفع فوراً من محفظة اتصالات كاش / تطبيق e& Money.",
+    description: "ادفع فوراً من محفظة اتصالات كاش أو تطبيق e& Money.",
     category: "wallet",
+    provider: "sha7nawy",
     brandColor: "#76B900",
     brandForeground: "#0B1F00",
     monogram: "e&",
@@ -88,32 +152,277 @@ export const PAYMENT_METHODS: readonly PaymentMethodConfig[] = [
     requiresReference: false,
     available: true,
     processingSpeed: "تأكيد فوري",
-    shortNote: "افتَح تطبيق e& Money واقبل طلب الدفع المعلق فوراً",
+    feePercentage: 2,
+    minAmount: 5,
+    maxAmount: 10000,
+    shortNote: "افتح تطبيق e& Money واقبل طلب الدفع المعلق فوراً",
     instructions: [
       "سيصلك إشعار بطلب الدفع المعلق على محفظتك خلال ثوانٍ.",
       "افتح تطبيق e& Money أو محفظة اتصالات كاش.",
       "اقبل طلب الدفع المعلق وأكد بالرقم السري.",
-      "سيتم شحن رصيدك تلقائياً فور تأكيد الدفع — لا حاجة للضغط على أي زر.",
+      "سيتم شحن رصيدك تلقائياً فور تأكيد الدفع.",
     ],
   },
   {
     id: "or_cash",
     label: "أورانج كاش",
     labelEn: "Orange Cash",
-    description: "محفظة أورانج كاش — غير متاحة مؤقتاً.",
+    description: "ادفع فوراً من محفظة أورانج كاش عبر الهاتف المحمول.",
     category: "wallet",
+    provider: "sha7nawy",
     brandColor: "#FF7900",
     brandForeground: "#FFFFFF",
     monogram: "OR",
     needsPhone: true,
     requiresReference: false,
-    available: false,
-    unavailableNote:
-      "محفظة أورانج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام عملية الدفع بسهولة دون قلق.",
-    processingSpeed: "غير متاحة حالياً",
-    shortNote:
-      "محفظة أورانج كاش تحت الصيانة والتطوير حالياً — يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام الدفع بسهولة.",
-    instructions: [],
+    available: true,
+    processingSpeed: "تأكيد فوري",
+    feePercentage: 2,
+    minAmount: 5,
+    maxAmount: 10000,
+    shortNote: "افتح تطبيق Orange Cash أو اطلب كود الخصم لتأكيد عملية الدفع",
+    instructions: [
+      "سيصلك إشعار بطلب الدفع على رقم محفظتك أورانج كاش.",
+      "اقبل طلب الخصم من التطبيق أو عبر الرسالة النصية.",
+      "أدخل الرقم السري لتأكيد الخصم.",
+      "سيتم تحديث رصيدك مباشرة فور الإتمام.",
+    ],
+  },
+  {
+    id: "we_pay",
+    label: "وي باي (WE Pay)",
+    labelEn: "WE Pay Wallet",
+    description: "ادفع عبر محفظة WE Pay الإلكترونية من المصرية للاتصالات.",
+    category: "wallet",
+    provider: "shakeout",
+    brandColor: "#5B2C86",
+    brandForeground: "#FFFFFF",
+    monogram: "WE",
+    needsPhone: true,
+    requiresReference: false,
+    available: true,
+    processingSpeed: "تأكيد فوري",
+    feePercentage: 2,
+    minAmount: 5,
+    maxAmount: 10000,
+    shortNote: "افتح تطبيق WE Pay واقبل إشعار طلب الخصم فوراً",
+    instructions: [
+      "افتح تطبيق WE Pay على هاتفك المحمول.",
+      "وافق على إشعار طلب الخصم المعلق وأدخل الرقم السري.",
+      "سيتم شحن الحساب تلقائياً فور المعالجة.",
+    ],
+  },
+
+  /* ─── Shake-Out Direct Mobile Wallet Option ──────────────────────────── */
+  {
+    id: "shakeout_wallet",
+    label: "بوابة Shake-Out المباشرة (محافظ إلكترونية)",
+    labelEn: "Shake-Out Direct Wallet",
+    description: "ادفع مباشرة عبر بوابة Shake-Out (dash.shake-out.com) لجميع المحافظ المصرية.",
+    category: "wallet",
+    provider: "shakeout",
+    brandColor: "#634C96",
+    brandForeground: "#FFFFFF",
+    monogram: "SO",
+    needsPhone: true,
+    requiresReference: false,
+    available: true,
+    processingSpeed: "تأكيد فوري عبر Shake-Out",
+    feePercentage: 2,
+    minAmount: 5,
+    maxAmount: 10000,
+    shortNote: "ادفع فوراً عبر بوابة Shake-Out المشفرة",
+    instructions: [
+      "أدخل رقم محفظتك الإلكترونية.",
+      "سيتم إرسال طلب الدفع المباشر من بوابة Shake-Out.",
+      "أكد الخصم بالرقم السري للمحفظة.",
+      "يتم تحديث رصيدك بالمنصة فور السداد.",
+    ],
+  },
+
+  /* ─── Instant Payment Network (IPN) ─────────────────────────────────── */
+  {
+    id: "instapay",
+    label: "إنستاباي (InstaPay)",
+    labelEn: "InstaPay IPN Direct",
+    description: "تحويل لحظي مباشر 100% بدون رسوم إضافية عبر تطبيق InstaPay.",
+    category: "instant",
+    provider: "shakeout",
+    brandColor: "#0047BA",
+    brandForeground: "#FFFFFF",
+    monogram: "IPN",
+    needsPhone: false,
+    requiresReference: true,
+    available: true,
+    processingSpeed: "تأكيد لحظي تلقائي",
+    feePercentage: 0,
+    minAmount: 10,
+    maxAmount: 50000,
+    shortNote: "حول المبلغ المطلوب إلى عنوان IPA الخاص بنا واكتب رقم المرجع",
+    instructions: [
+      "افتح تطبيق InstaPay على هاتفك.",
+      "اختر «تحويل إلى حساب بنكي / عنوان دافع (IPA)».",
+      "أدخل عنوان الدافع أو رقم الحساب البنكي الموضح في صفحة الدفع.",
+      "أدخل رقم المرجع في خانة الملاحظات/السبب وأكد التحويل بالرقم السري IPN PIN.",
+      "يتم ربط وشحن الحساب تلقائياً فور تأكيد الشبكة.",
+    ],
+  },
+
+  /* ─── Fawry & Kiosks ─────────────────────────────────────────────────── */
+  {
+    id: "fawry",
+    label: "فوري (Fawry Pay)",
+    labelEn: "Fawry Kiosk Pay",
+    description: "احصل على رقم مرجعي وادفع كاش في أي منفذ أو سوبرماركت به ماكينة فوري.",
+    category: "kiosk",
+    provider: "shakeout",
+    brandColor: "#FFCC00",
+    brandForeground: "#000000",
+    monogram: "FWR",
+    needsPhone: false,
+    requiresReference: true,
+    available: true,
+    processingSpeed: "خلال 5 دقائق من السداد",
+    feePercentage: 2.5,
+    minAmount: 10,
+    maxAmount: 20000,
+    shortNote: "اعرض الرقم المرجعي على التاجر وادفع كاش عبر خدمة فوري باي",
+    instructions: [
+      "احفظ الرقم المرجعي المكون من 9 أرقام الذي يظهر لك.",
+      "توجه إلى أقرب منفذ فوري أو سوبرماركت.",
+      "أخبر التاجر برغبتك في الدفع عبر خدمة «فوري باي - Fawry Pay».",
+      "ادفع المبلغ المطلوب واستلم إيصال السداد.",
+    ],
+  },
+
+  /* ─── Bank Cards & National Cards ───────────────────────────────────── */
+  {
+    id: "bank_card",
+    label: "البطاقات البنكية (فيزا / ماستركارد)",
+    labelEn: "Visa & Mastercard",
+    description: "ادفع بأمان باستخدام أي بطاقة خصم مباشر أو ائتمان محلية أو دولية.",
+    category: "card",
+    provider: "shakeout",
+    brandColor: "#1A1F71",
+    brandForeground: "#FFFFFF",
+    monogram: "VISA",
+    needsPhone: false,
+    requiresReference: false,
+    available: true,
+    processingSpeed: "تأكيد فوري 3D Secure",
+    feePercentage: 2.5,
+    minAmount: 20,
+    maxAmount: 50000,
+    shortNote: "أدخل بيانات البطاقة بأمان في الصفحة المأمنة وتخطي حماية OTP",
+    instructions: [
+      "سيتم تحويلك إلى بوابة الدفع البنكية المشفرة (SSL 256-bit).",
+      "أدخل رقم البطاقة، تاريخ الانتهاء، ورمز الأمان CVV.",
+      "أدخل رمز الأمان المؤقت (OTP) المرسل من بنكك على هاتفك.",
+      "يتم تأكيد العملية وإضافتها لرصيدك فوراً.",
+    ],
+  },
+  {
+    id: "meeza",
+    label: "بطاقة ميزة الوطنية (Meeza)",
+    labelEn: "Meeza National Card",
+    description: "ادفع بكل سهولة عبر بطاقة ميزة الوطنية الصادرة من أي بنك مصري.",
+    category: "card",
+    provider: "shakeout",
+    brandColor: "#007A3D",
+    brandForeground: "#FFFFFF",
+    monogram: "MEZ",
+    needsPhone: false,
+    requiresReference: false,
+    available: true,
+    processingSpeed: "تأكيد فوري",
+    feePercentage: 1.5,
+    minAmount: 10,
+    maxAmount: 30000,
+    shortNote: "ادفع فورياً ببطاقة ميزة الوطنية من أي بنك في مصر",
+    instructions: [
+      "سيتم توجيهك لصفحة دفع ميزة الوطنية.",
+      "أدخل بيانات بطاقة ميزة والرقم السري المخصص للشراء عبر الإنترنت.",
+      "أكد العملية وسوف يتم تفعيل طلبك في الحين.",
+    ],
+  },
+
+  /* ─── Platform Balance ───────────────────────────────────────────────── */
+  {
+    id: "wallet_balance",
+    label: "رصيد الحساب المنصة",
+    labelEn: "Account Balance",
+    description: "الدفع المباشر من رصيد محفظتك المتاحة بالمنصة بدون أي رسوم تحويل.",
+    category: "balance",
+    provider: "internal",
+    brandColor: "#10B981",
+    brandForeground: "#FFFFFF",
+    monogram: "BAL",
+    needsPhone: false,
+    requiresReference: false,
+    available: true,
+    processingSpeed: "فوري 0 ثانية",
+    feePercentage: 0,
+    minAmount: 1,
+    maxAmount: 100000,
+    shortNote: "يتم الخصم المباشر من رصيدك المتوفر فوراً بدون رسوم",
+    instructions: [
+      "تأكد من وجود رصيد كافٍ في محفظتك الشخصية.",
+      "اضغط على تأكيد الخصم المباشر.",
+      "يتم اقتطاع سعر الكورس أو الاشتراك فوراً وتفعيل الخدمة.",
+    ],
+  },
+
+  /* ─── Charging Vouchers ──────────────────────────────────────────────── */
+  {
+    id: "voucher",
+    label: "كود / قسيمة الشحن",
+    labelEn: "Prepaid Voucher Code",
+    description: "أدخل كود قسيمة الشحن المكون من أرقام لشحن رصيدك فورياً.",
+    category: "voucher",
+    provider: "internal",
+    brandColor: "#8B5CF6",
+    brandForeground: "#FFFFFF",
+    monogram: "CODE",
+    needsPhone: false,
+    requiresReference: true,
+    available: true,
+    processingSpeed: "تأكيد فوري",
+    feePercentage: 0,
+    minAmount: 1,
+    maxAmount: 50000,
+    shortNote: "أدخل كود الكارت المكون من 12 إلى 16 رقم لشحن الحساب فوراً",
+    instructions: [
+      "احصل على كود الشحن المطبوع أو المرسل لك.",
+      "أدخل الكود في خانة الشحن واضغط تأكيد.",
+      "تتم إضافة قيمة القسيمة كاملة لحسابك مباشرة.",
+    ],
+  },
+
+  /* ─── Direct Bank Transfer ───────────────────────────────────────────── */
+  {
+    id: "bank_transfer",
+    label: "التحويل البنكي المباشر",
+    labelEn: "Direct Bank Wire",
+    description: "تحويل بنكي مباشر لحساب المنصة لدى البنك الأهلي المصري أو CIB.",
+    category: "bank",
+    provider: "bank",
+    brandColor: "#1E293B",
+    brandForeground: "#FFFFFF",
+    monogram: "BANK",
+    needsPhone: false,
+    requiresReference: true,
+    available: true,
+    processingSpeed: "خلال 1-3 ساعات عمل",
+    feePercentage: 0,
+    minAmount: 50,
+    maxAmount: 100000,
+    shortNote: "حول لحسابنا البنكي وقم بإرفاق صورة الإيصال لتأكيد الشحن",
+    instructions: [
+      "حول المبلغ المطلوب إلى رقم الحساب / IBAN الموضح بالتعليمات.",
+      "احفظ إيصال التحويل أو صورة الشاشة.",
+      "قم بإرفاق رقم التحويل أو الصورة من صفحة الدفع.",
+      "سيتم تأكيد الإيداع وإضافة الرصيد لحسابك خلال ساعات العمل.",
+    ],
   },
 ];
 
@@ -130,4 +439,36 @@ export function listPaymentMethods(): readonly PaymentMethodConfig[] {
 /** Only methods the user can actually pay with right now. */
 export function listAvailablePaymentMethods(): PaymentMethodConfig[] {
   return PAYMENT_METHODS.filter((m) => m.available);
+}
+
+/** List payment methods belonging to a specific category. */
+export function listPaymentMethodsByCategory(
+  category: PaymentMethodCategory
+): PaymentMethodConfig[] {
+  return PAYMENT_METHODS.filter((m) => m.category === category);
+}
+
+/** Filter methods by category and/or live search query (Arabic or English). */
+export function filterPaymentMethods(
+  category?: PaymentMethodCategory | "all",
+  searchQuery?: string
+): PaymentMethodConfig[] {
+  let list = [...PAYMENT_METHODS];
+
+  if (category && category !== "all") {
+    list = list.filter((m) => m.category === category);
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    list = list.filter(
+      (m) =>
+        m.label.toLowerCase().includes(q) ||
+        m.labelEn.toLowerCase().includes(q) ||
+        m.description.toLowerCase().includes(q) ||
+        m.id.toLowerCase().includes(q)
+    );
+  }
+
+  return list;
 }

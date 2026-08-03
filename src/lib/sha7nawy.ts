@@ -1,12 +1,31 @@
 /**
- * Mobile Wallet Gateway SDK Service
- * Handles mobile wallet transactions for Egyptian carriers:
+ * Mobile Wallet & Payment Gateway SDK Service (Shake-Out / Sha7nawy)
+ * Handles payment transactions across Egyptian mobile carriers and providers:
  * - Vodafone Cash (vf_cash) -> *9*1# prompt
- * - Orange Cash (or_cash)   -> Under maintenance notice
  * - Etisalat Cash (et_cash) -> e& Money App prompt
+ * - Orange Cash (or_cash)   -> Wallet prompt
+ * - WE Pay (we_pay)         -> WE Pay App prompt
+ * - InstaPay (instapay)     -> Instant Payment Network
+ * - Fawry (fawry)           -> Kiosk reference code
+ * - Cards (bank_card, meeza)-> Visa, Mastercard & Meeza
+ * - Platform & Vouchers (wallet_balance, voucher)
  */
 
-export type Sha7nawyWalletMethod = "vf_cash" | "or_cash" | "et_cash";
+import { getPaymentMethod, PAYMENT_METHODS } from "./payment-methods";
+
+export type Sha7nawyWalletMethod =
+  | "vf_cash"
+  | "or_cash"
+  | "et_cash"
+  | "we_pay"
+  | "instapay"
+  | "fawry"
+  | "bank_card"
+  | "meeza"
+  | "wallet_balance"
+  | "voucher"
+  | "bank_transfer"
+  | (string & {});
 
 export interface CreatePaymentParams {
   number: string;
@@ -32,6 +51,8 @@ export interface Sha7nawyPaymentData {
   last_updated?: string;
   created_at?: string;
   updated_at?: string;
+  payment_page_url?: string;
+  url?: string;
 }
 
 export interface Sha7nawyCreateResponse {
@@ -43,28 +64,21 @@ export interface Sha7nawyCreateResponse {
 }
 
 /**
- * Backward‑compatible helpers that pull label and instruction text from the
- * central PAYMENT_METHODS configuration (src/lib/payment-methods.ts).
- * These are used by the existing create‑payment API and by external imports
- * that expect the previous constant names.
+ * Dynamic lookup helper that resolves labels from central PAYMENT_METHODS.
  */
-import { getPaymentMethod } from "./payment-methods";
+export const WALLET_METHOD_LABELS: Record<string, string> = Object.fromEntries(
+  PAYMENT_METHODS.map((m) => [m.id, m.label])
+);
 
-export const WALLET_METHOD_LABELS: Record<Sha7nawyWalletMethod, string> = {
-  vf_cash: getPaymentMethod("vf_cash")?.label ?? "فودافون كاش",
-  or_cash: getPaymentMethod("or_cash")?.label ?? "أورنج كاش",
-  et_cash: getPaymentMethod("et_cash")?.label ?? "اتصالات كاش",
-};
-
-export const WALLET_INSTRUCTIONS: Record<Sha7nawyWalletMethod, string> = {
-  vf_cash: getPaymentMethod("vf_cash")?.shortNote ?? "",
-  or_cash: getPaymentMethod("or_cash")?.shortNote ?? "",
-  et_cash: getPaymentMethod("et_cash")?.shortNote ?? "",
-};
+/**
+ * Dynamic lookup helper that resolves instructions from central PAYMENT_METHODS.
+ */
+export const WALLET_INSTRUCTIONS: Record<string, string> = Object.fromEntries(
+  PAYMENT_METHODS.map((m) => [m.id, m.shortNote])
+);
 
 // Ledger types + note format used to bind Sha7nawy webhooks to the pending
 // payment that was recorded when a logged-in user initiated the payment.
-// The webhook must never trust the amount/user id from the request payload.
 export const SHA7NAWY_PENDING_TYPE = "credit_sha7nawy_pending";
 export const SHA7NAWY_CREDITED_TYPE = "credit_sha7nawy_wallet";
 
@@ -73,12 +87,17 @@ export function sha7nawyRefNote(reference: string): string {
 }
 
 /**
- * Calculates 2% tax/fee on base payment amount
+ * Calculates tax/fee on base payment amount based on the selected method config
  */
-export function calculateAmountWithTax(baseAmount: number): { baseAmount: number; taxAmount: number; totalAmount: number } {
-  const taxAmount = Math.round(baseAmount * 0.02 * 100) / 100;
+export function calculateAmountWithTax(
+  baseAmount: number,
+  methodId: string = "vf_cash"
+): { baseAmount: number; taxAmount: number; totalAmount: number; feePercentage: number } {
+  const method = getPaymentMethod(methodId);
+  const feePct = method?.feePercentage ?? 2;
+  const taxAmount = Math.round(baseAmount * (feePct / 100) * 100) / 100;
   const totalAmount = Math.round((baseAmount + taxAmount) * 100) / 100;
-  return { baseAmount, taxAmount, totalAmount };
+  return { baseAmount, taxAmount, totalAmount, feePercentage: feePct };
 }
 
 /**
@@ -104,7 +123,7 @@ export function normalizeEgyptianPhone(phone: string): string {
 }
 
 /**
- * Creates a mobile wallet payment request via Payment Gateway API
+ * Creates a mobile wallet or gateway payment request via Payment Gateway API
  */
 export async function createSha7nawyPayment(
   params: CreatePaymentParams
@@ -116,28 +135,34 @@ export async function createSha7nawyPayment(
     throw new Error("SHA7NAWY_PUBLIC_KEY is not configured in environment");
   }
 
-  const cleanPhone = normalizeEgyptianPhone(params.number);
-  if (!validateEgyptianPhone(cleanPhone)) {
+  const methodConfig = getPaymentMethod(params.method);
+  if (methodConfig && !methodConfig.available) {
     return {
       status: false,
       code: 400,
-      message: "رقم المحفظة غير صحيح — يجب أن يكون رقم مصري مكون من 11 رقماً يبدأ بـ 01",
+      message: methodConfig.unavailableNote || `طريقة الدفع (${methodConfig.label}) غير متاحة حالياً.`,
     };
   }
 
-  if (params.method === "or_cash") {
-    return {
-      status: false,
-      code: 400,
-      message: "محفظة أورنج كاش تحت الصيانة والتطوير حالياً لتقديم خدمة أفضل. يرجى اختيار فودافون كاش أو اتصالات كاش لإتمام عملية الدفع بسهولة دون قلق.",
-    };
+  // Validate phone number if method requires it
+  let cleanPhone = params.number ? normalizeEgyptianPhone(params.number) : "01000000000";
+  if (methodConfig?.needsPhone) {
+    if (!validateEgyptianPhone(cleanPhone)) {
+      return {
+        status: false,
+        code: 400,
+        message: "رقم المحفظة غير صحيح — يجب أن يكون رقم مصري مكون من 11 رقماً يبدأ بـ 01",
+      };
+    }
   }
 
-  if (!params.amount || params.amount < 5 || params.amount > 10000) {
+  const minAmt = methodConfig?.minAmount ?? 5;
+  const maxAmt = methodConfig?.maxAmount ?? 50000;
+  if (!params.amount || params.amount < minAmt || params.amount > maxAmt) {
     return {
       status: false,
       code: 400,
-      message: "المبلغ غير مسموح به — الحد الأدنى 5 جنيه والحد الأقصى 10,000 جنيه",
+      message: `المبلغ غير مسموح به — الحد الأدنى ${minAmt} جنيه والحد الأقصى ${maxAmt.toLocaleString()} جنيه`,
     };
   }
 
@@ -167,14 +192,16 @@ export async function createSha7nawyPayment(
       return {
         status: false,
         code: res.status,
-        message: data.message || data.error || `تعذر الخصم من المحفظة حالياً (${res.status})`,
+        message: data.message || data.error || `تعذر بدء عملية الدفع (${res.status})`,
       };
     }
+
+    const shortNote = methodConfig?.shortNote || WALLET_INSTRUCTIONS[params.method] || "تم بدء العملية بنجاح";
 
     return {
       status: data.status ?? true,
       code: data.code ?? 200,
-      message: data.message || WALLET_INSTRUCTIONS[params.method],
+      message: data.message || shortNote,
       data: data.data,
     };
   } catch (error: any) {

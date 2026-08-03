@@ -45,6 +45,7 @@ function PaymentContent() {
 
   /* read URL params */
   const amountParam = searchParams.get("amount");
+  const methodParam = searchParams.get("method");
   const returnHref = searchParams.get("return");
   const contextLabel = searchParams.get("context") ?? "";
 
@@ -62,13 +63,22 @@ function PaymentContent() {
   const methods = allMethods.filter((m) => m.available);
   const selectedMethod = selectedMethodId ? getPaymentMethod(selectedMethodId) : null;
 
-  /* ─── initialise: prefill amount from URL ──────────────────────────────── */
+  /* ─── initialise: prefill amount & method from URL ─────────────────────── */
   useEffect(() => {
     const amt = Number(amountParam);
     if (amt > 0) {
       setBaseAmount(String(amt));
     }
-  }, [amountParam]);
+    if (methodParam) {
+      const found = getPaymentMethod(methodParam);
+      if (found && found.available) {
+        setSelectedMethodId(found.id);
+        if (amt > 0) {
+          setStep(found.needsPhone ? "phone" : "method");
+        }
+      }
+    }
+  }, [amountParam, methodParam]);
 
   /* ─── helpers ──────────────────────────────────────────────────────────── */
   const validatePhone = useCallback((val: string) => {

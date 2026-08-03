@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { href: "/library",  label: "مكتبتي" },
   { href: "/courses",  label: "الكورسات" },
   { href: "/plans",    label: "الخطط الدراسية" },
+  { href: "/payment-methods", label: "طرق الدفع" },
 ];
 
 const NOTIF_ICON: Record<string, string> = {
