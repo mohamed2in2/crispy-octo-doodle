@@ -617,7 +617,6 @@ Code-UP provides full Egyptian mobile wallet integration (Vodafone Cash, Orange 
    - `POST /api/payments/sha7nawy/webhook`: Receives `transaction.updated` events (`completed` / `rejected`), validates secret keys, ensures idempotency, and credits student balance/enrollments.
    - `POST /api/payments/sha7nawy/confirm`: Frontend live transaction verification via `ref_code`.
    - `POST /api/teacher/subscribe-balance`: Deducts student balance atomically for teacher subscriptions.
-
 3. **Unified Multi-Payment UI**:
    - Integrated 4-tab selector (`📱 محفظة`, `💰 بالرصيد`, `💬 واتساب`, `🔑 كود`) across Student Wallet (`src/app/(clerk)/account/page.tsx`), Course Product Page (`src/app/courses/[id]/page.tsx`), Study Plan Product Page (`src/app/plans/[id]/page.tsx`), and Teacher Landing Booking Modal (`src/components/teacher/BookingModal.tsx`).
 
