@@ -233,6 +233,10 @@ export function BookingButton({
   };
 
   const handlePayViaWallet = async (plan: BookingPlan) => {
+    if (!isLoggedIn) {
+      window.location.href = `/login?redirect_url=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
     if (!walletPhone.trim()) {
       setWalletMsg("❌ رقم المحفظة مطلوب");
       return;

@@ -51,9 +51,26 @@ function PaymentContent() {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
+  const [user, setUser] = useState<{ id: string; name: string } | null>(null);
+  const [userLoading, setUserLoading] = useState(true);
+
   const allMethods = listPaymentMethods();
   const availableMethods = allMethods.filter((m) => m.available);
   const selectedMethod = getPaymentMethod(selectedMethodId) || availableMethods[0];
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.user) {
+          setUser(d.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => setUser(null))
+      .finally(() => setUserLoading(false));
+  }, []);
 
   useEffect(() => {
     const amt = Number(amountParam);
@@ -90,6 +107,13 @@ function PaymentContent() {
 
   const handleCreatePayment = async () => {
     if (!selectedMethod) return;
+
+    if (!user) {
+      toastError("يجب تسجيل الدخول أو إنشاء حساب أولاً قبل إتمام عملية الدفع");
+      const redirectTarget = window.location.pathname + window.location.search;
+      router.push(`/login?redirect_url=${encodeURIComponent(redirectTarget)}`);
+      return;
+    }
 
     const amt = Number(baseAmount);
     if (!amt || amt < selectedMethod.minAmount) {
@@ -176,6 +200,39 @@ function PaymentContent() {
       <Navbar />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-16 pt-8 sm:px-6">
+        {!userLoading && !user && (
+          <div className="mb-6 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 p-5 text-center dir-rtl">
+            <div className="text-3xl mb-2">🔒</div>
+            <h3 className="text-base font-extrabold text-amber-700 dark:text-amber-300 mb-1">
+              يلزم تسجيل الدخول أو إنشاء حساب لإتمام عملية الدفع
+            </h3>
+            <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 mb-4 max-w-md mx-auto">
+              عفواً، يجب أن تملك حساباً مفصلاً على المنصة حتى يتم ربط رصيدك واشتراكاتك بحسابك الشخصي بصفة دائمة.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                onClick={() => {
+                  const target = window.location.pathname + window.location.search;
+                  router.push(`/login?redirect_url=${encodeURIComponent(target)}`);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 text-xs sm:text-sm rounded-xl"
+              >
+                تسجيل الدخول 🔑
+              </Button>
+              <Button
+                onClick={() => {
+                  const target = window.location.pathname + window.location.search;
+                  router.push(`/signup?redirect_url=${encodeURIComponent(target)}`);
+                }}
+                variant="outline"
+                className="font-bold px-5 py-2 text-xs sm:text-sm rounded-xl border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+              >
+                إنشاء حساب جديد ✨
+              </Button>
+            </div>
+          </div>
+        )}
+
         {contextLabel && (
           <div className="mb-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
             <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
