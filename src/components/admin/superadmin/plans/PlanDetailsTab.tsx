@@ -202,7 +202,6 @@ export function PlanDetailsTab({ planId, onDelete }: { planId: string; onDelete?
             >
               <option value="sec_1">أولى بكالوريا</option>
               <option value="sec_2">ثانية بكالوريا</option>
-              <option value="sec_3">ثالثة بكالوريا</option>
             </select>
           </div>
           <div>

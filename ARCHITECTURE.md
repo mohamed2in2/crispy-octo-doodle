@@ -4,7 +4,7 @@
 
 Code-UP is a premium Egyptian EdTech platform targeting secondary students (4th Primary → 3rd Secondary) with an Arabic-first, dark-native UI, AI-powered educational intelligence, multi-provider secure video delivery, and an access-code enrollment model managed by teachers and a superadmin.
 
-> **Last updated:** 2026-07-23. This document reflects the full platform including **AI Engine Milestones 1–6**: Universal Tool Framework, Educational State Machine, Platform Integration Layer, AI Administration & Personalization, Production Infrastructure, and the full AI Operations & Observability Platform.
+> **Last updated:** 2026-08-02. This document reflects the full platform including **AI Engine Milestones 1–6**, **Sha7nawy Mobile Wallet Payment Gateway (Vodafone Cash, Orange Cash, Etisalat Cash with 2% tax processing & white-labeled UI)**, **Platform Balance Payments**, and **Teacher Panel Subscription Plan Access Code Generation**.
 
 ---
 
@@ -600,6 +600,43 @@ j:/crispy-octo-doodle-1/
 
 ---
 
+## Payment Gateway & Mobile Wallet Architecture
+
+### Overview
+Code-UP provides full Egyptian mobile wallet integration (Vodafone Cash, Orange Cash, Etisalat Cash) via the **Sha7nawy Gateway SDK** (`src/lib/sha7nawy.ts`), along with platform account balance payments, WhatsApp assistance, and access code redemption.
+
+### Key Components & Capabilities
+1. **Sha7nawy Gateway SDK (`src/lib/sha7nawy.ts`)**:
+   - **Supported Carriers**: Vodafone Cash (`vf_cash`), Orange Cash (`or_cash`), Etisalat Cash (`et_cash`).
+   - **White-Labeled UI**: Student-facing interfaces, instructions, and error messages remain fully white-labeled without third-party provider names.
+   - **2% Tax & Processing Fee Engine**: `calculateAmountWithTax(baseAmount)` calculates `baseAmount * 1.02` with transparent itemized price breakdowns across all checkout components.
+   - **Orange Cash Maintenance Guard**: Displays a reassuring notice for Orange Cash under maintenance while guiding users to Vodafone or Etisalat Cash.
+
+2. **API Routes**:
+   - `POST /api/payments/sha7nawy/create`: Validates inputs, computes 2% tax, blocks Orange Cash with maintenance note, and dispatches transaction requests.
+   - `POST /api/payments/sha7nawy/webhook`: Receives `transaction.updated` events (`completed` / `rejected`), validates secret keys, ensures idempotency, and credits student balance/enrollments.
+   - `POST /api/payments/sha7nawy/confirm`: Frontend live transaction verification via `ref_code`.
+   - `POST /api/teacher/subscribe-balance`: Deducts student balance atomically for teacher subscriptions.
+
+3. **Unified Multi-Payment UI**:
+   - Integrated 4-tab selector (`📱 محفظة`, `💰 بالرصيد`, `💬 واتساب`, `🔑 كود`) across Student Wallet (`src/app/(clerk)/account/page.tsx`), Course Product Page (`src/app/courses/[id]/page.tsx`), Study Plan Product Page (`src/app/plans/[id]/page.tsx`), and Teacher Landing Booking Modal (`src/components/teacher/BookingModal.tsx`).
+
+---
+
+## Teacher Panel Access Code System
+
+### Access Code Management & Bulk Generation
+Teachers can manage and generate access codes directly from their Teacher Dashboard (`src/app/adminpanel/teacher/page.tsx`):
+1. **Category Switcher**:
+   - **📚 Course Codes (`AccessCode`)**: Access codes bound to specific courses, folders, or lessons.
+   - **🎓 Study Plan / Subscription Codes (`PlanAccessCode`)**: Activation codes for platform study and subscription plans.
+2. **Bulk Code Generator & CSV Export**:
+   - Teachers can generate 1, 5, 10, or custom N codes (up to 200 codes per batch) with custom prefixes (e.g. `MATH-XXXX`, `SUB-XXXX`) and download CSV files instantly for printing and distribution.
+3. **Backend Support**:
+   - Updated `/api/admin/codes` and `/api/admin/codes/bulk` to handle `PlanAccessCode` models alongside course `AccessCode`s for teacher roles.
+
+---
+
 ## Performance Design
 
 | Concern | Solution |
@@ -651,12 +688,13 @@ Both scripts pass with `npx tsc --noEmit` → **0 TypeScript errors**.
 - [x] **AI Engine Milestone 6**: AI Operations Platform (BudgetManager, ProviderMonitor, GeminiClusterDashboard, AIRequestExplorer, LiveAIDashboard, BudgetOptimizer, AIFinancialAdvisor, RoutingAnalytics, AIAnalytics suite, AlertCenter, AIOperationsConfig, extended AIAuditSystem)
 - [x] **Gemini Account Pool**: GeminiPoolManager (score-based selection, 429/401/5xx handling, zero secret exposure)
 - [x] **Parent Follow-up System**: ParentService, ParentStatsCalculator, WeeklyReportGenerator (platform-native, no AI required)
+- [x] **Payment Gateway & Mobile Wallets**: Sha7nawy SDK (Vodafone Cash, Orange Cash, Etisalat Cash), Webhook handler, Real-time confirmation, 2% Tax Processing, White-Labeled UI, Platform Balance payments
+- [x] **Teacher Panel Access Codes**: Category switcher for Course Codes (`AccessCode`) and Subscription Plan Codes (`PlanAccessCode`), bulk generation (up to 200), custom prefixing, CSV export
 - [x] Responsive mobile design (admin drawer)
 - [x] Arabic/RTL support throughout
 - [ ] Connect AI Operations dashboard to Next.js admin panel pages
 - [ ] Real-time provider health polling via WebSocket or SSE
 - [ ] Persistent analytics to DB (currently in-memory ring buffers)
-- [ ] Payment integration (Fawry / HyperPay)
 - [ ] Mobile app (React Native)
 
 ---

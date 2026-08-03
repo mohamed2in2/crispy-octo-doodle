@@ -52,7 +52,6 @@ export async function generateMetadata({ params }: { params: Promise<{ teacherSl
 const STAGE_LABELS: Record<string, string> = {
   sec_1: "أولى بكالوريا",
   sec_2: "ثانية بكالوريا",
-  sec_3: "ثالثة بكالوريا",
 };
 
 const isSafe = (s?: string | null) => !!s && (/^https?:\/\//i.test(s) || s.startsWith("data:image/") || s.startsWith("/"));

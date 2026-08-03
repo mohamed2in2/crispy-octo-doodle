@@ -31,7 +31,6 @@ interface BookingModalProps {
 const STAGE_OPTIONS = [
   { value: "sec_1", label: "أولى بكالوريا" },
   { value: "sec_2", label: "ثانية بكالوريا" },
-  { value: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];

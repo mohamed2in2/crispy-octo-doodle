@@ -1,80 +1,9 @@
 export type Role = "student" | "teacher" | "superadmin";
-export type EducationalStage = "sec_1" | "sec_2" | "sec_3";
-
-export interface UserSession {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  phone?: string;
-  age?: number;
-  educationalStage?: string;
-}
-
-export interface User extends UserSession {
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CourseCard {
-  id: string;
-  title: string;
-  subject: string;
-  description?: string | null;
-  thumbnailUrl?: string | null;
-  educationalStage: string;
-  teacher: { id: string; name: string };
-  _count?: { accessCodes: number };
-}
-
-export interface CourseWithFolders {
-  id: string;
-  title: string;
-  subject: string;
-  description?: string | null;
-  thumbnailUrl?: string | null;
-  educationalStage: string;
-  teacher: { id: string; name: string };
-  folders: FolderWithContent[];
-}
-
-export interface FolderWithContent {
-  id: string;
-  name: string;
-  order: number;
-  videos: VideoItem[];
-  quizzes: QuizItem[];
-}
-
-export interface VideoItem {
-  id: string;
-  title: string;
-  vdoCipherId: string;
-  order: number;
-}
-
-export interface QuizItem {
-  id: string;
-  title: string;
-  questions: QuizQuestion[];
-}
-
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: string;
-  order: number;
-}
+export type EducationalStage = "sec_1" | "sec_2";
 
 export const EDUCATIONAL_STAGES = [
   { value: "sec_1", label: "أولى بكالوريا" },
   { value: "sec_2", label: "ثانية بكالوريا" },
-  { value: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 export const SUBJECTS = [

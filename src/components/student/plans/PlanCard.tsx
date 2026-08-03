@@ -17,7 +17,6 @@ interface PlanCardProps {
 const STAGE_LABELS: Record<string, string> = {
   sec_1: "أولى بكالوريا",
   sec_2: "ثانية بكالوريا",
-  sec_3: "ثالثة بكالوريا",
 };
 
 export function PlanCard({ plan }: PlanCardProps) {

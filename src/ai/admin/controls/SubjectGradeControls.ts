@@ -2,7 +2,7 @@ export class SubjectGradeControls {
   private static instance: SubjectGradeControls;
   private disabledSubjects: Set<string> = new Set();
   private enabledGrades: Set<string> = new Set([
-    "sec_1", "sec_2", "sec_3", "General",
+    "sec_1", "sec_2", "General",
   ]);
 
   public static getInstance(): SubjectGradeControls {

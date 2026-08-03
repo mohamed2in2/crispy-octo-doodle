@@ -45,7 +45,6 @@ export function PlanList({ onSelectPlan }: { onSelectPlan: (id: string) => void 
     { value: "", label: "الكل" },
     { value: "sec_1", label: "أولى بكالوريا" },
     { value: "sec_2", label: "ثانية بكالوريا" },
-    { value: "sec_3", label: "ثالثة بكالوريا" },
   ];
 
   const getStageLabel = (stage: string) => {

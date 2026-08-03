@@ -40,7 +40,6 @@ function buildWhatsAppUrl(phone: string, message: string) {
 const STAGE_LABELS: Record<string, string> = {
   sec_1: "أولى بكالوريا",
   sec_2: "ثانية بكالوريا",
-  sec_3: "ثالثة بكالوريا",
 };
 
 function useCountdown(expiresAt: string | null) {

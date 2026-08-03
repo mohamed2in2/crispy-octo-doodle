@@ -10,13 +10,11 @@ const STAGES = [
   { value: "all", label: "الكل" },
   { value: "sec_1", label: "أولى بكالوريا" },
   { value: "sec_2", label: "ثانية بكالوريا" },
-  { value: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 const STAGE_LABELS: Record<string, string> = {
   sec_1: "أولى بكالوريا",
   sec_2: "ثانية بكالوريا",
-  sec_3: "ثالثة بكالوريا",
 };
 
 const DEFAULT_PLAN_FEATURES = [

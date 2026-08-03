@@ -30,7 +30,7 @@ export function getCompetitionTier(stage: string | null): string[] {
   if (!stage) return [];
   if (stage.startsWith("primary")) return ["primary_4", "primary_5", "primary_6"];
   if (stage.startsWith("prep"))    return ["prep_1", "prep_2", "prep_3"];
-  if (stage.startsWith("sec"))     return ["sec_1", "sec_2", "sec_3"];
+  if (stage.startsWith("sec"))     return ["sec_1", "sec_2"];
   return [];
 }
 

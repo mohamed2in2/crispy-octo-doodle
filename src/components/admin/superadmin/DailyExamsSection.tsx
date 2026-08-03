@@ -29,7 +29,7 @@ export function DailyExamsSection() {
   const [loading, setLoading] = useState(true);
   const { success, error } = useToast();
 
-  const [newExam, setNewExam] = useState({ title: "", educationalStage: "sec_3", date: "", timeLimitMinutes: 30 });
+  const [newExam, setNewExam] = useState({ title: "", educationalStage: "sec_1", date: "", timeLimitMinutes: 30 });
   const [selectedExam, setSelectedExam] = useState<DailyExam | null>(null);
   
   const [newQuestion, setNewQuestion] = useState({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" });
@@ -65,7 +65,7 @@ export function DailyExamsSection() {
     if (res.ok) {
       success("تم إنشاء الامتحان بنجاح");
       fetchExams();
-      setNewExam({ title: "", educationalStage: "sec_3", date: "", timeLimitMinutes: 30 });
+      setNewExam({ title: "", educationalStage: "sec_1", date: "", timeLimitMinutes: 30 });
     } else {
       error(data.error || "خطأ في إنشاء الامتحان");
     }

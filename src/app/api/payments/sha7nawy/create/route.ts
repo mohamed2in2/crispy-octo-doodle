@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { createSha7nawyPayment, Sha7nawyWalletMethod, WALLET_INSTRUCTIONS, WALLET_METHOD_LABELS, calculateAmountWithTax } from "@/lib/sha7nawy";
+import { prisma } from "@/lib/prisma";
+import {
+  createSha7nawyPayment,
+  Sha7nawyWalletMethod,
+  WALLET_INSTRUCTIONS,
+  WALLET_METHOD_LABELS,
+  calculateAmountWithTax,
+  SHA7NAWY_PENDING_TYPE,
+  sha7nawyRefNote,
+} from "@/lib/sha7nawy";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -58,6 +67,20 @@ export async function POST(req: NextRequest) {
 
     if (!result.status) {
       return NextResponse.json({ error: result.message }, { status: result.code || 400 });
+    }
+
+    // Record a pending ledger entry so the webhook can verify the transaction
+    // against server-side state instead of trusting client-controlled fields.
+    const reference = result.data?.reference ? String(result.data.reference) : null;
+    if (reference) {
+      await prisma.balanceTransaction.create({
+        data: {
+          userId: session.id,
+          type: SHA7NAWY_PENDING_TYPE,
+          amount: totalAmount,
+          note: sha7nawyRefNote(reference),
+        },
+      });
     }
 
     return NextResponse.json({

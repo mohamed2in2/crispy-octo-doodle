@@ -9,12 +9,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "يجب تسجيل الدخول أولاً لشراء الاشتراك بالرصيد" }, { status: 401 });
     }
 
-    const { amount, planLabel, teacherName } = await req.json().catch(() => ({}));
+    const { teacherId, planType } = await req.json().catch(() => ({}));
 
-    const numAmount = typeof amount === "number" ? amount : parseFloat(amount);
-    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
-      return NextResponse.json({ error: "مبلغ غير صحيح" }, { status: 400 });
+    if (!teacherId || typeof teacherId !== "string") {
+      return NextResponse.json({ error: "معرف الأستاذ مطلوب" }, { status: 400 });
     }
+
+    const validPlanTypes = ["monthly", "termly", "yearly"];
+    if (!planType || !validPlanTypes.includes(planType)) {
+      return NextResponse.json({ error: "نوع الباقة غير صحيح" }, { status: 400 });
+    }
+
+    const profile = await prisma.teacherProfile.findUnique({
+      where: { teacherId },
+      select: { priceMonthly: true, priceTermly: true, priceYearly: true, displayName: true, slug: true },
+    });
+
+    if (!profile) {
+      return NextResponse.json({ error: "لم يتم العثور على الأستاذ" }, { status: 400 });
+    }
+
+    const priceMap: Record<string, number | null> = {
+      monthly: profile.priceMonthly,
+      termly: profile.priceTermly,
+      yearly: profile.priceYearly,
+    };
+    const numAmount = priceMap[planType];
+
+    if (numAmount == null) {
+      return NextResponse.json({ error: "هذه الباقة غير متوفرة" }, { status: 400 });
+    }
+
+    const teacherName = profile.displayName || profile.slug;
+    const planLabel = planType.charAt(0).toUpperCase() + planType.slice(1);
 
     const user = await prisma.user.findUnique({
       where: { id: session.id },

@@ -20,7 +20,6 @@ const ROTATING_SUBJECTS = ["برمجه عملي", "برمجه نظري", "مشا
 const GRADE_SHORTCUTS = [
   { stage: "sec_1", label: "أولى بكالوريا" },
   { stage: "sec_2", label: "ثانية بكالوريا" },
-  { stage: "sec_3", label: "ثالثة بكالوريا" },
 ];
 
 const stagger: Variants = {

@@ -54,6 +54,16 @@ export const WALLET_INSTRUCTIONS: Record<Sha7nawyWalletMethod, string> = {
   et_cash: "افتَح تطبيق e& Money واقبل طلب الدفع المعلق فوراً",
 };
 
+// Ledger types + note format used to bind Sha7nawy webhooks to the pending
+// payment that was recorded when a logged-in user initiated the payment.
+// The webhook must never trust the amount/user id from the request payload.
+export const SHA7NAWY_PENDING_TYPE = "credit_sha7nawy_pending";
+export const SHA7NAWY_CREDITED_TYPE = "credit_sha7nawy_wallet";
+
+export function sha7nawyRefNote(reference: string): string {
+  return `sha7nawy_ref:${reference}`;
+}
+
 /**
  * Calculates 2% tax/fee on base payment amount
  */
