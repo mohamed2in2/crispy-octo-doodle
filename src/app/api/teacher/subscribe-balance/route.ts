@@ -61,6 +61,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const userDetails = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { name: true, phone: true, parentPhone: true, educationalStage: true },
+    });
+
     const updatedUser = await prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: session.id },
@@ -71,8 +76,39 @@ export async function POST(req: NextRequest) {
         data: {
           userId: session.id,
           type: "debit_purchase",
-          amount: numAmount,
+          amount: -numAmount,
           note: `حجز اشتراك (${planLabel || "خطة حجز"}) - أستاذ ${teacherName || "المعلم"}`,
+        },
+      });
+
+      await tx.teacherSubscription.upsert({
+        where: {
+          studentId_teacherId_planType: {
+            studentId: session.id,
+            teacherId: teacherId,
+            planType: planType,
+          },
+        },
+        create: {
+          studentId: session.id,
+          teacherId: teacherId,
+          planType: planType,
+          planLabel: planLabel || "حجز اشتراك",
+          amount: numAmount,
+          educationalStage: userDetails?.educationalStage,
+          studentName: userDetails?.name,
+          studentPhone: userDetails?.phone,
+          parentPhone: userDetails?.parentPhone,
+          status: "active",
+        },
+        update: {
+          planLabel: planLabel || "حجز اشتراك",
+          amount: numAmount,
+          educationalStage: userDetails?.educationalStage,
+          studentName: userDetails?.name,
+          studentPhone: userDetails?.phone,
+          parentPhone: userDetails?.parentPhone,
+          status: "active",
         },
       });
 

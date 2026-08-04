@@ -79,10 +79,11 @@ const staffSections = [
 ];
 
 const teacherSections = [
-  { id: "dashboard",         label: "لوحة التحكم" },
-  { id: "my-page",           label: "صفحتي" },
-  { id: "courses",           label: "الكورسات" },
-  { id: "referred-students", label: "متابعة الطلاب المُحالين" },
+  { id: "dashboard",             label: "لوحة التحكم" },
+  { id: "my-page",               label: "صفحتي" },
+  { id: "teacher-subscriptions", label: "حجوزات واشتراكات الطلاب" },
+  { id: "courses",               label: "الكورسات" },
+  { id: "referred-students",     label: "متابعة الطلاب المُحالين" },
   { id: "quiz-results",      label: "نتائج الاختبارات" },
   { id: "homework",          label: "إدارة الواجبات" },
   { id: "review",            label: "مراجعة الواجبات" },

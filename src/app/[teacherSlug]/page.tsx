@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { RESERVED_SLUGS } from "@/lib/slug";
 import { BookingButton } from "@/components/teacher/BookingModal";
+import { SubscriptionStatusBadge } from "@/components/teacher/SubscriptionStatusBadge";
 import { SetTeacherRefCookie } from "@/components/teacher/SetTeacherRefCookie";
 
 export const revalidate = 60; // Cache page for 60s for lightning fast <10ms loads
@@ -115,6 +116,9 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--surface)] border border-[var(--border)]">{courses.length} كورس</span>
           <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--surface)] border border-[var(--border)]">{videoCount} محاضرة</span>
         </div>
+
+        {/* Subscription Status Badge */}
+        <SubscriptionStatusBadge teacherId={p.teacherId} teacherName={name} />
 
         {/* Booking Button + Modal */}
         <BookingButton

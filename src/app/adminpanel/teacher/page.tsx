@@ -101,10 +101,12 @@ const card = "bg-[var(--surface)] rounded-2xl border border-[var(--border)]";
 const cardPad = `${card} p-5 sm:p-6`;
 
 import { ReferredStudentsSection } from "@/components/admin/teacher/ReferredStudentsSection";
+import { TeacherSubscriptionsSection } from "@/components/admin/teacher/TeacherSubscriptionsSection";
 
 const SECTION_TITLES: Record<string, string> = {
   dashboard: "لوحة التحكم",
   "my-page": "صفحتي",
+  "teacher-subscriptions": "حجوزات واشتراكات الطلاب",
   "quiz-results": "نتائج الاختبارات",
   "create-course": "كورس جديد",
   codes: "أكواد الوصول",
@@ -790,6 +792,9 @@ export default function TeacherDashboardPage() {
 
           {/* ════════ MY PAGE (public teacher profile) ════════ */}
           {activeSection === "my-page" && <TeacherPublicProfile />}
+
+          {/* ════════ TEACHER SUBSCRIPTIONS ════════ */}
+          {activeSection === "teacher-subscriptions" && <TeacherSubscriptionsSection />}
 
           {/* ════════ REFERRED STUDENTS ════════ */}
           {activeSection === "referred-students" && <ReferredStudentsSection />}
