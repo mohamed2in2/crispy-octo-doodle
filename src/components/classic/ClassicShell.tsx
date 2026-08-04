@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { SHELL } from "./copy";
 import { ACCOUNT_TABS, SIDEBAR, isActive } from "./nav";
 import type { NavIconName, TabItem } from "./nav";
+import { FloatingActions, SiteFooter } from "./SiteFooter";
 import {
 	IconBell,
 	IconBook,
@@ -30,6 +31,10 @@ import {
  * save a few kilobytes would mean four copies of the active-state logic, and
  * inconsistent active states are exactly the "collection of pages" feeling
  * this redesign exists to remove.
+ *
+ * The footer and the floating contact buttons are rendered here rather than
+ * per page, for the same reason: chrome that appears on some pages and not
+ * others is the single loudest symptom of that problem.
  */
 
 const NAV_ICONS: Record<NavIconName, (props: { size?: number }) => ReactNode> = {
@@ -272,7 +277,11 @@ export function ClassicShell({
 				<main className="c-main" id="c-main">
 					{children}
 				</main>
+
+				<SiteFooter />
 			</div>
+
+			<FloatingActions />
 		</div>
 	);
 }
