@@ -1,0 +1,248 @@
+/*
+ * Public main page.
+ *
+ * Additive: nothing here overrides classic-shell.css or
+ * classic-components.css, so the signed-in shell is untouched.
+ *
+ * Flat fills only. No gradient, no glass, no glow. See the ban list at the
+ * top of classic-tokens.css.
+ */
+
+.c-pub {
+	background: var(--c-bg);
+	color: var(--c-text);
+	min-height: 100dvh;
+}
+
+.c-pub__inner {
+	max-inline-size: var(--c-page-max);
+	margin-inline: auto;
+	padding-inline: var(--c-s5);
+	padding-block: var(--c-s10) var(--c-s16);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s10);
+}
+
+/* ------------------------------------------------------------------- hero */
+
+/*
+ * One solid blue block, one sentence, two buttons. A visitor should know what
+ * this is and what to press before scrolling, which is the whole reason the
+ * reference platform feels easier than a hero with four value propositions.
+ */
+.c-hero {
+	background: var(--c-blue);
+	color: var(--c-on-color);
+	border-radius: var(--c-r-lg);
+	padding: var(--c-s10) var(--c-s6);
+	text-align: center;
+}
+
+.c-hero__title {
+	margin: 0;
+	font-size: 34px;
+	line-height: 1.2;
+	font-weight: 800;
+}
+
+.c-hero__text {
+	margin: var(--c-s3) 0 0;
+	font-size: 17px;
+	opacity: 0.92;
+}
+
+.c-hero__actions {
+	margin-block-start: var(--c-s6);
+	display: flex;
+	gap: var(--c-s3);
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+/*
+ * On the blue block the primary button has to invert: a blue button on blue
+ * is the classic "where do I click" mistake.
+ */
+.c-hero__actions .c-btn--primary {
+	background: var(--c-on-color);
+	color: #16202e;
+	border-color: var(--c-on-color);
+}
+
+.c-hero__actions .c-btn--quiet {
+	background: transparent;
+	color: var(--c-on-color);
+	border-color: rgba(255, 255, 255, 0.65);
+}
+
+/* --------------------------------------------------------------- teachers */
+
+.c-teachers {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+	gap: var(--c-s4);
+}
+
+.c-teacher {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--c-s2);
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	padding: var(--c-s5) var(--c-s4);
+	text-decoration: none;
+	color: inherit;
+	transition: border-color var(--c-dur) var(--c-ease);
+}
+
+.c-teacher:hover {
+	border-color: var(--c-border-strong);
+}
+
+.c-teacher:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
+}
+
+/* Square-ish photo, not a tiny circle: the face is the reason to click. */
+.c-teacher__photo,
+.c-teacher__initial {
+	inline-size: 96px;
+	block-size: 96px;
+	border-radius: var(--c-r);
+	object-fit: cover;
+	background: var(--c-surface-3);
+}
+
+.c-teacher__initial {
+	display: grid;
+	place-items: center;
+	font-size: 30px;
+	font-weight: 800;
+	color: var(--c-blue-ink);
+}
+
+.c-teacher__name {
+	margin: var(--c-s2) 0 0;
+	font-size: 17px;
+	font-weight: 700;
+}
+
+.c-teacher__bio {
+	margin: 0;
+	font-size: 13px;
+	color: var(--c-text-muted);
+	line-height: 1.6;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.c-teacher__meta {
+	font-size: 12px;
+	color: var(--c-text-faint);
+}
+
+/* ---------------------------------------------------------------- courses */
+
+.c-courses {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: var(--c-s4);
+}
+
+.c-course {
+	display: flex;
+	flex-direction: column;
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	overflow: hidden;
+	text-decoration: none;
+	color: inherit;
+	transition: border-color var(--c-dur) var(--c-ease);
+}
+
+.c-course:hover {
+	border-color: var(--c-border-strong);
+}
+
+.c-course:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
+}
+
+.c-course__thumb {
+	inline-size: 100%;
+	block-size: 150px;
+	object-fit: cover;
+	background: var(--c-surface-3);
+	display: block;
+}
+
+.c-course__thumb--empty {
+	display: grid;
+	place-items: center;
+	color: var(--c-text-faint);
+}
+
+.c-course__body {
+	padding: var(--c-s4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s2);
+	flex: 1;
+}
+
+.c-course__title {
+	margin: 0;
+	font-size: 15px
+;	font-weight: 700;
+	line-height: 1.5;
+}
+
+.c-course__meta {
+	font-size: 12px;
+	color: var(--c-text-muted);
+	display: flex;
+	gap: var(--c-s2);
+	flex-wrap: wrap;
+}
+
+.c-course__foot {
+	margin-block-start: auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--c-s2);
+}
+
+/*
+ * Price in plain bright text, never in a coloured pill. A price that looks
+ * like a button gets tapped.
+ */
+.c-course__price {
+	font-size: 15px;
+	font-weight: 800;
+	color: var(--c-blue-ink);
+	font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+	.c-hero {
+		padding: var(--c-s8) var(--c-s4);
+	}
+
+	.c-hero__title {
+		font-size: 26px;
+	}
+
+	.c-hero__actions .c-btn {
+		inline-size: 100%;
+	}
+}
