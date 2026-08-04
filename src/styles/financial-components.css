@@ -1,0 +1,468 @@
+/*
+ * Component styles for the financial design system.
+ *
+ * Kept separate from financial-tokens.css so that adding a component never
+ * requires editing the token file. Depends only on the `--ds-*` custom
+ * properties defined there.
+ */
+
+/* ------------------------------------------------------------------ Card -- */
+
+.ds-card {
+	background: var(--ds-surface-1);
+	border: 1px solid var(--ds-border);
+	border-radius: var(--ds-radius-card);
+	overflow: hidden;
+}
+
+.ds-card__header {
+	padding: var(--ds-space-4) var(--ds-space-6);
+	border-bottom: 1px solid var(--ds-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--ds-space-4);
+	flex-wrap: wrap;
+}
+
+.ds-card__title {
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: var(--ds-text);
+	margin: 0;
+}
+
+.ds-card__description {
+	font-size: 0.8125rem;
+	color: var(--ds-text-muted);
+	margin: var(--ds-space-1) 0 0;
+	line-height: 1.6;
+}
+
+.ds-card__body {
+	padding: var(--ds-space-6);
+}
+
+.ds-card__body--flush {
+	padding: 0;
+}
+
+.ds-card__footer {
+	padding: var(--ds-space-4) var(--ds-space-6);
+	border-top: 1px solid var(--ds-border);
+	background: var(--ds-surface-2);
+	display: flex;
+	align-items: center;
+	gap: var(--ds-space-3);
+	flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------ PageHeader -- */
+
+.ds-page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--ds-space-6);
+	flex-wrap: wrap;
+	padding-bottom: var(--ds-space-6);
+	margin-bottom: var(--ds-space-8);
+	border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-page-header__title {
+	font-size: 1.5rem;
+	font-weight: 600;
+	color: var(--ds-text);
+	margin: 0;
+	line-height: 1.3;
+}
+
+/*
+ * The description is not decoration. It answers "what is this page for" before
+ * the reader has to infer it from the content, so it is always rendered.
+ */
+.ds-page-header__description {
+	font-size: 0.875rem;
+	color: var(--ds-text-muted);
+	margin: var(--ds-space-2) 0 0;
+	line-height: 1.7;
+	max-width: 68ch;
+}
+
+.ds-page-header__actions {
+	display: flex;
+	align-items: center;
+	gap: var(--ds-space-3);
+	flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------ EmptyState -- */
+
+.ds-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	padding: var(--ds-space-16) var(--ds-space-6);
+}
+
+.ds-empty__title {
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--ds-text);
+	margin: 0;
+}
+
+.ds-empty__explanation {
+	font-size: 0.875rem;
+	color: var(--ds-text-muted);
+	margin: var(--ds-space-3) 0 0;
+	line-height: 1.7;
+	max-width: 48ch;
+}
+
+.ds-empty__action {
+	margin-top: var(--ds-space-6);
+	display: flex;
+	gap: var(--ds-space-3);
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+/* ------------------------------------------------------------- AlertBand -- */
+
+.ds-alert {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--ds-space-3);
+	padding: var(--ds-space-4);
+	border-radius: var(--ds-radius-control);
+	border: 1px solid transparent;
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+.ds-alert__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ds-alert__title {
+	font-weight: 600;
+	margin: 0 0 var(--ds-space-1);
+}
+
+.ds-alert--info {
+	color: var(--ds-text);
+	background: var(--ds-accent-subtle);
+	border-color: rgba(59, 130, 246, 0.24);
+}
+
+.ds-alert--success {
+	color: var(--ds-text);
+	background: rgba(52, 211, 153, 0.1);
+	border-color: rgba(52, 211, 153, 0.24);
+}
+
+.ds-alert--warning {
+	color: var(--ds-text);
+	background: rgba(251, 191, 36, 0.1);
+	border-color: rgba(251, 191, 36, 0.24);
+}
+
+.ds-alert--danger {
+	color: var(--ds-text);
+	background: rgba(248, 113, 113, 0.1);
+	border-color: rgba(248, 113, 113, 0.24);
+}
+
+/* -------------------------------------------------------- InstructionList -- */
+
+/*
+ * Numbered steps, used to answer "what do I do now" on payment pages. The
+ * counter is rendered from CSS so the markup stays a real <ol>.
+ */
+.ds-steps {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	counter-reset: ds-step;
+}
+
+.ds-steps__item {
+	counter-increment: ds-step;
+	position: relative;
+	padding-inline-start: var(--ds-space-8);
+	padding-bottom: var(--ds-space-4);
+	font-size: 0.875rem;
+	color: var(--ds-text);
+	line-height: 1.7;
+}
+
+.ds-steps__item:last-child {
+	padding-bottom: 0;
+}
+
+.ds-steps__item::before {
+	content: counter(ds-step);
+	position: absolute;
+	inset-inline-start: 0;
+	top: 0;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--ds-accent-subtle);
+	color: var(--ds-accent);
+	font-size: 0.75rem;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- CopyField -- */
+
+.ds-copy {
+	display: flex;
+	align-items: stretch;
+	gap: var(--ds-space-2);
+}
+
+.ds-copy__value {
+	flex: 1 1 auto;
+	min-width: 0;
+	background: var(--ds-surface-3);
+	border: 1px solid var(--ds-border-strong);
+	border-radius: var(--ds-radius-control);
+	padding: var(--ds-space-3) var(--ds-space-4);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.9375rem;
+	color: var(--ds-text);
+	overflow-x: auto;
+	white-space: nowrap;
+	/* A payment reference is Latin/numeric and must not be bidi-reordered. */
+	direction: ltr;
+	text-align: left;
+}
+
+.ds-copy__button {
+	flex: 0 0 auto;
+	background: var(--ds-surface-3);
+	border: 1px solid var(--ds-border-strong);
+	border-radius: var(--ds-radius-control);
+	color: var(--ds-text);
+	padding: 0 var(--ds-space-4);
+	font-size: 0.8125rem;
+	font-weight: 500;
+	font-family: inherit;
+	cursor: pointer;
+	transition: background var(--ds-dur-fast) var(--ds-ease),
+		border-color var(--ds-dur-fast) var(--ds-ease);
+}
+
+.ds-copy__button:hover {
+	background: var(--ds-accent-subtle);
+	border-color: var(--ds-accent);
+}
+
+.ds-copy__button:focus-visible {
+	outline: 2px solid var(--ds-accent);
+	outline-offset: 2px;
+}
+
+.ds-copy__button[data-copied="true"] {
+	color: var(--ds-success);
+	border-color: rgba(52, 211, 153, 0.4);
+}
+
+/* -------------------------------------------------------------- Timeline -- */
+
+.ds-timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.ds-timeline__item {
+	position: relative;
+	padding-inline-start: var(--ds-space-8);
+	padding-bottom: var(--ds-space-6);
+}
+
+.ds-timeline__item:last-child {
+	padding-bottom: 0;
+}
+
+/* The connecting rail, drawn between dots but not past the final one. */
+.ds-timeline__item:not(:last-child)::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 6px;
+	top: 18px;
+	bottom: 0;
+	width: 1px;
+	background: var(--ds-border-strong);
+}
+
+.ds-timeline__dot {
+	position: absolute;
+	inset-inline-start: 0;
+	top: 5px;
+	width: 13px;
+	height: 13px;
+	border-radius: 50%;
+	border: 2px solid var(--ds-surface-1);
+	background: var(--ds-border-strong);
+}
+
+.ds-timeline__label {
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--ds-text);
+	line-height: 1.5;
+}
+
+.ds-timeline__meta {
+	font-size: 0.75rem;
+	color: var(--ds-text-muted);
+	margin-top: var(--ds-space-1);
+	line-height: 1.6;
+}
+
+.ds-timeline__item--done .ds-timeline__dot {
+	background: var(--ds-success);
+}
+
+.ds-timeline__item--current .ds-timeline__dot {
+	background: var(--ds-accent);
+	box-shadow: 0 0 0 4px var(--ds-accent-subtle);
+}
+
+.ds-timeline__item--current .ds-timeline__label {
+	color: var(--ds-accent);
+	font-weight: 600;
+}
+
+.ds-timeline__item--failed .ds-timeline__dot {
+	background: var(--ds-danger);
+}
+
+.ds-timeline__item--failed .ds-timeline__label {
+	color: var(--ds-danger);
+}
+
+/*
+ * Future steps are deliberately rendered rather than hidden. Showing the reader
+ * what has not happened yet is what makes a pending payment feel in-progress
+ * instead of broken.
+ */
+.ds-timeline__item--future .ds-timeline__label,
+.ds-timeline__item--future .ds-timeline__meta {
+	color: var(--ds-text-muted);
+	opacity: 0.6;
+}
+
+/* ------------------------------------------------------------- DataTable -- */
+
+.ds-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.875rem;
+}
+
+.ds-table th {
+	text-align: start;
+	padding: var(--ds-space-3) var(--ds-space-4);
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--ds-text-muted);
+	background: var(--ds-surface-2);
+	border-bottom: 1px solid var(--ds-border);
+	white-space: nowrap;
+}
+
+.ds-table td {
+	padding: var(--ds-space-4);
+	color: var(--ds-text);
+	border-bottom: 1px solid var(--ds-border);
+	vertical-align: middle;
+}
+
+.ds-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.ds-table tbody tr {
+	transition: background var(--ds-dur-fast) var(--ds-ease);
+}
+
+.ds-table tbody tr:hover {
+	background: var(--ds-surface-2);
+}
+
+.ds-table__numeric {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/*
+ * Below 768px the table becomes a list of cards. A horizontally scrolling table
+ * of financial data on a phone is unusable, and this is the majority case for
+ * these students.
+ */
+@media (max-width: 767px) {
+	.ds-table thead {
+		/* Visually hidden but still announced by assistive technology. */
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.ds-table,
+	.ds-table tbody,
+	.ds-table tr,
+	.ds-table td {
+		display: block;
+		width: 100%;
+	}
+
+	.ds-table tr {
+		border: 1px solid var(--ds-border);
+		border-radius: var(--ds-radius-card);
+		background: var(--ds-surface-1);
+		padding: var(--ds-space-2) var(--ds-space-4);
+		margin-bottom: var(--ds-space-3);
+	}
+
+	.ds-table td {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--ds-space-4);
+		border-bottom: 1px solid var(--ds-border);
+		padding: var(--ds-space-3) 0;
+		text-align: end;
+	}
+
+	.ds-table td:last-child {
+		border-bottom: 0;
+	}
+
+	/* The column header, repeated per cell via a data attribute. */
+	.ds-table td::before {
+		content: attr(data-label);
+		color: var(--ds-text-muted);
+		font-size: 0.75rem;
+		flex: 0 0 auto;
+		text-align: start;
+	}
+
+	.ds-table td:empty {
+		display: none;
+	}
+}
