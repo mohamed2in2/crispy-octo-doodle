@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
         where: { id: pendingTx.id, type: SHAKEOUT_PENDING_TYPE },
         data: {
           type: SHAKEOUT_CREDITED_TYPE,
-          note: `${shakeOutRefNote(String(reference))} — شحن محفطة عبر Shake-Out`,
+          note: `${shakeOutRefNote(String(reference))} — شحن محفظة عبر Shake-Out`,
         },
       });
 
