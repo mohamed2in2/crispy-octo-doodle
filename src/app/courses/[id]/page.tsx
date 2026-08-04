@@ -81,7 +81,7 @@ export default function CourseProductPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [payMode, setPayMode] = useState<"balance" | "wallet" | "fawry" | "whatsapp" | "code">("wallet");
   const [walletPhone, setWalletPhone] = useState("");
-  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry" | "bank_card" | "meeza">("vf_cash");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "et_cash" | "fawry">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
   const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
@@ -542,10 +542,7 @@ export default function CourseProductPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                               {[
                                 { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                                { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
-                                { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
-                                { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
-                                { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
+                                { id: "et_cash", label: "اتصالات كاش (e&)", color: "#76B900" },
                               ].map(m => (
                                 <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
                                   className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
@@ -578,10 +575,9 @@ export default function CourseProductPage() {
                         </div>
 
                         {(() => {
-                          const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash" || selectedWalletMethod === "or_cash";
+                          const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash";
                           const isFawry = selectedWalletMethod === "fawry";
-                          const isCard = selectedWalletMethod === "bank_card" || selectedWalletMethod === "meeza";
-                          const totalAmount = Math.round((course.effectivePrice * (isFawry ? 1.025 : isCard ? 1.025 : 1.02)) * 100) / 100;
+                          const totalAmount = Math.round((course.effectivePrice * (isFawry ? 1.025 : 1.02)) * 100) / 100;
 
                           return (
                             <>
@@ -598,12 +594,6 @@ export default function CourseProductPage() {
                               {isFawry && (
                                 <div className="p-3 rounded-xl text-xs text-amber-600 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 text-center leading-relaxed font-bold">
                                   🏪 خيار فوري كشك: سيتم إصدار كود مرجعي (Fawry Code) لدفعه كاش في أي منفذ فوري أو سوبرماركت دون الحاجة لرقم محفظة.
-                                </div>
-                              )}
-
-                              {isCard && (
-                                <div className="p-3 rounded-xl text-xs text-blue-600 dark:text-blue-300 bg-blue-500/10 border border-blue-500/20 text-center leading-relaxed font-bold">
-                                  💳 خيار الفيزا والماستركارد وميزة: سيتم توجيهك إلى بوابة البنك المأمنة 100% لإدخال بيانات الكارت وإتمام الشراء مباشرة.
                                 </div>
                               )}
 
