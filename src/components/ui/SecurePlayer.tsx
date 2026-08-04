@@ -8,6 +8,35 @@ import { YouTubeSecurePlayer } from "./YouTubeSecurePlayer";
 import { useFullscreen } from "./useFullscreen";
 
 /**
+ * Minimal structural types for the VdoCipher player SDK, which is injected at
+ * runtime from player.vdocipher.com and ships no type declarations. Only the
+ * members this component actually touches are declared.
+ *
+ * `seek`, `play` and `pause` are optional on the player itself because older
+ * SDK builds expose them only on the underlying media element — which is
+ * exactly what the `typeof player.seek === "function"` guard below is for. That
+ * guard was previously meaningless, because `any` made both branches type-check
+ * regardless of whether the method existed.
+ */
+type VdoVideoElement = {
+  currentTime: number;
+  play: () => void;
+  pause: () => void;
+  addEventListener: (type: string, listener: () => void) => void;
+};
+
+type VdoPlayerInstance = {
+  video: VdoVideoElement;
+  seek?: (seconds: number) => void;
+  play?: () => void;
+  pause?: () => void;
+};
+
+type VdoPlayerConstructor = new (options: {
+  iframe: HTMLIFrameElement;
+}) => VdoPlayerInstance;
+
+/**
  * Watermark-safe player. The iframe is a cross-origin embed (Bunny/VdoCipher) —
  * a DOM overlay can't be injected into the iframe's OWN native fullscreen, so a
  * sibling watermark vanishes when it goes fullscreen. Fix: the iframe carries no
@@ -16,6 +45,9 @@ import { useFullscreen } from "./useFullscreen";
  *
  * For YouTube we delegate to YouTubeSecurePlayer — native controls off + a full
  * click-shield so the brand/title/link is never clickable.
+ *
+ * HOOK ORDER: every hook below runs before the YouTube early return. Hooks must
+ * not be called conditionally — see the commit message for the crash this fixes.
  */
 export function SecurePlayer({
   embedUrl,
@@ -57,29 +89,11 @@ export function SecurePlayer({
     setTimeout(() => setDisrupted(false), 500);
   }, []);
 
-  // YouTube → hardened API player (no clickable YouTube chrome).
-  if (provider === "youtube") {
-    const id = embedUrl.match(/\/embed\/([^?/]+)/)?.[1] ?? "";
-    if (id)
-      return (
-        <YouTubeSecurePlayer
-          videoId={id}
-          title={title}
-          watermark={watermark}
-          onEnded={onEnded}
-          startSeconds={startSeconds}
-          onProgress={onProgress}
-          onPause={onPause}
-          onPlay={onPlay}
-          paused={paused}
-        />
-      );
-  }
-
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
-  const vdoPlayerRef = React.useRef<any>(null);
+  const vdoPlayerRef = React.useRef<VdoPlayerInstance | null>(null);
 
-  // Resume playback for Bunny & VdoCipher
+  // Resume playback for Bunny & VdoCipher. Both branches are guarded on
+  // provider, so this is inert for YouTube.
   React.useEffect(() => {
     if (provider === "bunny") {
       const handleMessage = (e: MessageEvent) => {
@@ -115,18 +129,20 @@ export function SecurePlayer({
       document.body.appendChild(script);
 
       script.onload = () => {
-        if (iframeRef.current && (window as any).VdoPlayer) {
-          const player = new (window as any).VdoPlayer({ iframe: iframeRef.current });
+        const VdoPlayer = (window as unknown as { VdoPlayer?: VdoPlayerConstructor })
+          .VdoPlayer;
+        if (iframeRef.current && VdoPlayer) {
+          const player = new VdoPlayer({ iframe: iframeRef.current });
           vdoPlayerRef.current = player;
-          
+
           player.video.addEventListener("loadedmetadata", () => {
             if (startSeconds > 0) {
-               // The API wrapper or standard HTMLMediaElement behavior
-               if (typeof player.seek === "function") {
-                 player.seek(startSeconds);
-               } else {
-                 player.video.currentTime = startSeconds;
-               }
+              // The API wrapper or standard HTMLMediaElement behavior
+              if (typeof player.seek === "function") {
+                player.seek(startSeconds);
+              } else {
+                player.video.currentTime = startSeconds;
+              }
             }
           });
 
@@ -163,19 +179,24 @@ export function SecurePlayer({
         JSON.stringify({ method }),
         "*"
       );
-    } else if (provider === "vdocipher" && vdoPlayerRef.current) {
+      return;
+    }
+
+    if (provider === "vdocipher") {
+      const player = vdoPlayerRef.current;
+      if (!player) return;
       try {
         if (paused) {
-          if (typeof vdoPlayerRef.current.pause === "function") {
-            vdoPlayerRef.current.pause();
+          if (typeof player.pause === "function") {
+            player.pause();
           } else {
-            vdoPlayerRef.current.video?.pause();
+            player.video.pause();
           }
         } else {
-          if (typeof vdoPlayerRef.current.play === "function") {
-            vdoPlayerRef.current.play();
+          if (typeof player.play === "function") {
+            player.play();
           } else {
-            vdoPlayerRef.current.video?.play();
+            player.video.play();
           }
         }
       } catch (e) {
@@ -183,6 +204,26 @@ export function SecurePlayer({
       }
     }
   }, [paused, provider]);
+
+  // YouTube → hardened API player (no clickable YouTube chrome).
+  // Every hook above has already run, so leaving here is safe.
+  if (provider === "youtube") {
+    const id = embedUrl.match(/\/embed\/([^?/]+)/)?.[1] ?? "";
+    if (id)
+      return (
+        <YouTubeSecurePlayer
+          videoId={id}
+          title={title}
+          watermark={watermark}
+          onEnded={onEnded}
+          startSeconds={startSeconds}
+          onProgress={onProgress}
+          onPause={onPause}
+          onPlay={onPlay}
+          paused={paused}
+        />
+      );
+  }
 
   return (
     <div
@@ -227,7 +268,7 @@ export function SecurePlayer({
       <button
         type="button"
         onClick={toggleFs}
-        aria-label={isFs ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+        aria-label={isFs ? "\u0625\u0646\u0647\u0627\u0621 \u0645\u0644\u0621 \u0627\u0644\u0634\u0627\u0634\u0629" : "\u0645\u0644\u0621 \u0627\u0644\u0634\u0627\u0634\u0629"}
         className="absolute bottom-2.5 right-2.5 z-20 w-10 h-10 rounded-lg bg-black/55 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-colors"
       >
         {isFs ? (
