@@ -79,7 +79,7 @@ export default function CourseProductPage() {
   const [applying, setApplying] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [payMode, setPayMode] = useState<"balance" | "wallet" | "whatsapp" | "code">("wallet");
+  const [payMode, setPayMode] = useState<"balance" | "wallet" | "fawry" | "whatsapp" | "code">("wallet");
   const [walletPhone, setWalletPhone] = useState("");
   const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry" | "bank_card" | "meeza">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
@@ -489,20 +489,8 @@ export default function CourseProductPage() {
                       style={{
                         background: "linear-gradient(135deg, var(--brand), var(--brand-strong))",
                         boxShadow: "0 8px 24px -8px var(--brand-shadow)",
-                      }}
-                    >
-                      {enrolling ? (
-                        <><div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />جارٍ التثبيت...</>
-                      ) : userLoading ? (
-                        "جارٍ التحقق..."
-                      ) : (
-                        <>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                          </svg>
-                          تثبيت الكورس
-                        </>
-                      )}
+                      }}>
+                      {enrolling ? "جارٍ الاشتراك..." : "اشترك مجاناً الآن"}
                     </button>
                     {!userLoading && !user && (
                       <p className="text-xs text-center text-gray-500 dark:text-gray-400">
@@ -514,58 +502,64 @@ export default function CourseProductPage() {
                     </p>
                   </div>
                 ) : (
-                  /* Paid course — wallet / balance / whatsapp / code choices */
+                  /* Paid course — wallet / fawry / balance / whatsapp / code choices */
                   <div className="space-y-3">
                     {/* Pay mode toggle */}
-                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                      <button onClick={() => setPayMode("wallet")}
+                    <div className="grid grid-cols-5 gap-1 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                      <button onClick={() => { setPayMode("wallet"); setSelectedWalletMethod("vf_cash"); }}
                         className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
                         style={{ background: payMode === "wallet" ? "var(--brand)" : "transparent", color: payMode === "wallet" ? "#fff" : "var(--ink-3)" }}>
-                        📱 محفظة إلكترونية
+                        📱 محفظة
+                      </button>
+                      <button onClick={() => { setPayMode("fawry"); setSelectedWalletMethod("fawry"); }}
+                        className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
+                        style={{ background: payMode === "fawry" ? "#FFCC00" : "transparent", color: payMode === "fawry" ? "#000" : "var(--ink-3)" }}>
+                        🏪 فوري
                       </button>
                       <button onClick={() => setPayMode("balance")}
                         className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
                         style={{ background: payMode === "balance" ? "var(--gold-2)" : "transparent", color: payMode === "balance" ? "#fff" : "var(--ink-3)" }}>
-                        💰 شراء بالرصيد
+                        💰 رصيدي
                       </button>
                       <button onClick={() => setPayMode("whatsapp")}
                         className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
                         style={{ background: payMode === "whatsapp" ? "#25D366" : "transparent", color: payMode === "whatsapp" ? "#fff" : "var(--ink-3)" }}>
-                        💬 طُرق أخرى (واتسآب)
+                        💬 واتسآب
                       </button>
                       <button onClick={() => setPayMode("code")}
                         className="rounded-lg text-xs font-bold border-none cursor-pointer transition-colors py-2"
                         style={{ background: payMode === "code" ? "var(--ink-2)" : "transparent", color: payMode === "code" ? "#fff" : "var(--ink-3)" }}>
-                        🔑 كود تفعيل
+                        🔑 كود
                       </button>
                     </div>
 
-                    {/* Mode 1: Mobile Wallet via Sha7nawy */}
-                    {payMode === "wallet" && (
+                    {/* Mode 1 & 2: Mobile Wallet / Fawry via Sha7nawy & Shake-Out */}
+                    {(payMode === "wallet" || payMode === "fawry") && (
                       <div className="p-3.5 rounded-xl space-y-3" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                        <div>
-                          <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-2)" }}>اختر طريقة الدفع المباشر:</label>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                            {[
-                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                              { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
-                              { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
-                              { id: "fawry", label: "فوري كشك", color: "#FFCC00" },
-                              { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
-                              { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
-                            ].map(m => (
-                              <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
-                                className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
-                                style={{
-                                  borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
-                                  background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
-                                  color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
-                                }}>
-                                {m.label}
-                              </button>
-                            ))}
+                        {payMode === "wallet" && (
+                          <div>
+                            <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-2)" }}>اختر طريقة الدفع المباشر:</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                              {[
+                                { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                                { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
+                                { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
+                                { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
+                                { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
+                              ].map(m => (
+                                <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
+                                  className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
+                                  style={{
+                                    borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
+                                    background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
+                                    color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
+                                  }}>
+                                  {m.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Fee Breakdown */}
                         <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>

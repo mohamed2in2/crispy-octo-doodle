@@ -275,8 +275,8 @@ export default function AccountPage() {
   const [redeeming, setRedeeming] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState("");
 
-  // Sha7nawy Mobile Wallet Top-up state
-  const [topupTab, setTopupTab] = useState<"wallet" | "whatsapp" | "code">("wallet");
+  // Payment & Wallet Top-up state
+  const [topupTab, setTopupTab] = useState<"wallet" | "fawry" | "whatsapp" | "code">("wallet");
   const [walletPhone, setWalletPhone] = useState("");
   const [walletAmount, setWalletAmount] = useState("100");
   const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry" | "bank_card" | "meeza">("vf_cash");
@@ -1021,10 +1021,15 @@ export default function AccountPage() {
                   <div className="mb-6">
                     <label style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 10 }}>اختر طريقة شحن الرصيد:</label>
                     <div className="flex gap-2 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                      <button onClick={() => setTopupTab("wallet")}
+                      <button onClick={() => { setTopupTab("wallet"); setSelectedWalletMethod("vf_cash"); }}
                         className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
                         style={{ background: topupTab === "wallet" ? "var(--brand)" : "transparent", color: topupTab === "wallet" ? "#fff" : "var(--ink-2)" }}>
                         📱 محفظة إلكترونية
+                      </button>
+                      <button onClick={() => { setTopupTab("fawry"); setSelectedWalletMethod("fawry"); }}
+                        className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
+                        style={{ background: topupTab === "fawry" ? "#FFCC00" : "transparent", color: topupTab === "fawry" ? "#000" : "var(--ink-2)" }}>
+                        🏪 فوري
                       </button>
                       <button onClick={() => setTopupTab("whatsapp")}
                         className="flex-1 py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold border-none cursor-pointer transition-colors"
@@ -1039,32 +1044,33 @@ export default function AccountPage() {
                     </div>
                   </div>
 
-                  {/* TAB 1: Mobile Wallets */}
-                  {topupTab === "wallet" && (
+                  {/* TAB 1 & 2: Mobile Wallets / Fawry */}
+                  {(topupTab === "wallet" || topupTab === "fawry") && (
                     <div className="p-4 rounded-2xl space-y-4" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                      <div>
-                        <label className="block text-xs font-bold mb-2" style={{ color: "var(--ink-2)" }}>اختر نوع المحفظة:</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {[
-                            { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                            { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
-                            { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
-                            { id: "fawry", label: "فوري كشك", color: "#FFCC00" },
-                            { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
-                            { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
-                          ].map(m => (
-                            <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
-                              className="py-2.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
-                              style={{
-                                borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
-                                background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
-                                color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
-                              }}>
-                              {m.label}
-                            </button>
-                          ))}
+                      {topupTab === "wallet" && (
+                        <div>
+                          <label className="block text-xs font-bold mb-2" style={{ color: "var(--ink-2)" }}>اختر طريقة الدفع والمحفظة:</label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {[
+                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                              { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
+                              { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
+                              { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
+                              { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
+                            ].map(m => (
+                              <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
+                                className="py-2.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
+                                style={{
+                                  borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
+                                  background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",
+                                  color: selectedWalletMethod === m.id ? m.color : "var(--ink-2)",
+                                }}>
+                                {m.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {(() => {
                         const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash" || selectedWalletMethod === "or_cash";

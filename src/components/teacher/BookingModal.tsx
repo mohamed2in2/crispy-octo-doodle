@@ -115,7 +115,7 @@ export function BookingButton({
   const [selectedPlanType, setSelectedPlanType] = useState<"monthly" | "termly" | "yearly" | null>(null);
 
   // Booking & Payment Mode State
-  const [payMode, setPayMode] = useState<"wallet" | "balance" | "whatsapp" | "code">("wallet");
+  const [payMode, setPayMode] = useState<"wallet" | "fawry" | "balance" | "whatsapp" | "code">("wallet");
   
   // Wallet state
   const [walletPhone, setWalletPhone] = useState("");
@@ -544,9 +544,9 @@ export function BookingButton({
                   اختر طريقة الحجز والدفع:
                 </label>
 
-                <div className="grid grid-cols-4 gap-1 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
+                <div className="grid grid-cols-5 gap-1 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
                   <button
-                    onClick={() => setPayMode("wallet")}
+                    onClick={() => { setPayMode("wallet"); setSelectedWalletMethod("vf_cash"); }}
                     className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
                     style={{
                       background: payMode === "wallet" ? "var(--brand, #6366f1)" : "transparent",
@@ -554,6 +554,17 @@ export function BookingButton({
                     }}
                   >
                     📱 محفظة
+                  </button>
+
+                  <button
+                    onClick={() => { setPayMode("fawry"); setSelectedWalletMethod("fawry"); }}
+                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
+                    style={{
+                      background: payMode === "fawry" ? "#FFCC00" : "transparent",
+                      color: payMode === "fawry" ? "#000" : "var(--ink-muted, #aaa)",
+                    }}
+                  >
+                    🏪 فوري
                   </button>
 
                   <button
@@ -590,32 +601,33 @@ export function BookingButton({
                   </button>
                 </div>
 
-                {/* Option 1: Mobile Wallet Payment */}
-                {payMode === "wallet" && activePlan && (
+                {/* Option 1: Mobile Wallet / Fawry / Card Payment */}
+                {(payMode === "wallet" || payMode === "fawry") && activePlan && (
                   <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>اختر طريقة الدفع المباشر:</label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        {[
-                          { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                          { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
-                          { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
-                          { id: "fawry", label: "فوري كشك", color: "#FFCC00" },
-                          { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
-                          { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
-                        ].map(m => (
-                          <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
-                            className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
-                            style={{
-                              borderColor: selectedWalletMethod === m.id ? m.color : "var(--border, rgba(255,255,255,0.1))",
-                              background: selectedWalletMethod === m.id ? `${m.color}20` : "var(--surface, #1a1f2e)",
-                              color: selectedWalletMethod === m.id ? m.color : "var(--ink-muted, #aaa)",
-                            }}>
-                            {m.label}
-                          </button>
-                        ))}
+                    {payMode === "wallet" && (
+                      <div>
+                        <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>اختر طريقة الدفع المباشر:</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {[
+                            { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
+                            { id: "et_cash", label: "اتصالات كاش", color: "#76B900" },
+                            { id: "or_cash", label: "أورانج كاش", color: "#FF7900" },
+                            { id: "bank_card", label: "فيزا / ماستركارد", color: "#1A1F71" },
+                            { id: "meeza", label: "بطاقة ميزة", color: "#007A3D" },
+                          ].map(m => (
+                            <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
+                              className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
+                              style={{
+                                borderColor: selectedWalletMethod === m.id ? m.color : "var(--border, rgba(255,255,255,0.1))",
+                                background: selectedWalletMethod === m.id ? `${m.color}20` : "var(--surface, #1a1f2e)",
+                                color: selectedWalletMethod === m.id ? m.color : "var(--ink-muted, #aaa)",
+                              }}>
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 2% Tax / Fee Breakdown */}
                     <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.06))" }}>
