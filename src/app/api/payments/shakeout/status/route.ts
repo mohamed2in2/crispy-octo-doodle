@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       userId: session.id,
       note: { contains: data.reference },
     },
-    select: { id: true },
+    select: { id: true, type: true, amount: true, note: true },
   });
 
   if (!existingTx) {
@@ -43,12 +43,44 @@ export async function GET(req: NextRequest) {
   }
 
   const normalizedStatus = (data.status || "unknown").toString().toLowerCase();
+  const isPaid = ["paid", "completed", "success", "approved"].includes(normalizedStatus);
+  const amountToCredit = typeof data.amount === "number" ? data.amount : parseFloat(data.amount ?? "0") || existingTx.amount;
+
+  if (isPaid && existingTx.type.toLowerCase().includes("pending")) {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: session.id },
+        data: { balance: { increment: amountToCredit } },
+      });
+
+      await tx.balanceTransaction.update({
+        where: { id: existingTx.id },
+        data: {
+          type: "credit_shakeout_wallet",
+          amount: amountToCredit,
+          note: `${existingTx.note || ""} (تم التأكيد السريع)`,
+        },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      paid: true,
+      transactionId,
+      reference: data.reference,
+      status: "paid",
+      amount: amountToCredit,
+      message: "تم تأكيد السداد وإضافة الرصيد إلى حسابك بنجاح! 🎉",
+    });
+  }
 
   return NextResponse.json({
+    success: true,
+    paid: isPaid,
     transactionId,
     reference: data.reference,
     status: normalizedStatus,
-    amount: typeof data.amount === "number" ? data.amount : parseFloat(data.amount ?? "0"),
+    amount: amountToCredit,
     method: data.method,
     methodLabel: getPaymentMethod(data.method as string)?.label ?? data.method,
   });

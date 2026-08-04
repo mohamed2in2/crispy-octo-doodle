@@ -1365,38 +1365,35 @@ export default function AccountPage() {
                                     {isPending ? "" : tx.amount > 0 ? "+" : ""}{tx.amount} جنيه
                                   </span>
 
-                                  {isPending && (
-                                    <div className="flex items-center gap-1.5">
-                                      {tx.paymentUrl ? (
-                                        <a
-                                          href={tx.paymentUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md hover:brightness-110 transition-all flex items-center gap-1"
-                                        >
-                                          💳 ادفع الفاتورة الآن
-                                        </a>
-                                      ) : tx.reference ? (
-                                        <button
-                                          onClick={() => alert(`رقم المرجع لتسديد الفاتورة: ${tx.reference}`)}
-                                          className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
-                                        >
-                                          🔢 رقم المرجع ({tx.reference})
-                                        </button>
-                                      ) : null}
+                                  {isPending && (() => {
+                                    const payUrl = tx.paymentUrl || (tx.reference ? `https://dash.shake-out.com/invoice/${tx.reference}` : null);
 
-                                      {tx.reference && (
-                                        <button
-                                          onClick={() => checkTxStatus(tx)}
-                                          disabled={checkingTxId === tx.id}
-                                          className="p-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all"
-                                          title="تحديث حالة الفاتورة"
-                                        >
-                                          {checkingTxId === tx.id ? "⏳" : "🔄"}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
+                                    return (
+                                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                        {payUrl && (
+                                          <a
+                                            href={payUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md hover:brightness-110 transition-all flex items-center gap-1.5 no-underline shrink-0"
+                                          >
+                                            💳 الانتقال لإتمام الدفع
+                                          </a>
+                                        )}
+
+                                        {tx.reference && (
+                                          <button
+                                            onClick={() => checkTxStatus(tx)}
+                                            disabled={checkingTxId === tx.id}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                                            title="التحقق من حالة السداد من الخادم"
+                                          >
+                                            {checkingTxId === tx.id ? "⏳ جارٍ التحقق..." : "🔄 التحقق من السداد"}
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
