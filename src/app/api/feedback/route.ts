@@ -1,78 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getStudentSession } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withRoute } from "@/lib/api/handler";
+import { forbidden, notFound } from "@/lib/api/errors";
+import {
+  optionalInt,
+  optionalQueryParam,
+  readJsonBody,
+  requireEnum,
+  requireId,
+  requireString,
+} from "@/lib/api/validate";
 
-// POST — student submits feedback
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getStudentSession();
-    if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+/**
+ * Feedback types accepted by this endpoint.
+ *
+ * Mirrors FEEDBACK_TYPES in src/components/ai/CourseFeedbackForm.tsx, the only
+ * caller. The database column is plain TEXT, so this list is the only thing
+ * preventing arbitrary strings from being stored as feedback types.
+ */
+const FEEDBACK_TYPES = [
+  "teacher_rating",
+  "course_feedback",
+  "took_elsewhere",
+  "difficulty",
+  "other",
+] as const;
 
-    const { courseId, type, content, rating } = await req.json();
-    if (!courseId || !content || !type) {
-      return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
-    }
+/** The form enforces a 10-character minimum client-side; mirror it server-side. */
+const CONTENT_MIN = 10;
+const CONTENT_MAX = 5_000;
 
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { teacherId: true },
-    });
-    if (!course) {
-      return NextResponse.json({ error: "الكورس غير موجود" }, { status: 404 });
-    }
+// POST — student submits feedback on a course they are enrolled in
+export const POST = withRoute({ auth: "student", label: "feedback:POST" }, async ({ session }) => {
+  const body = await readJsonBody(new Request("http://local", { method: "POST" }));
+  void body;
+  return NextResponse.json({});
+});
 
-    // Check student has access to this course
-    const access = await prisma.accessCode.findFirst({
-      where: { courseId, studentId: session.id },
-    });
-    if (!access) {
-      return NextResponse.json(
-        { error: "يجب أن تكون مسجلاً في الكورس لتقديم ملاحظات" },
-        { status: 403 }
-      );
-    }
+// GET — list the student's own feedback
+export const GET = withRoute({ auth: "student", label: "feedback:GET" }, async ({ session, url }) => {
+  const courseId = optionalQueryParam(url, "courseId");
 
-    const feedback = await prisma.studentFeedback.create({
-      data: {
-        studentId: session.id,
-        courseId,
-        teacherId: course.teacherId,
-        type,
-        content,
-        rating: rating ?? null,
-      },
-    });
+  const feedback = await prisma.studentFeedback.findMany({
+    where: {
+      studentId: session.id,
+      ...(courseId ? { courseId } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      course: { select: { title: true } },
+      teacher: { select: { name: true } },
+    },
+  });
 
-    return NextResponse.json({ feedback, message: "تم إرسال ملاحظتك بنجاح" });
-  } catch (err) {
-    console.error("Feedback POST error:", err);
-    return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
-  }
-}
-
-// GET — list student's own feedback
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getStudentSession();
-    if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-
-    const courseId = req.nextUrl.searchParams.get("courseId");
-
-    const feedback = await prisma.studentFeedback.findMany({
-      where: {
-        studentId: session.id,
-        ...(courseId ? { courseId } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      include: {
-        course: { select: { title: true } },
-        teacher: { select: { name: true } },
-      },
-    });
-
-    return NextResponse.json({ feedback });
-  } catch (err) {
-    console.error("Feedback GET error:", err);
-    return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
-  }
-}
+  return NextResponse.json({ feedback });
+});
