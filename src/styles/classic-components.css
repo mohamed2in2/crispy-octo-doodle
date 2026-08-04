@@ -1,0 +1,654 @@
+/*
+ * Classic components.
+ *
+ * The signature pattern from the reference platform is one card per page:
+ * tinted icon square, bold title, short reason, a small muted "steps:" label,
+ * then the steps themselves in blue, then exactly one input and one button on
+ * the same row. It works because the page can only be misread one way, and
+ * that way is spelled out on the card.
+ */
+
+/* ------------------------------------------------------------------ card */
+
+.c-card {
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	padding: var(--c-s6);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s5);
+}
+
+.c-card--flush {
+	padding: 0;
+	overflow: hidden;
+}
+
+.c-card__head {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s4);
+}
+
+.c-card__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
+	flex: none;
+	border-radius: var(--c-r);
+	background: var(--c-blue-wash);
+	color: var(--c-blue-ink);
+}
+
+.c-card__icon[data-tone="green"] {
+	background: rgba(79, 175, 85, 0.16);
+	color: var(--c-green-ink);
+}
+
+.c-card__icon[data-tone="cyan"] {
+	background: rgba(34, 184, 207, 0.16);
+	color: var(--c-cyan);
+}
+
+.c-card__icon[data-tone="amber"] {
+	background: rgba(240, 173, 78, 0.16);
+	color: var(--c-amber);
+}
+
+.c-card__icon[data-tone="violet"] {
+	background: rgba(139, 92, 246, 0.16);
+	color: var(--c-violet);
+}
+
+.c-card__headings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s1);
+	min-width: 0;
+}
+
+.c-card__title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 800;
+	color: var(--c-text);
+	line-height: 1.5;
+}
+
+.c-card__desc {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.85;
+	color: var(--c-text-muted);
+	max-width: 62ch;
+}
+
+.c-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s4);
+}
+
+.c-card__foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--c-s3);
+	padding-top: var(--c-s4);
+	border-top: 1px solid var(--c-border);
+}
+
+/* ----------------------------------------------------------------- steps */
+
+.c-steps__label {
+	margin: 0 0 var(--c-s2);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--c-text-muted);
+}
+
+/*
+ * Steps are blue and bold because on the reference platform that single choice
+ * does most of the reassurance work: the instructions read as the loudest
+ * thing on the card, so nobody has to guess what happens after they click.
+ */
+.c-steps {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s2);
+	counter-reset: c-step;
+}
+
+.c-steps__item {
+	counter-increment: c-step;
+	display: flex;
+	gap: var(--c-s2);
+	color: var(--c-blue-ink);
+	font-size: 14.5px;
+	font-weight: 700;
+	line-height: 1.9;
+}
+
+.c-steps__item::before {
+	content: counter(c-step) ".";
+	flex: none;
+	font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- controls */
+
+.c-input {
+	width: 100%;
+	height: var(--c-control-h);
+	padding: 0 var(--c-s4);
+	border: 1px solid var(--c-border-strong);
+	border-radius: var(--c-r-sm);
+	background: var(--c-input-bg);
+	color: var(--c-text);
+	font: inherit;
+	font-size: 15px;
+}
+
+.c-input::placeholder {
+	color: var(--c-text-faint);
+}
+
+.c-input:focus-visible {
+	outline: none;
+	border-color: var(--c-blue);
+	box-shadow: var(--c-ring);
+}
+
+.c-input:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.c-input--invalid {
+	border-color: var(--c-red);
+}
+
+/* Input and its button share one row, button at the far inline-end. */
+.c-row {
+	display: flex;
+	gap: var(--c-s3);
+	align-items: stretch;
+}
+
+.c-row__field {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.c-row__action {
+	flex: none;
+	min-width: 132px;
+}
+
+@media (max-width: 560px) {
+	.c-row {
+		flex-direction: column;
+	}
+
+	.c-row__action {
+		min-width: 0;
+	}
+}
+
+.c-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--c-s2);
+	width: 100%;
+	min-height: var(--c-button-h);
+	padding: 0 var(--c-s5);
+	border: 1px solid transparent;
+	border-radius: var(--c-r-sm);
+	font: inherit;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	text-decoration: none;
+	transition:
+		background var(--c-dur) var(--c-ease),
+		transform var(--c-dur) var(--c-ease);
+}
+
+.c-btn:active {
+	transform: translateY(1px);
+}
+
+.c-btn:disabled,
+.c-btn[aria-disabled="true"] {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.c-btn:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
+}
+
+.c-btn--primary {
+	background: var(--c-blue);
+	color: #ffffff;
+}
+
+.c-btn--primary:hover:not(:disabled) {
+	background: var(--c-blue-hover);
+}
+
+.c-btn--go {
+	background: var(--c-green);
+	color: #ffffff;
+}
+
+.c-btn--go:hover:not(:disabled) {
+	background: var(--c-green-hover);
+}
+
+.c-btn--quiet {
+	background: var(--c-surface-2);
+	border-color: var(--c-border-strong);
+	color: var(--c-text);
+}
+
+.c-btn--quiet:hover:not(:disabled) {
+	background: var(--c-surface-3);
+}
+
+.c-btn--danger {
+	background: transparent;
+	border-color: var(--c-red);
+	color: var(--c-red);
+}
+
+.c-btn--inline {
+	width: auto;
+}
+
+/* The oversized commit button, e.g. "generate my exam" */
+.c-btn--hero {
+	min-height: 68px;
+	border-radius: var(--c-r);
+	font-size: 19px;
+	font-weight: 800;
+}
+
+/* ------------------------------------------------------------ blue panel */
+
+/*
+ * A whole panel of solid brand colour for filters. It looks nothing like a
+ * modern SaaS surface, and that is why it reads instantly as "choose
+ * something here" rather than as decoration.
+ */
+.c-panel {
+	background: var(--c-blue-panel);
+	border-radius: var(--c-r);
+	padding: var(--c-s5);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s4);
+}
+
+.c-panel__title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 800;
+	color: #ffffff;
+}
+
+.c-panel__note {
+	margin: 0;
+	font-size: 13.5px;
+	line-height: 1.85;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.c-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--c-s2);
+}
+
+.c-chip {
+	display: inline-flex;
+	align-items: center;
+	min-height: 34px;
+	padding: 0 var(--c-s4);
+	border: 1px solid rgba(255, 255, 255, 0.55);
+	border-radius: var(--c-r-sm);
+	background: rgba(255, 255, 255, 0.08);
+	color: #ffffff;
+	font: inherit;
+	font-size: 13.5px;
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: background var(--c-dur) var(--c-ease);
+}
+
+.c-chip:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.c-chip[aria-pressed="true"],
+.c-chip[data-active="true"] {
+	background: #ffffff;
+	border-color: #ffffff;
+	color: #10202e;
+	font-weight: 800;
+}
+
+/* ------------------------------------------------------------------ stat */
+
+.c-stat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s1);
+}
+
+.c-stat__label {
+	font-size: 13.5px;
+	color: var(--c-text-muted);
+}
+
+.c-stat__value {
+	font-size: 34px;
+	font-weight: 800;
+	color: var(--c-blue-ink);
+	line-height: 1.3;
+	font-variant-numeric: tabular-nums;
+}
+
+.c-stat__value--plain {
+	color: var(--c-text);
+}
+
+.c-stat__hint {
+	font-size: 13px;
+	color: var(--c-text-faint);
+	line-height: 1.8;
+}
+
+/* ----------------------------------------------------------------- tiles */
+
+.c-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: var(--c-s4);
+}
+
+.c-tile {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s3);
+	padding: var(--c-s5);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	background: var(--c-surface);
+	color: var(--c-text);
+	text-decoration: none;
+	transition:
+		border-color var(--c-dur) var(--c-ease),
+		background var(--c-dur) var(--c-ease);
+}
+
+.c-tile:hover {
+	border-color: var(--c-blue);
+	background: var(--c-surface-2);
+}
+
+.c-tile__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	border-radius: var(--c-r-sm);
+	background: var(--c-blue-wash);
+	color: var(--c-blue-ink);
+}
+
+.c-tile__title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 800;
+}
+
+.c-tile__desc {
+	margin: 0;
+	font-size: 13.5px;
+	line-height: 1.8;
+	color: var(--c-text-muted);
+}
+
+/* ----------------------------------------------------------------- empty */
+
+/*
+ * The reference platform prints "no questions available" in red in the middle
+ * of an otherwise blank page, which reads as an error the student caused.
+ * An empty state is not a failure: it is a screen whose only job is to hand
+ * over the one action that fills it. Icon, what is happening, why, and a
+ * button. Never red.
+ */
+.c-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--c-s3);
+	padding: var(--c-s12) var(--c-s5);
+}
+
+.c-empty__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	border-radius: var(--c-r-pill);
+	background: var(--c-surface-3);
+	color: var(--c-text-muted);
+}
+
+.c-empty__title {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 800;
+	color: var(--c-text);
+}
+
+.c-empty__text {
+	margin: 0;
+	max-width: 46ch;
+	font-size: 14px;
+	line-height: 1.9;
+	color: var(--c-text-muted);
+}
+
+/* ------------------------------------------------------------------ misc */
+
+.c-band {
+	display: flex;
+	gap: var(--c-s3);
+	padding: var(--c-s4);
+	border: 1px solid var(--c-border-strong);
+	border-inline-start: 4px solid var(--c-blue);
+	border-radius: var(--c-r-sm);
+	background: var(--c-surface-2);
+	font-size: 14px;
+	line-height: 1.85;
+}
+
+.c-band[data-tone="warning"] {
+	border-inline-start-color: var(--c-amber);
+}
+
+.c-band[data-tone="danger"] {
+	border-inline-start-color: var(--c-red);
+}
+
+.c-band[data-tone="success"] {
+	border-inline-start-color: var(--c-green);
+}
+
+.c-band__title {
+	margin: 0 0 var(--c-s1);
+	font-size: 14px;
+	font-weight: 800;
+}
+
+.c-band__text {
+	margin: 0;
+	color: var(--c-text-muted);
+}
+
+.c-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--c-s1);
+	padding: 3px var(--c-s3);
+	border: 1px solid var(--c-border-strong);
+	border-radius: var(--c-r-pill);
+	background: var(--c-surface-3);
+	color: var(--c-text-muted);
+	font-size: 12.5px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.c-badge[data-tone="green"] {
+	border-color: rgba(79, 175, 85, 0.5);
+	background: rgba(79, 175, 85, 0.14);
+	color: var(--c-green-ink);
+}
+
+.c-badge[data-tone="amber"] {
+	border-color: rgba(240, 173, 78, 0.5);
+	background: rgba(240, 173, 78, 0.14);
+	color: var(--c-amber);
+}
+
+.c-badge[data-tone="red"] {
+	border-color: rgba(239, 68, 68, 0.5);
+	background: rgba(239, 68, 68, 0.14);
+	color: var(--c-red);
+}
+
+.c-badge[data-tone="blue"] {
+	border-color: rgba(13, 141, 228, 0.5);
+	background: var(--c-blue-wash);
+	color: var(--c-blue-ink);
+}
+
+.c-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s4);
+}
+
+.c-section__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--c-s3);
+}
+
+.c-section__title {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 800;
+	color: var(--c-text);
+}
+
+.c-section__more {
+	color: var(--c-blue-ink);
+	text-decoration: none;
+	font-size: 13.5px;
+	font-weight: 700;
+	flex: none;
+}
+
+.c-section__more:hover {
+	text-decoration: underline;
+}
+
+.c-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.c-list__item {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s3);
+	padding: var(--c-s4) var(--c-s5);
+	border-bottom: 1px solid var(--c-border);
+}
+
+.c-list__item:last-child {
+	border-bottom: 0;
+}
+
+.c-list__grow {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.c-list__title {
+	margin: 0;
+	font-size: 14.5px;
+	font-weight: 700;
+	color: var(--c-text);
+}
+
+.c-list__meta {
+	margin: 2px 0 0;
+	font-size: 12.5px;
+	color: var(--c-text-faint);
+}
+
+.c-money {
+	font-variant-numeric: tabular-nums;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.c-money[data-sign="credit"] {
+	color: var(--c-green-ink);
+}
+
+.c-money[data-sign="debit"] {
+	color: var(--c-red);
+}
+
+.c-skip {
+	position: absolute;
+	inset-inline-start: -9999px;
+	top: 0;
+}
+
+.c-skip:focus {
+	position: fixed;
+	inset-inline-start: var(--c-s4);
+	top: var(--c-s4);
+	z-index: 100;
+	padding: var(--c-s3) var(--c-s4);
+	border-radius: var(--c-r-sm);
+	background: var(--c-blue);
+	color: #ffffff;
+	font-weight: 700;
+}

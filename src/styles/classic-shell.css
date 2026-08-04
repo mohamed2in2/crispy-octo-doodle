@@ -1,0 +1,635 @@
+/*
+ * Classic app shell: right-hand solid-blue sidebar, green top bar, scrolling
+ * tab strip, one content column, footer, floating contact buttons.
+ *
+ * Layout uses logical properties (inline-start/inline-end) throughout, so the
+ * sidebar lands on the right under dir="rtl" and on the left if this is ever
+ * rendered LTR. No RTL-specific overrides needed anywhere in this file.
+ */
+
+.c-app {
+	display: grid;
+	grid-template-columns: var(--c-sidebar-w) minmax(0, 1fr);
+	min-height: 100vh;
+	min-height: 100dvh;
+	background: var(--c-bg);
+	color: var(--c-text);
+}
+
+.c-app[data-collapsed="true"] {
+	grid-template-columns: var(--c-sidebar-w-min) minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- sidebar */
+
+.c-sidebar {
+	grid-column: 1;
+	background: var(--c-blue);
+	color: var(--c-on-color);
+	padding: var(--c-s4) var(--c-s3) var(--c-s8);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s5);
+	position: sticky;
+	top: 0;
+	align-self: start;
+	height: 100vh;
+	height: 100dvh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.c-sidebar__brand {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	font-size: 20px;
+	font-weight: 800;
+	letter-spacing: 0;
+	color: var(--c-on-color);
+	text-decoration: none;
+}
+
+.c-sidebar__collapse {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--c-s2);
+	width: 100%;
+	min-height: 40px;
+	padding: 0 var(--c-s3);
+	border: 0;
+	border-radius: var(--c-r-sm);
+	background: rgba(255, 255, 255, 0.12);
+	color: var(--c-on-color);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+	transition: background var(--c-dur) var(--c-ease);
+}
+
+.c-sidebar__collapse:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.c-sidebar__collapse-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.9);
+	color: var(--c-blue);
+	flex: none;
+}
+
+.c-sidebar__nav {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s1);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.c-sidebar__link {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s3);
+	min-height: 46px;
+	padding: 0 var(--c-s3);
+	border-radius: var(--c-r-sm);
+	color: var(--c-on-color);
+	text-decoration: none;
+	font-size: 15px;
+	font-weight: 600;
+	transition:
+		background var(--c-dur) var(--c-ease),
+		color var(--c-dur) var(--c-ease);
+}
+
+.c-sidebar__link:hover {
+	background: rgba(255, 255, 255, 0.16);
+}
+
+/*
+ * Active state is a filled white pill with dark text — the single loudest
+ * signal in the shell. Deliberately not a left border or a tint: at a glance
+ * you should be able to see where you are from across the room.
+ */
+.c-sidebar__link[data-active="true"] {
+	background: #ffffff;
+	color: #16202e;
+}
+
+.c-sidebar__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	flex: none;
+}
+
+.c-sidebar__label {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.c-app[data-collapsed="true"] .c-sidebar__label,
+.c-app[data-collapsed="true"] .c-sidebar__collapse-text,
+.c-app[data-collapsed="true"] .c-sidebar__sub {
+	display: none;
+}
+
+.c-app[data-collapsed="true"] .c-sidebar__link {
+	justify-content: center;
+	padding: 0;
+}
+
+/* Secondary links, indented under their parent as plain text */
+.c-sidebar__sub {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	list-style: none;
+	margin: var(--c-s1) 0 var(--c-s2);
+	padding-inline-start: var(--c-s8);
+}
+
+.c-sidebar__sublink {
+	display: block;
+	padding: var(--c-s2) var(--c-s2);
+	border-radius: 6px;
+	color: rgba(255, 255, 255, 0.82);
+	text-decoration: none;
+	font-size: 13.5px;
+}
+
+.c-sidebar__sublink:hover {
+	color: #ffffff;
+	background: rgba(255, 255, 255, 0.12);
+}
+
+.c-sidebar__sublink[data-active="true"] {
+	color: #ffffff;
+	font-weight: 700;
+}
+
+/* ----------------------------------------------------------------- column */
+
+.c-col {
+	grid-column: 2;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+/* ----------------------------------------------------------------- topbar */
+
+.c-topbar {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s4);
+	min-height: var(--c-topbar-h);
+	padding: var(--c-s2) var(--c-s5);
+	background: var(--c-green);
+	color: var(--c-on-color);
+}
+
+.c-topbar__title {
+	margin: 0;
+	font-size: 19px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.c-topbar__search {
+	flex: 1 1 auto;
+	display: flex;
+	justify-content: center;
+	min-width: 0;
+}
+
+.c-topbar__search-field {
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	max-width: 420px;
+}
+
+.c-topbar__search-input {
+	width: 100%;
+	height: 34px;
+	padding-inline: var(--c-s8) var(--c-s3);
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: var(--c-r-sm);
+	background: #ffffff;
+	color: #16202e;
+	font: inherit;
+	font-size: 14px;
+}
+
+.c-topbar__search-input::placeholder {
+	color: #8593a3;
+}
+
+.c-topbar__search-input:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+.c-topbar__search-icon {
+	position: absolute;
+	inset-inline-start: var(--c-s3);
+	display: inline-flex;
+	color: #8593a3;
+	pointer-events: none;
+}
+
+.c-topbar__tools {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s2);
+	flex: none;
+}
+
+/* Balance is always on screen. Money you cannot see is money you distrust. */
+.c-wallet-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--c-s2);
+	height: 32px;
+	padding: 0 var(--c-s3);
+	border-radius: var(--c-r-pill);
+	background: rgba(0, 0, 0, 0.35);
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.c-wallet-chip:hover {
+	background: rgba(0, 0, 0, 0.5);
+}
+
+.c-iconbtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: 0;
+	border-radius: var(--c-r-pill);
+	background: transparent;
+	color: #ffffff;
+	cursor: pointer;
+	text-decoration: none;
+	position: relative;
+	transition: background var(--c-dur) var(--c-ease);
+}
+
+.c-iconbtn:hover {
+	background: rgba(0, 0, 0, 0.22);
+}
+
+.c-iconbtn__dot {
+	position: absolute;
+	top: 5px;
+	inset-inline-end: 5px;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: var(--c-r-pill);
+	background: var(--c-red);
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 16px;
+	text-align: center;
+}
+
+.c-avatar {
+	width: 34px;
+	height: 34px;
+	border-radius: var(--c-r-pill);
+	background: rgba(0, 0, 0, 0.28);
+	color: #ffffff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	font-weight: 800;
+	text-decoration: none;
+	flex: none;
+}
+
+/* ------------------------------------------------------------- tab strip */
+
+.c-tabs {
+	display: flex;
+	align-items: stretch;
+	gap: var(--c-s1);
+	margin: var(--c-s5) var(--c-s5) 0;
+	padding: var(--c-s1);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	background: var(--c-surface);
+}
+
+.c-tabs__scroll {
+	display: flex;
+	gap: var(--c-s1);
+	overflow-x: auto;
+	scrollbar-width: none;
+	scroll-behavior: smooth;
+	flex: 1 1 auto;
+}
+
+.c-tabs__scroll::-webkit-scrollbar {
+	display: none;
+}
+
+.c-tabs__link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--c-s2);
+	padding: var(--c-s3) var(--c-s4);
+	border-radius: var(--c-r-sm);
+	border-bottom: 3px solid transparent;
+	color: var(--c-text-muted);
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+	white-space: nowrap;
+	transition: color var(--c-dur) var(--c-ease);
+}
+
+.c-tabs__link:hover {
+	color: var(--c-text);
+	background: var(--c-surface-2);
+}
+
+.c-tabs__link[data-active="true"] {
+	color: var(--c-text);
+	border-bottom-color: var(--c-cyan);
+	font-weight: 700;
+}
+
+.c-tabs__arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	flex: none;
+	border: 0;
+	border-radius: var(--c-r-sm);
+	background: var(--c-surface-2);
+	color: var(--c-text-muted);
+	cursor: pointer;
+}
+
+.c-tabs__arrow:hover {
+	color: var(--c-text);
+	background: var(--c-surface-3);
+}
+
+.c-tabs__arrow:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+/* ------------------------------------------------------------------ main */
+
+.c-main {
+	flex: 1 1 auto;
+	width: 100%;
+	max-width: var(--c-page-max);
+	margin-inline: auto;
+	padding: var(--c-s5);
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s5);
+}
+
+.c-back {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--c-s2);
+	align-self: flex-start;
+	color: var(--c-text-muted);
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.c-back:hover {
+	color: var(--c-text);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.c-footer {
+	border-top: 1px solid var(--c-border);
+	background: var(--c-bg);
+	padding: var(--c-s10) var(--c-s5) var(--c-s8);
+}
+
+.c-footer__inner {
+	width: 100%;
+	max-width: var(--c-page-max);
+	margin-inline: auto;
+	display: grid;
+	grid-template-columns: 1.4fr 1fr 1fr;
+	gap: var(--c-s8);
+	align-items: start;
+}
+
+.c-footer__brand {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s3);
+}
+
+.c-footer__logo {
+	font-size: 22px;
+	font-weight: 800;
+	color: var(--c-text);
+}
+
+.c-footer__tagline {
+	margin: 0;
+	color: var(--c-text-muted);
+	font-size: 13.5px;
+	line-height: 1.9;
+	max-width: 34ch;
+}
+
+.c-footer__heading {
+	margin: 0 0 var(--c-s3);
+	font-size: 14px;
+	font-weight: 800;
+	color: var(--c-text);
+}
+
+.c-footer__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s2);
+}
+
+.c-footer__link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--c-s2);
+	color: var(--c-text-muted);
+	text-decoration: none;
+	font-size: 13.5px;
+}
+
+.c-footer__link:hover {
+	color: var(--c-text);
+}
+
+.c-footer__copy {
+	width: 100%;
+	max-width: var(--c-page-max);
+	margin: var(--c-s8) auto 0;
+	color: var(--c-text-faint);
+	font-size: 12.5px;
+}
+
+/* ------------------------------------------------------- floating buttons */
+
+.c-float {
+	position: fixed;
+	inset-inline-start: var(--c-s5);
+	bottom: var(--c-s5);
+	z-index: 40;
+	display: flex;
+	flex-direction: column-reverse;
+	gap: var(--c-s3);
+}
+
+.c-float__btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 46px;
+	height: 46px;
+	border: 0;
+	border-radius: var(--c-r-pill);
+	color: #ffffff;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+	cursor: pointer;
+	text-decoration: none;
+	transition: transform var(--c-dur) var(--c-ease);
+}
+
+.c-float__btn:hover {
+	transform: translateY(-2px);
+}
+
+.c-float__btn[data-kind="whatsapp"] {
+	background: #25d366;
+}
+
+.c-float__btn[data-kind="support"] {
+	background: var(--c-blue);
+}
+
+/* --------------------------------------------------------------- mobile */
+
+/*
+ * Below 900px the sidebar becomes a bottom bar. A drawer would be more
+ * fashionable, but a bottom bar keeps every destination one tap away with no
+ * hidden state, which is the whole point of this redesign.
+ */
+@media (max-width: 900px) {
+	.c-app,
+	.c-app[data-collapsed="true"] {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c-col {
+		grid-column: 1;
+		grid-row: 1;
+		padding-bottom: 72px;
+	}
+
+	.c-sidebar {
+		grid-column: 1;
+		grid-row: 2;
+		position: fixed;
+		bottom: 0;
+		inset-inline: 0;
+		top: auto;
+		height: auto;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--c-s1);
+		padding: var(--c-s2);
+		overflow-x: auto;
+		overflow-y: hidden;
+		z-index: 30;
+	}
+
+	.c-sidebar__brand,
+	.c-sidebar__collapse,
+	.c-sidebar__sub {
+		display: none;
+	}
+
+	.c-sidebar__nav {
+		flex-direction: row;
+		width: 100%;
+		justify-content: space-around;
+	}
+
+	.c-sidebar__link {
+		flex-direction: column;
+		gap: 2px;
+		min-height: 52px;
+		padding: var(--c-s1) var(--c-s2);
+		font-size: 11px;
+		font-weight: 600;
+	}
+
+	.c-float {
+		bottom: 76px;
+	}
+
+	.c-footer__inner {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--c-s6);
+	}
+
+	.c-topbar {
+		flex-wrap: wrap;
+	}
+
+	.c-topbar__search {
+		order: 3;
+		flex-basis: 100%;
+	}
+
+	.c-topbar__search-field {
+		max-width: none;
+	}
+
+	.c-tabs {
+		margin-inline: var(--c-s4);
+	}
+
+	.c-main {
+		padding: var(--c-s4);
+	}
+}
