@@ -10,6 +10,9 @@
     "prod:cluster": "npm run build && pm2 start ecosystem.config.js",
     "prod:reload": "pm2 reload ecosystem.config.js",
     "lint": "eslint --cache",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:verification": "node --import tsx scripts/run-verification-tests.ts",
     "db:migrate": "prisma migrate dev",
     "db:generate": "node scripts/prisma-generate.js",
@@ -51,12 +54,14 @@
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "ts-node": "^10.9.1",
     "tsx": "^4.22.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }
