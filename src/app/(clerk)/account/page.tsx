@@ -1277,10 +1277,10 @@ export default function AccountPage() {
                     if (!tx.reference) return;
                     setCheckingTxId(tx.id);
                     try {
-                      const res = await fetch(`/api/payments/shakeout/status?transactionId=${tx.reference}`);
+                      const res = await fetch(`/api/payments/shakeout/status?transactionId=${encodeURIComponent(tx.reference)}`);
                       const data = await res.json();
-                      if (data.status === "paid" || data.status === "completed" || data.status === "success") {
-                        alert("🎉 تم تأكيد الدفع وإضافة الرصيد بنجاح!");
+                      if (data.paid || data.status === "paid" || data.status === "completed" || data.status === "success") {
+                        alert("🎉 تم تأكيد الدفع وإضافة الرصيد إلى حسابك بنجاح!");
                         const balRes = await fetch("/api/student/balance", { credentials: "include" });
                         if (balRes.ok) {
                           const balData = await balRes.json();
@@ -1288,10 +1288,10 @@ export default function AccountPage() {
                           setBalanceTx(balData.transactions ?? []);
                         }
                       } else {
-                        alert(`حالة الفاتورة الحالية: ${data.status || "بانتظار السداد"}`);
+                        alert(`ℹ️ الفاتورة ما زالت بانتظار السداد (الحالة: ${data.status || "معلقة"})`);
                       }
                     } catch (err) {
-                      alert("تعذر جلب حالة الفاتورة حالياً.");
+                      alert("تعذر جلب حالة الفاتورة حالياً، يرجى المحاولة لاحقاً.");
                     } finally {
                       setCheckingTxId(null);
                     }

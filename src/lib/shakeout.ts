@@ -139,6 +139,8 @@ export async function createShakeOutPayment(
     const checkoutUrl = data.data?.url;
     const invoiceId = data.data?.invoice_id || "";
     const invoiceRef = data.data?.invoice_ref || "";
+    const combinedRef = (invoiceId && invoiceRef) ? `${invoiceId}/${invoiceRef}` : (invoiceId || invoiceRef);
+    const finalUrl = checkoutUrl || (combinedRef ? `https://dash.shake-out.com/invoice/${combinedRef}` : undefined);
 
     return {
       status: true,
@@ -148,10 +150,10 @@ export async function createShakeOutPayment(
         id: invoiceId,
         amount: params.amount,
         method: params.method,
-        reference: invoiceId || invoiceRef,
+        reference: combinedRef,
         status: "pending",
-        payment_page_url: checkoutUrl,
-        url: checkoutUrl,
+        payment_page_url: finalUrl,
+        url: finalUrl,
         invoice_id: invoiceId,
         invoice_ref: invoiceRef,
       },

@@ -30,10 +30,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "الرد من بوابة Shake-Out لا يحتوي على مرجع" }, { status: 502 });
   }
 
+  const searchId = (transactionId || "").split("/")[0];
   const existingTx = await prisma.balanceTransaction.findFirst({
     where: {
       userId: session.id,
-      note: { contains: data.reference },
+      note: { contains: searchId },
     },
     select: { id: true, type: true, amount: true, note: true },
   });
