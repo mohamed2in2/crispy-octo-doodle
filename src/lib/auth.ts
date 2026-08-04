@@ -14,6 +14,22 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 const AUTH_COOKIE_NAME = "auth_token";
 const PHONE_VERIFY_COOKIE_NAME = "student_phone_verify";
 
+/**
+ * Whether to set the `Secure` attribute on auth cookies.
+ *
+ * Secure is ON by default in production. It can only be disabled by
+ * explicitly setting SECURE_COOKIES="false" (for example when terminating
+ * TLS upstream during a local production-mode smoke test).
+ *
+ * This is deliberately fail-safe: previously the flag required
+ * SECURE_COOKIES==="true", so a missing or mistyped value silently sent the
+ * session cookie over plaintext HTTP.
+ */
+function shouldUseSecureCookies(): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+  return process.env.SECURE_COOKIES !== "false";
+}
+
 export interface JWTPayload {
   id: string;
   email: string;
@@ -73,10 +89,9 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
   const days = await getConfigNumberClamped("jwt_expiry_days", 1, 365); // matches the JWT expiry
-  const isSecure = process.env.NODE_ENV === "production" && process.env.SECURE_COOKIES === "true";
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: isSecure,
+    secure: shouldUseSecureCookies(),
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * days,
     path: "/",
@@ -106,10 +121,9 @@ export async function createPhoneVerificationChallenge(phone: string, code?: str
 
 export async function setPhoneVerificationCookie(token: string) {
   const cookieStore = await cookies();
-  const isSecure = process.env.NODE_ENV === "production" && process.env.SECURE_COOKIES === "true";
   cookieStore.set(PHONE_VERIFY_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: isSecure,
+    secure: shouldUseSecureCookies(),
     sameSite: "strict",
     maxAge: 60 * 3,
     path: "/",
