@@ -1,0 +1,220 @@
+# Runs the quality gates that cannot be run by hand from a browser or an API
+# client: type checking, linting, the production build, and the unit tests.
+#
+# The full output of each gate is posted back as a pull request comment, so the
+# result is readable without opening the Actions tab and without shell access to
+# the repository.
+#
+# Design notes:
+#   * Every gate records its exit code and keeps going. A failing build must not
+#     hide the type errors that probably caused it.
+#   * The job fails at the very end if any gate failed, so this is still usable
+#     as a required status check.
+#   * Output is tailed rather than truncated at the front, because compiler and
+#     linter summaries live at the end.
+
+name: Verify
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Type check, lint, build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      # Dummy values. Nothing in this workflow connects to a real service.
+      # `prisma generate` and `next build` only need these to exist and to be
+      # well-formed; no migration is applied and no query is executed.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-placeholder-not-a-real-secret-0000000000
+      CONFIG_ENCRYPTION_KEY: ci-placeholder-not-a-real-key-00000000000
+      NEXT_TELEMETRY_DISABLED: "1"
+      CI: "true"
+
+    steps:
+      - name: Check out the branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        id: install
+        run: |
+          set +e
+          # `npm ci` is preferred because it honours the lockfile exactly.
+          #
+          # It can still fail here for a reason that looks nothing like a
+          # dependency problem: a lockfile written on Windows or macOS may not
+          # contain the Linux-only optional packages, and the first symptom is
+          # the build crashing inside @tailwindcss/oxide while loading a native
+          # binding. When that happens, resolve dependencies from scratch for
+          # this platform.
+          npm ci --no-audit --no-fund > install.txt 2>&1
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "" >> install.txt
+            echo "--- npm ci failed (exit $code); retrying with a clean npm install ---" >> install.txt
+            echo "" >> install.txt
+            rm -rf node_modules package-lock.json
+            npm install --no-audit --no-fund >> install.txt 2>&1
+            code=$?
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate the Prisma client
+        id: prisma
+        if: steps.install.outputs.code == '0'
+        run: |
+          set +e
+          # The build script runs this too, but running it separately means a
+          # schema problem is reported as a schema problem instead of being
+          # buried in the build log.
+          node scripts/prisma-generate.js > prisma.txt 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Type check
+        id: typecheck
+        if: steps.install.outputs.code == '0'
+        run: |
+          set +e
+          npx tsc --noEmit > typecheck.txt 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Lint
+        id: lint
+        if: steps.install.outputs.code == '0'
+        run: |
+          set +e
+          npm run lint > lint.txt 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Build
+        id: build
+        if: steps.install.outputs.code == '0'
+        run: |
+          set +e
+          npm run build > build.txt 2>&1
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Unit tests
+        id: tests
+        if: steps.install.outputs.code == '0'
+        run: |
+          set +e
+          # The test script only exists on branches where the Vitest setup has
+          # landed. Its absence is not a failure.
+          if node -e "const s=require('./package.json').scripts||{}; process.exit(s.test?0:1)"; then
+            npm test > tests.txt 2>&1
+            code=$?
+          else
+            echo "No \"test\" script in package.json on this branch; skipped." > tests.txt
+            code=0
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Assemble the report
+        id: report
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outputs.code }}
+          PRISMA: ${{ steps.prisma.outputs.code }}
+          TYPECHECK: ${{ steps.typecheck.outputs.code }}
+          LINT: ${{ steps.lint.outputs.code }}
+          BUILD: ${{ steps.build.outputs.code }}
+          TESTS: ${{ steps.tests.outputs.code }}
+        run: |
+          verdict() {
+            if [ -z "$1" ]; then
+              echo "skipped"
+            elif [ "$1" = "0" ]; then
+              echo "pass"
+            else
+              echo "**FAIL** (exit $1)"
+            fi
+          }
+
+          {
+            echo "## Verify"
+            echo
+            echo "Commit \`${GITHUB_SHA:0:7}\` on \`${GITHUB_REF_NAME}\`."
+            echo
+            echo "| Gate | Result |"
+            echo "| --- | --- |"
+            echo "| Install dependencies | $(verdict "$INSTALL") |"
+            echo "| \`prisma generate\` | $(verdict "$PRISMA") |"
+            echo "| \`tsc --noEmit\` | $(verdict "$TYPECHECK") |"
+            echo "| \`npm run lint\` | $(verdict "$LINT") |"
+            echo "| \`npm run build\` | $(verdict "$BUILD") |"
+            echo "| \`npm test\` | $(verdict "$TESTS") |"
+            echo
+
+            for gate in typecheck build tests prisma lint install; do
+              if [ -f "$gate.txt" ]; then
+                lines=$(wc -l < "$gate.txt")
+                echo "<details><summary><code>$gate</code> &mdash; last 200 of $lines lines</summary>"
+                echo
+                echo '```'
+                tail -n 200 "$gate.txt"
+                echo '```'
+                echo
+                echo "</details>"
+                echo
+              fi
+            done
+          } > report.md
+
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment the report on the pull request
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file report.md
+
+      - name: Fail if any gate failed
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outputs.code }}
+          PRISMA: ${{ steps.prisma.outputs.code }}
+          TYPECHECK: ${{ steps.typecheck.outputs.code }}
+          LINT: ${{ steps.lint.outputs.code }}
+          BUILD: ${{ steps.build.outputs.code }}
+          TESTS: ${{ steps.tests.outputs.code }}
+        run: |
+          failed=0
+          for name in INSTALL PRISMA TYPECHECK LINT BUILD TESTS; do
+            value="${!name}"
+            if [ -n "$value" ] && [ "$value" != "0" ]; then
+              echo "$name failed with exit code $value"
+              failed=1
+            fi
+          done
+          exit "$failed"
