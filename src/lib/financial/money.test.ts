@@ -22,7 +22,15 @@ describe("poundsToPiastres", () => {
 		// 0.1 + 0.2 === 0.30000000000000004. The whole point of converting at the
 		// boundary is that this becomes exactly 30 piastres and stops drifting.
 		expect(poundsToPiastres(0.1 + 0.2)).toBe(30)
-		expect(poundsToPiastres(1.005 * 3)).toBe(302)
+
+		// 1.005 * 3 is NOT 3.015. It is 3.0149999999999997, so x100 gives
+		// 301.49999999999997 and rounds down to 301, not 302.
+		//
+		// This case is here precisely because it is counter-intuitive: reasoning
+		// about the decimal you meant instead of the double you actually have is
+		// how half-piastre errors get into a ledger. Pinning 301 documents that
+		// the function rounds the value it was really given.
+		expect(poundsToPiastres(1.005 * 3)).toBe(301)
 	})
 
 	it("rounds symmetrically around zero", () => {
