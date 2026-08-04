@@ -38,7 +38,8 @@ describe("normalizeEgyptPhone", () => {
     });
 
     it("handles a mix of Arabic-Indic and ASCII digits", () => {
-      expect(normalizeEgyptPhone("\u0660\u06611234\u0665678")).toBe("+201123456 78".replace(" ", ""));
+      // ٠١٠ + 1234567 + ٨  ->  01012345678
+      expect(normalizeEgyptPhone("\u0660\u0661\u06601234567\u0668")).toBe(CANONICAL);
     });
   });
 
@@ -96,8 +97,8 @@ describe("normalizeEgyptPhone", () => {
     });
 
     it("accepts any 12-digit number starting with 2 as Egyptian", () => {
-      // The `digits.startsWith("2")` branch is broader than intended: this is a
-      // Ukrainian-looking number, but it gets a + and is treated as valid.
+      // The `digits.startsWith("2")` branch is broader than intended: this is
+      // not an Egyptian number, but it gets a + and is treated as valid.
       // Pinned here because it is current behaviour, NOT because it is correct.
       expect(normalizeEgyptPhone("212345678901")).toBe("+212345678901");
     });
