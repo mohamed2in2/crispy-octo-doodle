@@ -50,6 +50,10 @@ interface WrongQuestion {
 }
 interface BalanceTx {
   id: string; type: string; amount: number; note: string | null; createdAt: string;
+  isPending?: boolean;
+  status?: "PAID" | "UNPAID";
+  paymentUrl?: string | null;
+  reference?: string | null;
 }
 interface Device {
   id: string; deviceId: string; label?: string | null;
@@ -271,6 +275,8 @@ export default function AccountPage() {
   const [wrongQuestions, setWrongQuestions] = useState<{ total: number; bySubject: Record<string, WrongQuestion[]>; questions: WrongQuestion[] } | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceTx, setBalanceTx] = useState<BalanceTx[]>([]);
+  const [txTab, setTxTab] = useState<"all" | "unpaid" | "paid">("all");
+  const [checkingTxId, setCheckingTxId] = useState<string | null>(null);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState("");
@@ -1262,26 +1268,144 @@ export default function AccountPage() {
                     </div>
                   </div>
                 )}
-                {balanceTx.length > 0 && (
-                  <div className="rounded-[20px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden" }}>
-                    <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-                      <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 16, color: "var(--ink)", margin: 0 }}>سجل المعاملات</h3>
-                    </div>
-                    <div>
-                      {balanceTx.map(tx => (
-                        <div key={tx.id} className="flex items-center justify-between" style={{ padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{new Date(tx.createdAt).toLocaleString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-                            {tx.note && <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{tx.note}</div>}
-                          </div>
-                          <span style={{ fontFamily: "var(--font-head)", fontWeight: 900, fontSize: 17, color: tx.amount > 0 ? "var(--brand)" : "var(--danger)" }}>
-                            {tx.amount > 0 ? "+" : ""}{tx.amount} جنيه
-                          </span>
+                {balanceTx.length > 0 && (() => {
+                  const unpaidList = balanceTx.filter(t => t.isPending || t.status === "UNPAID" || t.type.toLowerCase().includes("pending"));
+                  const paidList = balanceTx.filter(t => !t.isPending && t.status !== "UNPAID" && !t.type.toLowerCase().includes("pending"));
+                  const filteredList = txTab === "unpaid" ? unpaidList : txTab === "paid" ? paidList : balanceTx;
+
+                  const checkTxStatus = async (tx: BalanceTx) => {
+                    if (!tx.reference) return;
+                    setCheckingTxId(tx.id);
+                    try {
+                      const res = await fetch(`/api/payments/shakeout/status?transactionId=${tx.reference}`);
+                      const data = await res.json();
+                      if (data.status === "paid" || data.status === "completed" || data.status === "success") {
+                        alert("🎉 تم تأكيد الدفع وإضافة الرصيد بنجاح!");
+                        const balRes = await fetch("/api/student/balance", { credentials: "include" });
+                        if (balRes.ok) {
+                          const balData = await balRes.json();
+                          setBalance(balData.balance ?? 0);
+                          setBalanceTx(balData.transactions ?? []);
+                        }
+                      } else {
+                        alert(`حالة الفاتورة الحالية: ${data.status || "بانتظار السداد"}`);
+                      }
+                    } catch (err) {
+                      alert("تعذر جلب حالة الفاتورة حالياً.");
+                    } finally {
+                      setCheckingTxId(null);
+                    }
+                  };
+
+                  return (
+                    <div className="rounded-[20px] overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--border)" }}>
+                        <h3 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 16, color: "var(--ink)", margin: 0 }}>
+                          📜 سجل المعاملات والفواتير
+                        </h3>
+                        <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                          <button
+                            onClick={() => setTxTab("unpaid")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${txTab === "unpaid" ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "text-slate-400 hover:text-white"}`}
+                          >
+                            ⏳ الفواتير المعلقة ({unpaidList.length})
+                          </button>
+                          <button
+                            onClick={() => setTxTab("paid")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${txTab === "paid" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-400 hover:text-white"}`}
+                          >
+                            🟢 المدفوعة ({paidList.length})
+                          </button>
+                          <button
+                            onClick={() => setTxTab("all")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${txTab === "all" ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "text-slate-400 hover:text-white"}`}
+                          >
+                            📋 الكل ({balanceTx.length})
+                          </button>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="divide-y divide-[var(--border)]">
+                        {filteredList.length === 0 ? (
+                          <div className="py-8 text-center text-xs text-slate-400">
+                            {txTab === "unpaid" ? "لا توجد فواتير معلقة بانتظار السداد ✨" : txTab === "paid" ? "لا توجد معاملات مدفوعة حتى الآن" : "لا توجد معاملات مسجلة"}
+                          </div>
+                        ) : (
+                          filteredList.map(tx => {
+                            const isPending = tx.isPending || tx.status === "UNPAID" || tx.type.toLowerCase().includes("pending");
+                            const cleanNote = (tx.note || "").replace(/\|url:https?:\/\/[^\s|]+/, "").trim();
+
+                            return (
+                              <div key={tx.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-800/30 transition-colors">
+                                <div className="space-y-1 text-right">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {isPending ? (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                        ⏳ فاتورة معلقة (بانتظار السداد)
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                        ✓ معاملة مكتملة / مدفوعة
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+                                      {new Date(tx.createdAt).toLocaleString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  </div>
+                                  {cleanNote && <div style={{ fontSize: 13, color: "var(--ink-2)", fontWeight: 600 }}>{cleanNote}</div>}
+                                </div>
+
+                                <div className="flex items-center gap-3 justify-between sm:justify-end">
+                                  <span style={{
+                                    fontFamily: "var(--font-head)",
+                                    fontWeight: 900,
+                                    fontSize: 16,
+                                    color: isPending ? "#f59e0b" : tx.amount > 0 ? "var(--brand)" : "var(--danger)"
+                                  }}>
+                                    {isPending ? "" : tx.amount > 0 ? "+" : ""}{tx.amount} جنيه
+                                  </span>
+
+                                  {isPending && (
+                                    <div className="flex items-center gap-1.5">
+                                      {tx.paymentUrl ? (
+                                        <a
+                                          href={tx.paymentUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md hover:brightness-110 transition-all flex items-center gap-1"
+                                        >
+                                          💳 ادفع الفاتورة الآن
+                                        </a>
+                                      ) : tx.reference ? (
+                                        <button
+                                          onClick={() => alert(`رقم المرجع لتسديد الفاتورة: ${tx.reference}`)}
+                                          className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-all"
+                                        >
+                                          🔢 رقم المرجع ({tx.reference})
+                                        </button>
+                                      ) : null}
+
+                                      {tx.reference && (
+                                        <button
+                                          onClick={() => checkTxStatus(tx)}
+                                          disabled={checkingTxId === tx.id}
+                                          className="p-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all"
+                                          title="تحديث حالة الفاتورة"
+                                        >
+                                          {checkingTxId === tx.id ? "⏳" : "🔄"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 

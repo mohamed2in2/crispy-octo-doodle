@@ -87,13 +87,15 @@ export async function POST(req: NextRequest) {
       }
 
       const reference = result.data?.reference ? String(result.data.reference) : null;
+      const soCheckoutUrl = result.data?.payment_page_url || result.data?.url || null;
       if (reference) {
+        const noteText = `${shakeOutRefNote(reference)}${soCheckoutUrl ? `|url:${soCheckoutUrl}` : ""}`;
         await prisma.balanceTransaction.create({
           data: {
             userId: session.id,
             type: SHAKEOUT_PENDING_TYPE,
             amount: totalAmount,
-            note: shakeOutRefNote(reference),
+            note: noteText,
           },
         });
       }

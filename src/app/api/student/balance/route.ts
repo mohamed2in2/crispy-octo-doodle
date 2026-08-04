@@ -8,15 +8,40 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
-  const [user, transactions] = await Promise.all([
+  const [user, rawTransactions] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } }),
     prisma.balanceTransaction.findMany({
       where: { userId: session.id },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 50,
       select: { id: true, type: true, amount: true, note: true, createdAt: true },
     }),
   ]);
+
+  const transactions = rawTransactions.map(tx => {
+    const isPending = tx.type.toLowerCase().includes("pending");
+    let url: string | null = null;
+    let ref: string | null = null;
+    
+    if (tx.note) {
+      const urlMatch = tx.note.match(/\|url:(https?:\/\/[^\s|]+)/);
+      if (urlMatch) url = urlMatch[1];
+      const refMatch = tx.note.match(/(?:shakeout_ref|sha7nawy_ref):([^\s|]+)/);
+      if (refMatch) ref = refMatch[1];
+    }
+
+    return {
+      id: tx.id,
+      type: tx.type,
+      amount: tx.amount,
+      note: tx.note,
+      createdAt: tx.createdAt,
+      isPending,
+      status: isPending ? "UNPAID" : "PAID",
+      paymentUrl: url,
+      reference: ref,
+    };
+  });
 
   return NextResponse.json(
     { balance: user?.balance ?? 0, transactions },
