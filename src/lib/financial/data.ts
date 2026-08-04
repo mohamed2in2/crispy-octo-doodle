@@ -20,6 +20,7 @@ import type {
 	WalletEntry,
 	WalletSummary,
 } from "./types"
+import { poundsToPiastres } from "./money"
 import { projectInvoiceStatus } from "./status"
 
 /* ------------------------------------------------------------------ wiring -- */
@@ -97,25 +98,13 @@ type BalanceApiResponse = {
 }
 
 /**
- * Converts a value that may be stored in pounds into integer piastres.
- *
- * The existing schema's units are unconfirmed — `balanceTransaction.amount` has
- * not been verified as Int or Float. This performs the conversion in one place
- * so that if the column turns out to be pounds-as-float, the fix is here and
- * nowhere else. Rounding is half-up on the piastre, never truncating a student's
- * money downward.
- */
-function toPiastres(value: number | undefined): number {
-	if (typeof value !== "number" || !Number.isFinite(value)) {
-		return 0
-	}
-	return Math.round(value * 100)
-}
-
-/**
  * Wallet balance and ledger.
  *
  * BACKEND: live. Reads GET /api/student/balance.
+ *
+ * Amounts arrive as Float pounds — confirmed against prisma/schema.prisma — and
+ * are converted to integer piastres at this boundary by poundsToPiastres. See
+ * ./money.ts for why.
  */
 export async function getWalletSummary(): Promise<WalletSummary> {
 	const response = await authorizedFetch("/api/student/balance")
@@ -139,12 +128,14 @@ export async function getWalletSummary(): Promise<WalletSummary> {
 		: []
 
 	const entries: WalletEntry[] = rawEntries.map((row, index) => {
-		const amount = toPiastres(row.amount)
+		const amount = poundsToPiastres(row.amount)
 		const type = typeof row.type === "string" ? row.type : ""
 		const pending = type.toLowerCase().includes("pending")
 
 		return {
 			id: String(row.id ?? `entry-${index}`),
+			// The schema comment on BalanceTransaction.amount states positive is a
+			// credit and negative a debit, so the sign is the source of truth.
 			direction: amount < 0 ? "debit" : "credit",
 			amountPiastres: Math.abs(amount),
 			pending,
@@ -160,7 +151,7 @@ export async function getWalletSummary(): Promise<WalletSummary> {
 		.reduce((total, entry) => total + entry.amountPiastres, 0)
 
 	return {
-		balancePiastres: toPiastres(payload.balance),
+		balancePiastres: poundsToPiastres(payload.balance),
 		pendingPiastres,
 		entries: entries.filter((entry) => !entry.pending),
 	}
@@ -312,7 +303,7 @@ export async function listPaymentMethods(): Promise<
 		{
 			key: "internal",
 			// "\u0631\u0635\u064a\u062f \u0627\u0644\u0645\u062d\u0641\u0638\u0629" - wallet balance
-			label: "\u0631\u0635\u064a\u062f \u0627\u0644\u0645\u062d\u0641\u0637\u0629",
+			label: "\u0631\u0635\u064a\u062f \u0627\u0644\u0645\u062d\u0641\u0638\u0629",
 			provider: "internal",
 			category: "wallet",
 			available: true,
