@@ -53,10 +53,12 @@ export async function POST(req: NextRequest) {
     const verifiedData = verified.data;
     const verifiedReference = verifiedData.reference ? String(verifiedData.reference) : null;
 
+    const searchRef = String(reference || transactionId || "").split("/")[0];
+
     const pendingTx = await prisma.balanceTransaction.findFirst({
       where: {
         type: SHAKEOUT_PENDING_TYPE,
-        note: shakeOutRefNote(String(reference)),
+        note: { contains: searchRef },
       },
       select: { id: true, userId: true, amount: true },
     });
@@ -65,14 +67,14 @@ export async function POST(req: NextRequest) {
       const alreadyCredited = await prisma.balanceTransaction.findFirst({
         where: {
           type: SHAKEOUT_CREDITED_TYPE,
-          note: shakeOutRefNote(String(reference)),
+          note: { contains: searchRef },
         },
         select: { id: true },
       });
       if (alreadyCredited) {
         return NextResponse.json({ success: true, processed: false, reason: "Already credited" }, { status: 200 });
       }
-      console.warn(`[Shake-Out Webhook] No pending transaction found for ref ${reference}`);
+      console.warn(`[Shake-Out Webhook] No pending transaction found for ref ${reference} (searchRef: ${searchRef})`);
       return NextResponse.json({ error: "Unknown transaction reference" }, { status: 400 });
     }
 

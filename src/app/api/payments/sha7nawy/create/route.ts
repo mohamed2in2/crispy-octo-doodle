@@ -100,10 +100,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const finalCheckoutUrl = soCheckoutUrl || (reference ? `https://dash.shake-out.com/invoice/${reference}` : null);
+
       return NextResponse.json({
         success: true,
         provider: "shakeout",
         reference: result.data?.reference,
+        checkoutUrl: finalCheckoutUrl,
         method: methodConfig.id,
         methodLabel: methodConfig.label,
         baseAmount,

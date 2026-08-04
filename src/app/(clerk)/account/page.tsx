@@ -1103,7 +1103,7 @@ export default function AccountPage() {
 
                             {isFawry && (
                               <div className="p-3 rounded-xl text-xs text-amber-600 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 text-center leading-relaxed font-bold">
-                                🏪 خيار فوري كشك: سيتم إصدار كود شحن مرجعي (Fawry Code) لتدفعه كاش في أي كشك فوري أو سوبرماركت دون الحاجة لرقم محفظة.
+                                🏪 خيار فوري كشك: سيتم تحويلك للبوابة لإصدار الفاتورة وكود الشحن المرجعي لتدفعه كاش في أي كشك فوري.
                               </div>
                             )}
 
@@ -1140,8 +1140,9 @@ export default function AccountPage() {
                                 const d = await res.json().catch(() => ({}));
                                 setWalletLoading(false);
                                 if (res.ok && d.success) {
-                                  if (d.data?.payment_page_url || d.data?.url) {
-                                    window.location.href = d.data.payment_page_url || d.data.url;
+                                  const targetUrl = d.checkoutUrl || d.data?.payment_page_url || d.data?.url || (d.reference ? `https://dash.shake-out.com/invoice/${d.reference}` : null);
+                                  if (targetUrl) {
+                                    window.location.href = targetUrl;
                                     return;
                                   }
                                   setWalletModal({

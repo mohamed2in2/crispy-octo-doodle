@@ -259,8 +259,9 @@ export function BookingButton({
       const d = await res.json().catch(() => ({}));
       setWalletLoading(false);
       if (res.ok && d.success) {
-        if (d.data?.payment_page_url || d.data?.url) {
-          window.location.href = d.data.payment_page_url || d.data.url;
+        const targetUrl = d.checkoutUrl || d.data?.payment_page_url || d.data?.url || (d.reference ? `https://dash.shake-out.com/invoice/${d.reference}` : null);
+        if (targetUrl) {
+          window.location.href = targetUrl;
           return;
         }
         setWalletModal({

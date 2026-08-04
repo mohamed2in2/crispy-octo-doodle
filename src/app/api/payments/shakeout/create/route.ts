@@ -66,16 +66,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const finalCheckoutUrl = checkoutUrl || (reference ? `https://dash.shake-out.com/invoice/${reference}` : null);
+
     return NextResponse.json({
       success: true,
       provider: "shakeout",
       reference: result.data?.reference,
+      checkoutUrl: finalCheckoutUrl,
       method: selectedMethod,
       methodLabel: methodConfig?.label || "Shake-Out Payment",
       baseAmount,
       taxAmount,
       totalAmount,
-      instructions: result.message || methodConfig?.shortNote || "تم بدء العملية عبر Shake-Out بنجاح",
+      instructions: result.message || methodConfig?.shortNote || "تم إنشاء الفاتورة بنجاح. جارٍ توجيهك للسداد...",
       data: result.data,
     });
   } catch (error: any) {
