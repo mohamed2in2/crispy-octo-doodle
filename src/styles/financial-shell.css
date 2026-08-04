@@ -1,0 +1,115 @@
+/*
+ * Financial Center shell.
+ *
+ * A two-column layout that collapses to a horizontally scrollable tab strip on
+ * narrow screens. The navigation is deliberately identical on every page in the
+ * section; only the body changes.
+ */
+
+.ds-fin-shell {
+	display: grid;
+	grid-template-columns: 220px minmax(0, 1fr);
+	gap: var(--ds-space-8);
+	align-items: start;
+	max-width: 1180px;
+	margin-inline: auto;
+	padding: var(--ds-space-8) var(--ds-space-6) var(--ds-space-16);
+}
+
+.ds-fin-shell__main {
+	min-width: 0;
+}
+
+.ds-fin-nav__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--ds-space-1);
+}
+
+.ds-fin-nav__link {
+	display: block;
+	padding: var(--ds-space-3) var(--ds-space-4);
+	border-radius: var(--ds-radius-control);
+	color: var(--ds-text-muted);
+	font-size: 0.875rem;
+	text-decoration: none;
+	border: 1px solid transparent;
+	transition: background var(--ds-dur-fast) var(--ds-ease),
+		color var(--ds-dur-fast) var(--ds-ease);
+}
+
+.ds-fin-nav__link:hover {
+	background: var(--ds-surface-2);
+	color: var(--ds-text);
+}
+
+.ds-fin-nav__link:focus-visible {
+	outline: 2px solid var(--ds-accent);
+	outline-offset: 2px;
+}
+
+.ds-fin-nav__link[data-active="true"] {
+	background: var(--ds-accent-subtle);
+	color: var(--ds-accent);
+	font-weight: 600;
+}
+
+/* Vertical rhythm for stacked cards within a financial page. */
+.ds-fin-stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ds-space-6);
+}
+
+.ds-fin-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+	gap: var(--ds-space-6);
+}
+
+/* A label above a value, used for invoice metadata. */
+.ds-field__label {
+	font-size: 0.75rem;
+	color: var(--ds-text-muted);
+	margin: 0 0 var(--ds-space-1);
+}
+
+.ds-field__value {
+	font-size: 0.9375rem;
+	color: var(--ds-text);
+	margin: 0;
+}
+
+@media (max-width: 900px) {
+	.ds-fin-shell {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--ds-space-6);
+		padding: var(--ds-space-6) var(--ds-space-4) var(--ds-space-12);
+	}
+
+	/*
+	 * The sidebar becomes a scrolling tab strip rather than a hamburger menu:
+	 * six destinations are few enough to keep visible, and hiding navigation on
+	 * the platform's majority device would undermine the consistency this shell
+	 * exists to provide.
+	 */
+	.ds-fin-nav__list {
+		flex-direction: row;
+		overflow-x: auto;
+		gap: var(--ds-space-2);
+		padding-bottom: var(--ds-space-2);
+		scrollbar-width: none;
+	}
+
+	.ds-fin-nav__list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.ds-fin-nav__link {
+		white-space: nowrap;
+		border: 1px solid var(--ds-border);
+	}
+}
