@@ -1,0 +1,207 @@
+/*
+ * Financial design tokens.
+ *
+ * Additive by design: this file defines new custom properties and a small set
+ * of `ds-` prefixed classes. It does not override any existing selector, so it
+ * cannot regress current pages. Import it from the layout of the route segment
+ * that needs it.
+ *
+ * These values extend the existing brand (dark surfaces, single blue accent,
+ * Cairo, RTL). They are not a rebrand.
+ */
+
+:root {
+	/* Surfaces: 0 is the page, each step up is one layer closer to the reader. */
+	--ds-surface-0: #0b0d10;
+	--ds-surface-1: #12151a;
+	--ds-surface-2: #191d24;
+	--ds-surface-3: #212731;
+
+	--ds-border: #262c36;
+	--ds-border-strong: #333b47;
+
+	--ds-text: #e8ebf0;
+	--ds-text-muted: #9ba4b2;
+
+	/* One accent colour only. Resist adding a second. */
+	--ds-accent: #3b82f6;
+	--ds-accent-hover: #2e6fd9;
+	--ds-accent-subtle: rgba(59, 130, 246, 0.12);
+
+	/* Status colours. Never the sole signal: always pair with a text label. */
+	--ds-success: #34d399;
+	--ds-warning: #fbbf24;
+	--ds-danger: #f87171;
+	--ds-neutral: #9ba4b2;
+
+	--ds-radius-control: 8px;
+	--ds-radius-card: 12px;
+
+	--ds-space-1: 4px;
+	--ds-space-2: 8px;
+	--ds-space-3: 12px;
+	--ds-space-4: 16px;
+	--ds-space-6: 24px;
+	--ds-space-8: 32px;
+	--ds-space-12: 48px;
+	--ds-space-16: 64px;
+
+	--ds-ease: cubic-bezier(0.2, 0, 0.2, 1);
+	--ds-dur-fast: 120ms;
+	--ds-dur-base: 200ms;
+}
+
+/* ---------------------------------------------------------------- Amount -- */
+
+.ds-amount {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--ds-space-2);
+	color: var(--ds-text);
+	line-height: 1.2;
+}
+
+/*
+ * Tabular figures so that columns of money line up vertically. Without this,
+ * proportional digits make a table of amounts look ragged and untrustworthy.
+ */
+.ds-amount__value {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: "tnum" 1;
+	letter-spacing: 0;
+	white-space: nowrap;
+}
+
+.ds-amount__currency {
+	color: var(--ds-text-muted);
+	font-weight: 400;
+}
+
+.ds-amount--sm .ds-amount__value {
+	font-size: 0.8125rem;
+	font-weight: 500;
+}
+
+.ds-amount--sm .ds-amount__currency {
+	font-size: 0.6875rem;
+}
+
+.ds-amount--base .ds-amount__value {
+	font-size: 0.9375rem;
+	font-weight: 500;
+}
+
+.ds-amount--base .ds-amount__currency {
+	font-size: 0.8125rem;
+}
+
+.ds-amount--lg .ds-amount__value {
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.ds-amount--lg .ds-amount__currency {
+	font-size: 0.875rem;
+}
+
+/*
+ * Hero is for the single most important number on a page, such as the wallet
+ * balance. Only one per page.
+ */
+.ds-amount--hero .ds-amount__value {
+	font-size: 2.25rem;
+	font-weight: 600;
+}
+
+.ds-amount--hero .ds-amount__currency {
+	font-size: 1rem;
+}
+
+.ds-amount--credit .ds-amount__value {
+	color: var(--ds-success);
+}
+
+.ds-amount--debit .ds-amount__value {
+	color: var(--ds-text);
+}
+
+/* ----------------------------------------------------------- StatusBadge -- */
+
+.ds-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--ds-space-2);
+	padding: 3px 10px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	font-size: 0.75rem;
+	font-weight: 500;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.ds-badge__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	background: currentColor;
+}
+
+.ds-badge--success {
+	color: var(--ds-success);
+	background: rgba(52, 211, 153, 0.12);
+	border-color: rgba(52, 211, 153, 0.24);
+}
+
+.ds-badge--warning {
+	color: var(--ds-warning);
+	background: rgba(251, 191, 36, 0.12);
+	border-color: rgba(251, 191, 36, 0.24);
+}
+
+.ds-badge--danger {
+	color: var(--ds-danger);
+	background: rgba(248, 113, 113, 0.12);
+	border-color: rgba(248, 113, 113, 0.24);
+}
+
+.ds-badge--neutral {
+	color: var(--ds-neutral);
+	background: rgba(155, 164, 178, 0.12);
+	border-color: rgba(155, 164, 178, 0.24);
+}
+
+/* --------------------------------------------------------------- Skeleton -- */
+
+.ds-skeleton {
+	display: block;
+	border-radius: var(--ds-radius-control);
+	background: linear-gradient(
+		90deg,
+		var(--ds-surface-2) 0%,
+		var(--ds-surface-3) 50%,
+		var(--ds-surface-2) 100%
+	);
+	background-size: 200% 100%;
+	animation: ds-skeleton-shimmer 1.4s var(--ds-ease) infinite;
+}
+
+@keyframes ds-skeleton-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+/*
+ * Respect the reader's stated preference. A shimmering skeleton is decorative,
+ * not informative, so it is safe to stop it entirely.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.ds-skeleton {
+		animation: none;
+	}
+}
