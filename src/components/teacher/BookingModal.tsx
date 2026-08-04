@@ -16,6 +16,7 @@ interface BookingPlan {
 }
 
 interface BookingModalProps {
+  teacherId?: string;
   priceMonthly: number | null;
   priceTermly: number | null;
   priceYearly: number | null;
@@ -96,6 +97,7 @@ function buildWhatsAppUrl(
 }
 
 export function BookingButton({
+  teacherId,
   priceMonthly,
   priceTermly,
   priceYearly,
@@ -291,6 +293,8 @@ export function BookingButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          teacherId: teacherId || "",
+          planType: plan.type,
           amount: plan.price,
           planLabel: plan.label,
           teacherName,

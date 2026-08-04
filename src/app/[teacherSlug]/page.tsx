@@ -118,6 +118,7 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
 
         {/* Booking Button + Modal */}
         <BookingButton
+          teacherId={p.teacherId}
           priceMonthly={p.priceMonthly}
           priceTermly={p.priceTermly}
           priceYearly={p.priceYearly}
