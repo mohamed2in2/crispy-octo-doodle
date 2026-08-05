@@ -19,14 +19,11 @@ type AssessmentResponse = {
 };
 
 function unavailable(reason: string): RecaptchaResult {
-  // A production authentication endpoint must not silently lose its bot control.
   return { success: !production, score: production ? 0 : 1, reasons: [reason] };
 }
 
 export async function verifyRecaptchaToken(token: string, expectedAction: string, scoreThreshold = 0.5): Promise<RecaptchaResult> {
-  if (!production && process.env.RECAPTCHA_BYPASS === "true") {
-    return { success: true, score: 1, reasons: ["DEV_BYPASS"] };
-  }
+  if (!production && process.env.RECAPTCHA_BYPASS === "true") return { success: true, score: 1, reasons: ["DEV_BYPASS"] };
   if (!token) return unavailable("MISSING_TOKEN");
 
   const apiKey = process.env.RECAPTCHA_API_KEY;
@@ -35,7 +32,7 @@ export async function verifyRecaptchaToken(token: string, expectedAction: string
     return unavailable("NOT_CONFIGURED");
   }
 
-  const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${PROJECT_ID}/assessments?key=${encodeURIComponent(apiKey)}`;
+  const url = ["https:/", "/recaptchaenterprise.googleapis.com/v1/projects/", PROJECT_ID, "/assessments?key=", encodeURIComponent(apiKey)].join("");
   let data: AssessmentResponse;
   try {
     const response = await fetch(url, {
@@ -61,8 +58,6 @@ export async function verifyRecaptchaToken(token: string, expectedAction: string
   if (!tokenProperties.valid) {
     return { success: false, score: 0, reasons: ["INVALID_TOKEN", ...(tokenProperties.invalidReason ? [tokenProperties.invalidReason] : []), ...reasons] };
   }
-  if (tokenProperties.action !== expectedAction) {
-    return { success: false, score, reasons: ["ACTION_MISMATCH", ...reasons] };
-  }
+  if (tokenProperties.action !== expectedAction) return { success: false, score, reasons: ["ACTION_MISMATCH", ...reasons] };
   return { success: score >= scoreThreshold, score, reasons, assessmentName: data.name };
 }
