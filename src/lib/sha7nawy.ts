@@ -1,14 +1,6 @@
 /**
  * Mobile Wallet & Payment Gateway SDK Service (Shake-Out / Sha7nawy)
- * Handles payment transactions across Egyptian mobile carriers and providers:
- * - Vodafone Cash (vf_cash) -> *9*1# prompt
- * - Etisalat Cash (et_cash) -> e& Money App prompt
- * - Orange Cash (or_cash)   -> Wallet prompt
- * - WE Pay (we_pay)         -> WE Pay App prompt
- * - InstaPay (instapay)     -> Instant Payment Network
- * - Fawry (fawry)           -> Kiosk reference code
- * - Cards (bank_card, meeza)-> Visa, Mastercard & Meeza
- * - Platform & Vouchers (wallet_balance, voucher)
+ * Handles payment transactions across Egyptian mobile carriers and providers.
  */
 
 import { getPaymentMethod, PAYMENT_METHODS } from "./payment-methods";
@@ -63,22 +55,14 @@ export interface Sha7nawyCreateResponse {
   error?: string;
 }
 
-/**
- * Dynamic lookup helper that resolves labels from central PAYMENT_METHODS.
- */
 export const WALLET_METHOD_LABELS: Record<string, string> = Object.fromEntries(
-  PAYMENT_METHODS.map((m) => [m.id, m.label])
+  PAYMENT_METHODS.map((method) => [method.id, method.label]),
 );
 
-/**
- * Dynamic lookup helper that resolves instructions from central PAYMENT_METHODS.
- */
 export const WALLET_INSTRUCTIONS: Record<string, string> = Object.fromEntries(
-  PAYMENT_METHODS.map((m) => [m.id, m.shortNote])
+  PAYMENT_METHODS.map((method) => [method.id, method.shortNote]),
 );
 
-// Ledger types + note format used to bind Sha7nawy webhooks to the pending
-// payment that was recorded when a logged-in user initiated the payment.
 export const SHA7NAWY_PENDING_TYPE = "credit_sha7nawy_pending";
 export const SHA7NAWY_CREDITED_TYPE = "credit_sha7nawy_wallet";
 
@@ -86,12 +70,9 @@ export function sha7nawyRefNote(reference: string): string {
   return `sha7nawy_ref:${reference}`;
 }
 
-/**
- * Calculates tax/fee on base payment amount based on the selected method config
- */
 export function calculateAmountWithTax(
   baseAmount: number,
-  methodId: string = "vf_cash"
+  methodId: string = "vf_cash",
 ): { baseAmount: number; taxAmount: number; totalAmount: number; feePercentage: number } {
   const method = getPaymentMethod(methodId);
   const feePct = method?.feePercentage ?? 2;
@@ -100,17 +81,11 @@ export function calculateAmountWithTax(
   return { baseAmount, taxAmount, totalAmount, feePercentage: feePct };
 }
 
-/**
- * Validates an Egyptian mobile wallet phone number (11 digits starting with 01)
- */
 export function validateEgyptianPhone(phone: string): boolean {
   const clean = phone.trim().replace(/\D/g, "");
   return /^01[0125]\d{8}$/.test(clean);
 }
 
-/**
- * Normalizes phone number to 11 digits format (e.g. 01234567890)
- */
 export function normalizeEgyptianPhone(phone: string): string {
   let clean = phone.trim().replace(/\D/g, "");
   if (clean.startsWith("20")) {
@@ -122,11 +97,8 @@ export function normalizeEgyptianPhone(phone: string): string {
   return clean;
 }
 
-/**
- * Creates a mobile wallet or gateway payment request via Payment Gateway API
- */
 export async function createSha7nawyPayment(
-  params: CreatePaymentParams
+  params: CreatePaymentParams,
 ): Promise<Sha7nawyCreateResponse> {
   const baseUrl = (process.env.SHA7NAWY_BASE_URL || "https://gate.sha7nawy.com").replace(/\/$/, "");
   const publicKey = process.env.SHA7NAWY_PUBLIC_KEY;
@@ -149,16 +121,13 @@ export async function createSha7nawyPayment(
     };
   }
 
-  // Validate phone number if method requires it
-  let cleanPhone = params.number ? normalizeEgyptianPhone(params.number) : "01000000000";
-  if (methodConfig?.needsPhone) {
-    if (!validateEgyptianPhone(cleanPhone)) {
-      return {
-        status: false,
-        code: 400,
-        message: "رقم المحفظة غير صحيح — يجب أن يكون رقم مصري مكون من 11 رقماً يبدأ بـ 01",
-      };
-    }
+  const cleanPhone = params.number ? normalizeEgyptianPhone(params.number) : "01000000000";
+  if (methodConfig?.needsPhone && !validateEgyptianPhone(cleanPhone)) {
+    return {
+      status: false,
+      code: 400,
+      message: "رقم المحفظة غير صحيح — يجب أن يكون رقم مصري مكون من 11 رقماً يبدأ بـ 01",
+    };
   }
 
   const minAmt = methodConfig?.minAmount ?? 5;
@@ -174,13 +143,13 @@ export async function createSha7nawyPayment(
   const endpoint = `${baseUrl}/api/payment/create`;
 
   try {
-    const res = await fetch(endpoint, {
+    const response = await fetch(endpoint, {
       method: "POST",
       signal: AbortSignal.timeout(6000),
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "Content-Type": "application/json",
-        "Authorization": publicKey,
+        Authorization: publicKey,
       },
       body: JSON.stringify({
         number: cleanPhone,
@@ -192,25 +161,28 @@ export async function createSha7nawyPayment(
       }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
 
-    if (!res.ok) {
+    if (!response.ok) {
       return {
         status: false,
-        code: res.status,
-        message: data.message || data.error || `تعذر بدء عملية الدفع (${res.status})`,
+        code: response.status,
+        message:
+          (typeof data.message === "string" && data.message) ||
+          (typeof data.error === "string" && data.error) ||
+          `تعذر بدء عملية الدفع (${response.status})`,
       };
     }
 
     const shortNote = methodConfig?.shortNote || WALLET_INSTRUCTIONS[params.method] || "تم بدء العملية بنجاح";
 
     return {
-      status: data.status ?? true,
-      code: data.code ?? 200,
-      message: data.message || shortNote,
-      data: data.data,
+      status: typeof data.status === "boolean" ? data.status : true,
+      code: typeof data.code === "number" ? data.code : 200,
+      message: typeof data.message === "string" && data.message ? data.message : shortNote,
+      data: data.data as Sha7nawyPaymentData | undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Gateway API] Error calling create payment:", error);
     return {
       status: false,
@@ -220,9 +192,6 @@ export async function createSha7nawyPayment(
   }
 }
 
-/**
- * Confirms a payment transaction using ref_code
- */
 export async function confirmSha7nawyPayment(ref_code: string): Promise<Sha7nawyCreateResponse> {
   const baseUrl = (process.env.SHA7NAWY_BASE_URL || "https://gate.sha7nawy.com").replace(/\/$/, "");
   const publicKey = process.env.SHA7NAWY_PUBLIC_KEY;
@@ -232,33 +201,32 @@ export async function confirmSha7nawyPayment(ref_code: string): Promise<Sha7nawy
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/payment/confirm`, {
+    const response = await fetch(`${baseUrl}/api/payment/confirm`, {
       method: "POST",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "Content-Type": "application/json",
-        "Authorization": publicKey,
+        Authorization: publicKey,
       },
       body: JSON.stringify({ ref_code }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
     return {
-      status: data.status ?? res.ok,
-      code: data.code ?? res.status,
-      message: data.message || (res.ok ? "تم التأكيد بنجاح" : "تعذر التأكيد"),
-      data: data.data,
+      status: typeof data.status === "boolean" ? data.status : response.ok,
+      code: typeof data.code === "number" ? data.code : response.status,
+      message: typeof data.message === "string" && data.message ? data.message : response.ok ? "تم التأكيد بنجاح" : "تعذر التأكيد",
+      data: data.data as Sha7nawyPaymentData | undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Gateway API] Error calling confirm payment:", error);
     return { status: false, code: 500, message: "تعذر الاتصال بسيرفر التأكيد" };
   }
 }
 
-/**
- * Server-to-server payment verification (Secret Key Auth)
- */
-export async function getSha7nawyPaymentInfo(transaction_id: string | number): Promise<Sha7nawyCreateResponse> {
+export async function getSha7nawyPaymentInfo(
+  transaction_id: string | number,
+): Promise<Sha7nawyCreateResponse> {
   const baseUrl = (process.env.SHA7NAWY_BASE_URL || "https://gate.sha7nawy.com").replace(/\/$/, "");
   const secretKey = process.env.SHA7NAWY_SECRET_KEY;
 
@@ -267,22 +235,22 @@ export async function getSha7nawyPaymentInfo(transaction_id: string | number): P
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/payment/info/${transaction_id}`, {
+    const response = await fetch(`${baseUrl}/api/payment/info/${transaction_id}`, {
       method: "GET",
       headers: {
-        "Accept": "application/json",
-        "Authorization": secretKey,
+        Accept: "application/json",
+        Authorization: secretKey,
       },
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
     return {
-      status: data.status ?? res.ok,
-      code: data.code ?? res.status,
-      message: data.message || "تم استعلام البيانات بنجاح",
-      data: data.data,
+      status: typeof data.status === "boolean" ? data.status : response.ok,
+      code: typeof data.code === "number" ? data.code : response.status,
+      message: typeof data.message === "string" && data.message ? data.message : "تم استعلام البيانات بنجاح",
+      data: data.data as Sha7nawyPaymentData | undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Gateway API] Error querying payment info:", error);
     return { status: false, code: 500, message: "تعذر الاستعلام من سيرفر التأكيد" };
   }
