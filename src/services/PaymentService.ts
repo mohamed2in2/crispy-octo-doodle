@@ -1,6 +1,12 @@
 import { getPaymentMethod } from "@/lib/payment-methods";
-import { createSha7nawyPayment, Sha7nawyCreateResponse } from "@/lib/sha7nawy";
-import { createShakeOutPayment, ShakeOutCreateResponse } from "@/lib/shakeout";
+import { createSha7nawyPayment, type Sha7nawyCreateResponse } from "@/lib/sha7nawy";
+import { createShakeOutPayment, type ShakeOutCreateResponse } from "@/lib/shakeout";
+
+/** Shake-Out may only process Fawry. */
+export const SHAKEOUT_METHODS = new Set(["fawry"]);
+
+/** Sha7nawy may only process these mobile wallets. */
+export const SHA7NAWY_METHODS = new Set(["vf_cash", "et_cash", "or_cash"]);
 
 export interface UnifiedPaymentParams {
   method: string;
@@ -24,7 +30,7 @@ export interface UnifiedPaymentResult {
   reference?: string;
   checkoutUrl?: string;
   instructions?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
 }
 
@@ -33,10 +39,74 @@ export interface IPaymentProvider {
   createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult>;
 }
 
+export function assertMethodProviderSeparation(methodId: string): {
+  ok: true;
+  provider: "shakeout" | "sha7nawy" | "internal" | "bank";
+} | { ok: false; message: string } {
+  const methodConfig = getPaymentMethod(methodId);
+  if (!methodConfig) {
+    return { ok: false, message: "طريقة الدفع غير معروفة أو غير مدعومة" };
+  }
+  if (!methodConfig.available) {
+    return {
+      ok: false,
+      message:
+        methodConfig.unavailableNote ||
+        `طريقة الدفع (${methodConfig.label}) غير متاحة حالياً.`,
+    };
+  }
+
+  // Hard provider locks — never trust config alone for routing safety.
+  if (
+    methodId === "we_pay" ||
+    methodId === "instapay" ||
+    methodId === "bank_card" ||
+    methodId === "meeza"
+  ) {
+    return { ok: false, message: "طريقة الدفع غير مدعومة" };
+  }
+
+  if (methodConfig.provider === "shakeout") {
+    if (!SHAKEOUT_METHODS.has(methodId)) {
+      return {
+        ok: false,
+        message: "Shake-Out يدعم فوري فقط. لا يمكن توجيه هذه الطريقة عبر Shake-Out.",
+      };
+    }
+    return { ok: true, provider: "shakeout" };
+  }
+
+  if (methodConfig.provider === "sha7nawy") {
+    if (!SHA7NAWY_METHODS.has(methodId)) {
+      return {
+        ok: false,
+        message: "Sha7nawy يدعم فودافون كاش واتصالات كاش وأورانج كاش فقط.",
+      };
+    }
+    return { ok: true, provider: "sha7nawy" };
+  }
+
+  if (methodConfig.provider === "internal" || methodConfig.provider === "bank") {
+    return { ok: true, provider: methodConfig.provider };
+  }
+
+  return { ok: false, message: "مزود الدفع غير مدعوم" };
+}
+
 export class ShakeOutPaymentProvider implements IPaymentProvider {
   name = "shakeout";
 
   async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+    if (!SHAKEOUT_METHODS.has(params.method)) {
+      return {
+        success: false,
+        code: 400,
+        message: "Shake-Out يدعم فوري فقط",
+        provider: "shakeout",
+        error: "Method not allowed on Shake-Out",
+      };
+    }
+
     const res: ShakeOutCreateResponse = await createShakeOutPayment({
       amount: params.amount,
       method: params.method,
@@ -58,7 +128,7 @@ export class ShakeOutPaymentProvider implements IPaymentProvider {
       provider: "shakeout",
       reference: res.data?.reference || res.data?.invoice_id,
       checkoutUrl: res.data?.payment_page_url || res.data?.url,
-      data: res.data,
+      data: res.data as Record<string, unknown> | undefined,
       error: res.error || (!res.status ? res.message : undefined),
     };
   }
@@ -68,9 +138,19 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
   name = "sha7nawy";
 
   async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+    if (!SHA7NAWY_METHODS.has(params.method)) {
+      return {
+        success: false,
+        code: 400,
+        message: "Sha7nawy يدعم المحافظ المصرح بها فقط",
+        provider: "sha7nawy",
+        error: "Method not allowed on Sha7nawy",
+      };
+    }
+
     const res: Sha7nawyCreateResponse = await createSha7nawyPayment({
       amount: params.amount,
-      method: params.method as any,
+      method: params.method,
       number: params.number || "",
       client: params.client,
       details: params.details,
@@ -79,33 +159,19 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
 
     const methodConfig = getPaymentMethod(params.method);
 
-    // Smart Fallback: If Sha7nawy returned a provider error (e.g. "خطأ لدى مزود الخدمة") or status false,
-    // and Shake-Out API key is configured, fallback to Shake-Out vendor invoice so the user can still pay.
-    if (!res.status && process.env.SHAKEOUT_PUBLIC_KEY) {
-      console.warn(`[PaymentService] Sha7nawy failed (${res.message}). Attempting fallback to Shake-Out vendor invoice...`);
-      try {
-        const shakeout = new ShakeOutPaymentProvider();
-        const fallbackRes = await shakeout.createPayment(params);
-        if (fallbackRes.success) {
-          return {
-            ...fallbackRes,
-            message: "تم تجهيز رابط الدفع الإلكتروني البديل (Shake-Out) لإتمام العملية بأمان.",
-          };
-        }
-      } catch (err) {
-        console.error("[PaymentService] Fallback to Shake-Out failed:", err);
-      }
-    }
+    // IMPORTANT: never silently fall back from Sha7nawy to Shake-Out.
 
     return {
       success: res.status,
       code: res.code,
       message: res.message,
       provider: "sha7nawy",
-      reference: res.data?.reference || (res.data?.id ? String(res.data.id) : undefined),
+      reference:
+        res.data?.reference ||
+        (res.data?.id ? String(res.data.id) : undefined),
       checkoutUrl: res.data?.payment_page_url || res.data?.url,
       instructions: methodConfig?.shortNote || res.message,
-      data: res.data,
+      data: res.data as Record<string, unknown> | undefined,
       error: res.error || (!res.status ? res.message : undefined),
     };
   }
@@ -114,7 +180,7 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
 export class InternalPaymentProvider implements IPaymentProvider {
   name = "internal";
 
-  async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+  async createPayment(): Promise<UnifiedPaymentResult> {
     return {
       success: true,
       code: 200,
@@ -132,42 +198,34 @@ export class PaymentService {
     internal: new InternalPaymentProvider(),
   };
 
-  /**
-   * Register or override a payment gateway provider for future expansion
-   */
   public static registerProvider(name: string, provider: IPaymentProvider) {
     this.providers[name] = provider;
   }
 
-  /**
-   * Unified entry point: inspects method config to route to Shake-Out (Fawry), Sha7nawy (Wallets), or Internal
-   */
-  public static async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
-    const methodConfig = getPaymentMethod(params.method);
-    
-    if (!methodConfig) {
+  public static async createPayment(
+    params: UnifiedPaymentParams,
+  ): Promise<UnifiedPaymentResult> {
+    const gate = assertMethodProviderSeparation(params.method);
+    if (!gate.ok) {
       return {
         success: false,
         code: 400,
-        message: "طريقة الدفع غير معروفة أو غير مدعومة",
+        message: gate.message,
         provider: "unknown",
-        error: "Invalid payment method",
+        error: gate.message,
       };
     }
 
-    if (!methodConfig.available) {
+    const provider = this.providers[gate.provider];
+    if (!provider) {
       return {
         success: false,
         code: 400,
-        message: methodConfig.unavailableNote || `طريقة الدفع (${methodConfig.label}) غير متاحة حالياً.`,
-        provider: methodConfig.provider as any,
-        error: "Payment method unavailable",
+        message: "مزود الدفع غير مهيأ",
+        provider: "unknown",
+        error: "Provider missing",
       };
     }
-
-    // Provider routing: Fawry uses Shake-Out; Wallets (vf_cash, et_cash) use Sha7nawy
-    const providerKey = methodConfig.provider;
-    const provider = this.providers[providerKey] || this.providers.sha7nawy;
 
     return provider.createPayment(params);
   }
