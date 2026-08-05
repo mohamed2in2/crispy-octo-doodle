@@ -8,6 +8,7 @@ import {
 	IconBook,
 	IconSparkle,
 	IconUsers,
+	IconWallet,
 } from "@/components/classic/icons";
 import {
 	Badge,
@@ -51,10 +52,61 @@ import "@/styles/classic-landing.css";
  *   - Nothing advertises emptiness. A teacher with no published courses says
  *     nothing rather than "0 courses", and a price only appears when booking
  *     is actually open.
+ *   - There is an answer to "why should I trust you" above the catalogue, and
+ *     a subject rail below it. A visitor who sees one course card and nothing
+ *     else concludes the platform is empty; the subjects say what is taught
+ *     here even when few courses are published yet.
  */
 
 // Reads the auth cookie, so it can never be statically rendered.
 export const dynamic = "force-dynamic";
+
+/*
+ * Page-local copy, kept next to the markup that uses it for the same reason
+ * BOOKING_COPY lives in the teacher page: a string used in exactly one place
+ * is easier to review here than in a shared dictionary.
+ */
+const EXTRA = {
+	// ليه Code-UP؟
+	whyTitle: "\u0644\u064a\u0647 Code-UP\u061f",
+	// المواد المتاحة
+	subjectsTitle: "\u0627\u0644\u0645\u0648\u0627\u062f \u0627\u0644\u0645\u062a\u0627\u062d\u0629",
+} as const;
+
+/*
+ * Three claims, each one checkable on the site itself. No "best platform in
+ * Egypt" line: an unverifiable boast is the fastest way to read as generated
+ * marketing filler.
+ */
+const WHY = [
+	{
+		key: "teachers",
+		// مدرسين موثوقين
+		name: "\u0645\u062f\u0631\u0633\u064a\u0646 \u0645\u0648\u062b\u0648\u0642\u064a\u0646",
+		// كل مدرس ليه صفحة وكورسات وأسعار واضحة قبل إنك تدفع.
+		text: "\u0643\u0644 \u0645\u062f\u0631\u0633 \u0644\u064a\u0647 \u0635\u0641\u062d\u0629 \u0648\u0643\u0648\u0631\u0633\u0627\u062a \u0648\u0623\u0633\u0639\u0627\u0631 \u0648\u0627\u0636\u062d\u0629 \u0642\u0628\u0644 \u0625\u0646\u0643 \u062a\u062f\u0641\u0639.",
+	},
+	{
+		key: "wallet",
+		// محفظة واحدة لكل حاجة
+		name: "\u0645\u062d\u0641\u0638\u0629 \u0648\u0627\u062d\u062f\u0629 \u0644\u0643\u0644 \u062d\u0627\u062c\u0629",
+		// اشحن رصيدك مرة، واشترك في أي كورس، وكل عملية ليها فاتورة.
+		text: "\u0627\u0634\u062d\u0646 \u0631\u0635\u064a\u062f\u0643 \u0645\u0631\u0629\u060c \u0648\u0627\u0634\u062a\u0631\u0643 \u0641\u064a \u0623\u064a \u0643\u0648\u0631\u0633\u060c \u0648\u0643\u0644 \u0639\u0645\u0644\u064a\u0629 \u0644\u064a\u0647\u0627 \u0641\u0627\u062a\u0648\u0631\u0629.",
+	},
+	{
+		key: "ai",
+		// مساعد ذكي معاك
+		name: "\u0645\u0633\u0627\u0639\u062f \u0630\u0643\u064a \u0645\u0639\u0627\u0643",
+		// يشرح اللي مش فاهمه ويعملك خطة مذاكرة من نتايجك.
+		text: "\u064a\u0634\u0631\u062d \u0627\u0644\u0644\u064a \u0645\u0634 \u0641\u0627\u0647\u0645\u0647 \u0648\u064a\u0639\u0645\u0644\u0643 \u062e\u0637\u0629 \u0645\u0630\u0627\u0643\u0631\u0629 \u0645\u0646 \u0646\u062a\u0627\u064a\u062c\u0643.",
+	},
+] as const;
+
+function whyIcon(key: (typeof WHY)[number]["key"]) {
+	if (key === "teachers") return <IconUsers />;
+	if (key === "wallet") return <IconWallet />;
+	return <IconSparkle />;
+}
 
 function formatPounds(value: number): string {
 	// Western digits, matching every other money surface in the classic layer.
@@ -105,6 +157,15 @@ export default async function HomePage() {
 	if (session) redirect("/account/home");
 
 	const { teachers, courses, unavailable } = await getLandingData();
+
+	/*
+	 * Subjects come from the catalogue rather than a hardcoded list, so the
+	 * rail can never advertise a subject nobody teaches. One subject is not a
+	 * choice, so the rail only earns its space from two upwards.
+	 */
+	const subjects = Array.from(
+		new Set(courses.map((course) => course.subject).filter(Boolean)),
+	) as string[];
 
 	return (
 		<div className="c-pub" dir="rtl">
@@ -160,20 +221,25 @@ export default async function HomePage() {
 
 				{unavailable ? <Band tone="warning" text={LANDING.unavailable} /> : null}
 
-				{/* The one thing the competition does not have, stated plainly. */}
-				<Card
-					title={LANDING.aiTitle}
-					description={LANDING.aiText}
-					icon={<IconSparkle />}
-					footer={
-						<LinkButton
-							href="/signup"
-							label={LANDING.startFree}
-							variant="quiet"
-							inline
-						/>
-					}
-				/>
+				{/*
+				 * Why us, before the catalogue. A visitor decides whether to keep
+				 * reading in the first screen and a half, and "here are some cards"
+				 * is not an argument.
+				 */}
+				<section className="c-why">
+					<h2 className="c-why__title">{EXTRA.whyTitle}</h2>
+					<ul className="c-why__grid">
+						{WHY.map((item) => (
+							<li className="c-why__item" key={item.key}>
+								<span className="c-why__icon" aria-hidden="true">
+									{whyIcon(item.key)}
+								</span>
+								<h3 className="c-why__name">{item.name}</h3>
+								<p className="c-why__text">{item.text}</p>
+							</li>
+						))}
+					</ul>
+				</section>
 
 				<Section title={LANDING.teachers} moreHref="/courses">
 					{teachers.length === 0 ? (
@@ -291,6 +357,40 @@ export default async function HomePage() {
 						</ul>
 					)}
 				</Section>
+
+				{/*
+				 * Subjects. Cheap to render, and it answers the question a thin
+				 * catalogue raises: "is anything actually taught here?"
+				 */}
+				{subjects.length > 1 ? (
+					<section className="c-subjects">
+						<h2 className="c-subjects__title">{EXTRA.subjectsTitle}</h2>
+						<ul className="c-subjects__list">
+							{subjects.map((subject) => (
+								<li key={subject}>
+									<Link className="c-subject" href="/courses">
+										{subject}
+									</Link>
+								</li>
+							))}
+						</ul>
+					</section>
+				) : null}
+
+				{/* The one thing the competition does not have, stated plainly. */}
+				<Card
+					title={LANDING.aiTitle}
+					description={LANDING.aiText}
+					icon={<IconSparkle />}
+					footer={
+						<LinkButton
+							href="/signup"
+							label={LANDING.startFree}
+							variant="quiet"
+							inline
+						/>
+					}
+				/>
 
 				{/*
 				 * How it works. Big numerals in their own tinted squares rather
