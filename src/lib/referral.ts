@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export interface ProcessAttributionInput {
@@ -9,7 +10,7 @@ export interface ProcessAttributionInput {
   folderId?: string;
   videoId?: string;
   promoCodeInput?: string | null;
-  tx?: any;
+  tx?: Prisma.TransactionClient;
 }
 
 /**
@@ -18,7 +19,7 @@ export interface ProcessAttributionInput {
  * - Case B: Student previously referred by content teacher on signup (only attributes for content teacher's own content).
  */
 export async function processTeacherAttribution(input: ProcessAttributionInput) {
-  const db = input.tx || prisma;
+  const db = input.tx ?? prisma;
   const {
     studentId,
     teacherIdOfContent,
