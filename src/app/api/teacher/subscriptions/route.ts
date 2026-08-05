@@ -83,6 +83,9 @@ export async function POST(req: NextRequest) {
     }
 
     const labelMap: Record<string, string> = {
+      "1month": "اشتراك 1 شهر",
+      "3months": "اشتراك 3 شهور",
+      "6months": "اشتراك 6 شهور",
       monthly: "اشتراك شهري",
       termly: "اشتراك ترم كامل",
       yearly: "اشتراك سنوي",

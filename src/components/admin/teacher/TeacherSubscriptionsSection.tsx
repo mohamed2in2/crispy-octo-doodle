@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { IconPlus, IconUsers, IconBook, IconClock } from "@/components/admin/AdminIcons";
+import { IconPlus, IconUsers } from "@/components/admin/AdminIcons";
 import { useToast } from "@/components/ui/Toast";
 
 interface SubscriptionItem {
@@ -10,6 +10,7 @@ interface SubscriptionItem {
   teacherId: string;
   planType: string;
   planLabel: string;
+  language?: string;
   amount: number;
   educationalStage: string | null;
   studentName: string | null;
@@ -35,6 +36,9 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 const PLAN_BADGES: Record<string, { label: string; bg: string; color: string }> = {
+  "1month": { label: "⚡ اشتراك 1 شهر", bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
+  "3months": { label: "📚 اشتراك 3 شهور", bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },
+  "6months": { label: "🎓 اشتراك 6 شهور", bg: "rgba(16,185,129,0.12)", color: "#10B981" },
   monthly: { label: "📅 اشتراك شهري", bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
   termly: { label: "📚 اشتراك ترم", bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },
   yearly: { label: "🎓 اشتراك سنوي", bg: "rgba(16,185,129,0.12)", color: "#10B981" },
@@ -51,7 +55,7 @@ export function TeacherSubscriptionsSection() {
   // Add modal state
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [studentInput, setStudentInput] = useState("");
-  const [selectedPlanType, setSelectedPlanType] = useState("monthly");
+  const [selectedPlanType, setSelectedPlanType] = useState("3months");
   const [adding, setAdding] = useState(false);
 
   const fetchSubscriptions = useCallback(async () => {
@@ -115,8 +119,12 @@ export function TeacherSubscriptionsSection() {
     }
   };
 
+  const count1m = subscriptions.filter((s) => s.planType === "1month" || s.planType === "monthly").length;
+  const count3m = subscriptions.filter((s) => s.planType === "3months" || s.planType === "termly").length;
+  const count6m = subscriptions.filter((s) => s.planType === "6months" || s.planType === "yearly").length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* Header Banner */}
       <div className="bg-[var(--surface)] p-6 rounded-2xl border border-[var(--border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -125,7 +133,7 @@ export function TeacherSubscriptionsSection() {
             الطلاب الحاطين واشتراكاتهم
           </h2>
           <p className="text-xs text-[var(--ink-muted)] mt-1">
-            عرض وتصنيف جميع الطلاب الذين قاموا بحجز اشتراكاتك (شهري / ترم / سنوي) ومعلومات التواصل الخاصة بهم.
+            عرض وتصنيف جميع الطلاب الذين قاموا بحجز اشتراكاتك (1 شهر / 3 شهور / 6 شهور) ومعلومات التواصل الخاصة بهم.
           </p>
         </div>
 
@@ -165,9 +173,9 @@ export function TeacherSubscriptionsSection() {
           className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] text-xs focus:outline-none focus:border-sky-400"
         >
           <option value="">جميع باقات الاشتراك</option>
-          <option value="monthly">اشتراك شهري</option>
-          <option value="termly">اشتراك ترم كامل</option>
-          <option value="yearly">اشتراك سنوي</option>
+          <option value="1month">اشتراك شهر واحد (1 Month)</option>
+          <option value="3months">اشتراك 3 شهور (3 Months)</option>
+          <option value="6months">اشتراك 6 شهور (6 Months)</option>
         </select>
       </div>
 
@@ -178,16 +186,16 @@ export function TeacherSubscriptionsSection() {
           <span className="text-xl font-black text-sky-500">{subscriptions.length} طالب</span>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات شهرية</span>
-          <span className="text-xl font-black text-blue-500">{subscriptions.filter((s) => s.planType === "monthly").length}</span>
+          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات 1 شهر</span>
+          <span className="text-xl font-black text-blue-500">{count1m}</span>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات ترم</span>
-          <span className="text-xl font-black text-amber-500">{subscriptions.filter((s) => s.planType === "termly").length}</span>
+          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات 3 شهور</span>
+          <span className="text-xl font-black text-amber-500">{count3m}</span>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات سنوية</span>
-          <span className="text-xl font-black text-emerald-500">{subscriptions.filter((s) => s.planType === "yearly").length}</span>
+          <span className="text-[10px] font-bold text-[var(--ink-muted)] block">اشتراكات 6 شهور</span>
+          <span className="text-xl font-black text-emerald-500">{count6m}</span>
         </div>
       </div>
 
@@ -204,7 +212,7 @@ export function TeacherSubscriptionsSection() {
                 <tr>
                   <th className="p-4">الطالب</th>
                   <th className="p-4">المرحلة الدراسية</th>
-                  <th className="p-4">الباقة المشتراة</th>
+                  <th className="p-4">الباقة واللغة</th>
                   <th className="p-4">رقم التواصل</th>
                   <th className="p-4">تاريخ الحجز</th>
                   <th className="p-4 text-center">الحالة</th>
@@ -217,6 +225,7 @@ export function TeacherSubscriptionsSection() {
                   const badge = PLAN_BADGES[sub.planType] || { label: sub.planLabel, bg: "rgba(99,102,241,0.12)", color: "#6366f1" };
                   const phone = sub.studentPhone || sub.student.phone || "-";
                   const parentPhone = sub.parentPhone || sub.student.parentPhone || "-";
+                  const langLabel = sub.language === "languages" ? "🇬🇧 لغات" : "🇪🇬 عربي";
 
                   return (
                     <tr key={sub.id} className="hover:bg-[var(--bg)]/50 transition-colors">
@@ -225,13 +234,14 @@ export function TeacherSubscriptionsSection() {
                         <div className="text-[10px] text-[var(--ink-muted)] font-mono">{sub.student.email}</div>
                       </td>
                       <td className="p-4 font-semibold text-[var(--ink)]">{stage}</td>
-                      <td className="p-4">
+                      <td className="p-4 space-y-1">
                         <span
                           className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
                           style={{ background: badge.bg, color: badge.color }}
                         >
                           {badge.label} ({sub.amount} ج.م)
                         </span>
+                        <div className="text-[10px] text-[var(--ink-muted)] font-semibold">{langLabel}</div>
                       </td>
                       <td className="p-4 font-mono text-[11px] dir-ltr text-right">
                         <div>📱 الطالب: {phone}</div>
@@ -286,9 +296,9 @@ export function TeacherSubscriptionsSection() {
                   onChange={(e) => setSelectedPlanType(e.target.value)}
                   className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-xs text-[var(--ink)] focus:outline-none focus:border-sky-400"
                 >
-                  <option value="monthly">📅 اشتراك شهري</option>
-                  <option value="termly">📚 اشتراك ترم كامل</option>
-                  <option value="yearly">🎓 اشتراك سنوي</option>
+                  <option value="1month">⚡ اشتراك شهر واحد (1 Month)</option>
+                  <option value="3months">📚 اشتراك 3 شهور (3 Months)</option>
+                  <option value="6months">🎓 اشتراك 6 شهور (6 Months)</option>
                 </select>
               </div>
 
@@ -296,7 +306,7 @@ export function TeacherSubscriptionsSection() {
                 <button
                   type="submit"
                   disabled={adding}
-                  className="flex-1 py-3 rounded-xl bg-sky-500 text-white font-bold text-xs hover:bg-sky-400 transition-all disabled:opacity-50"
+                  className="flex-1 py-3 rounded-xl bg-sky-500 text-white font-bold text-xs hover:bg-sky-400 transition-all disabled:opacity-50 border-none cursor-pointer"
                 >
                   {adding ? "جارٍ الإضافة..." : "حفظ وإضافة الطالب"}
                 </button>
