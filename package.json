@@ -15,10 +15,12 @@
     "test:coverage": "vitest run --coverage",
     "test:verification": "node --import tsx scripts/run-verification-tests.ts",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:generate": "node scripts/prisma-generate.js",
     "db:seed": "tsx prisma/seed.ts",
     "db:clear": "ts-node --project tsconfig.json scripts/clearDb.ts",
     "validate:env": "node scripts/validate-env.mjs",
+    "release:verify": "NODE_ENV=production npm run validate:env && npm run build && npm test",
     "postinstall": "node scripts/prisma-generate.js"
   },
   "dependencies": {
