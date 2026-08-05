@@ -47,12 +47,14 @@ export async function POST(req: NextRequest) {
       const reference = result.data?.reference ? String(result.data.reference) : null;
       const checkoutUrl = result.data?.payment_page_url || result.data?.url || null;
       if (reference) {
-        await prisma.balanceTransaction.create({
-          data: { userId: session.id, type: SHAKEOUT_PENDING_TYPE, amount: totalAmount, note: `${shakeOutRefNote(reference)}${checkoutUrl ? `|url:${checkoutUrl}` : ""}` },
-        });
-        await persistProviderCheckout({ userId: session.id, provider: "shakeout", reference, methodKey: methodConfig.id, totalPounds: totalAmount, subtotalPounds: baseAmount, taxPounds: taxAmount, checkoutUrl, purpose });
+        await Promise.all([
+          prisma.balanceTransaction.create({
+            data: { userId: session.id, type: SHAKEOUT_PENDING_TYPE, amount: totalAmount, note: `${shakeOutRefNote(reference)}${checkoutUrl ? `|url:${checkoutUrl}` : ""}` },
+          }),
+          persistProviderCheckout({ userId: session.id, provider: "shakeout", reference, methodKey: methodConfig.id, totalPounds: totalAmount, subtotalPounds: baseAmount, taxPounds: taxAmount, checkoutUrl, purpose }),
+        ]);
       }
-      return NextResponse.json({ success: true, provider: "shakeout", reference: result.data?.reference, checkoutUrl: checkoutUrl || (reference ? `{{https://dash.shake-out.com/invoice/${reference}}}` : null), method: methodConfig.id, methodLabel: methodConfig.label, baseAmount, taxAmount, totalAmount, instructions: result.message || methodConfig.shortNote, data: result.data });
+      return NextResponse.json({ success: true, provider: "shakeout", reference: result.data?.reference, checkoutUrl: checkoutUrl || (reference ? `https://dash.shake-out.com/invoice/${reference}` : null), method: methodConfig.id, methodLabel: methodConfig.label, baseAmount, taxAmount, totalAmount, instructions: result.message || methodConfig.shortNote, data: result.data });
     }
 
     // Default to Sha7nawy Gateway (gate.sha7nawy.com)
@@ -72,8 +74,10 @@ export async function POST(req: NextRequest) {
 
     const reference = result.data?.reference ? String(result.data.reference) : null;
     if (reference) {
-      await prisma.balanceTransaction.create({ data: { userId: session.id, type: SHA7NAWY_PENDING_TYPE, amount: totalAmount, note: sha7nawyRefNote(reference) } });
-      await persistProviderCheckout({ userId: session.id, provider: "sha7nawy", reference, methodKey: methodConfig.id, totalPounds: totalAmount, subtotalPounds: baseAmount, taxPounds: taxAmount, checkoutUrl: null, purpose });
+      await Promise.all([
+        prisma.balanceTransaction.create({ data: { userId: session.id, type: SHA7NAWY_PENDING_TYPE, amount: totalAmount, note: sha7nawyRefNote(reference) } }),
+        persistProviderCheckout({ userId: session.id, provider: "sha7nawy", reference, methodKey: methodConfig.id, totalPounds: totalAmount, subtotalPounds: baseAmount, taxPounds: taxAmount, checkoutUrl: null, purpose }),
+      ]);
     }
 
     return NextResponse.json({ success: true, provider: "sha7nawy", reference: result.data?.reference, method: methodConfig.id, methodLabel: methodConfig.label, baseAmount, taxAmount, totalAmount, instructions: result.message || methodConfig.shortNote, data: result.data });
