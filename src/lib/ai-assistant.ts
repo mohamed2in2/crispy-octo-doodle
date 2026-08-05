@@ -191,10 +191,7 @@ function buildPerformanceAnalysis(ctx: StudentContext): string {
   const lowQuizzes = ctx.courses.flatMap((c) =>
     c.quizResults
       .filter((q) => q.date && q.percentage < 60)
-      .map(
-        (q) =>
-          `• ${c.subject} - موضوع: ${Math.round(q.percentage)}%`,
-      ),
+      .map((q) => `• ${c.subject} - موضوع: ${Math.round(q.percentage)}%`),
   );
   let a = `تحليل أدائك:\n\nمتوسط الدرجات: ${ctx.overallStats.averageScore}%\nكويزات محلولة: ${allQuizResults.length}\nفيديوهات متشافة: ${ctx.overallStats.totalVideosWatched}\n`;
   if (lowQuizzes.length > 0) {
@@ -398,6 +395,8 @@ export async function chatWithAI(
     weakTopics: studentContext.weakAreas.map((w) => w.topic),
   });
 
+  const knownNames = [studentContext.profile.name].filter(Boolean);
+
   const cleanHistory = history
     .filter((m) => m.role === "user" || m.role === "assistant")
     .slice(-10)
@@ -413,6 +412,7 @@ export async function chatWithAI(
     userMessage,
     safeContext,
     history: cleanHistory,
+    knownNames,
   });
 
   let result = await callBackup(messages);
