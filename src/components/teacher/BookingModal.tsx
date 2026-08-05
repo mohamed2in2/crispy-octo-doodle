@@ -213,7 +213,7 @@ export function BookingButton({
       .catch(() => {});
   };
 
-  // Build 1, 3, 6 Month Plans based on defaults + teacher overrides + language surcharges
+  // Build 1, 3, 6 Month Plans based on teacher profile settings + language surcharges
   const isLang = selectedLanguage === "languages";
 
   const p1Base = priceMonthly1 ?? priceMonthly ?? 200;
@@ -223,13 +223,13 @@ export function BookingButton({
   const p3Base = priceMonthly3 ?? priceTermly ?? 500;
   const p3Surcharge = isLang ? (langSurcharge3 ?? 150) : 0;
   const p3Final = p3Base + p3Surcharge;
-  const p3OriginalBase = originalMonthly3 ?? 600;
+  const p3OriginalBase = originalMonthly3 ?? (discountTermly ? Math.round(p3Base / (1 - discountTermly / 100)) : Math.round(p3Base * 1.2));
   const p3Original = isLang ? p3OriginalBase + 150 : p3OriginalBase;
 
   const p6Base = priceMonthly6 ?? priceYearly ?? 1000;
   const p6Surcharge = isLang ? (langSurcharge6 ?? 300) : 0;
   const p6Final = p6Base + p6Surcharge;
-  const p6OriginalBase = originalMonthly6 ?? 1200;
+  const p6OriginalBase = originalMonthly6 ?? (discountYearly ? Math.round(p6Base / (1 - discountYearly / 100)) : Math.round(p6Base * 1.2));
   const p6Original = isLang ? p6OriginalBase + 300 : p6OriginalBase;
 
   const plans: BookingPlan[] = [];
