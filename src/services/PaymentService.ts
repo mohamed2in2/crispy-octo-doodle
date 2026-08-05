@@ -1,6 +1,9 @@
 import { getPaymentMethod } from "@/lib/payment-methods";
-import { createSha7nawyPayment, Sha7nawyCreateResponse } from "@/lib/sha7nawy";
-import { createShakeOutPayment, ShakeOutCreateResponse } from "@/lib/shakeout";
+import { createSha7nawyPayment, type Sha7nawyCreateResponse } from "@/lib/sha7nawy";
+import { createShakeOutPayment, type ShakeOutCreateResponse } from "@/lib/shakeout";
+
+const FAWRY_METHOD_ID = "fawry";
+const SHA7NAWY_WALLET_METHODS = new Set(["vf_cash", "et_cash", "or_cash"]);
 
 export interface UnifiedPaymentParams {
   method: string;
@@ -24,7 +27,7 @@ export interface UnifiedPaymentResult {
   reference?: string;
   checkoutUrl?: string;
   instructions?: string;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -37,10 +40,20 @@ export class ShakeOutPaymentProvider implements IPaymentProvider {
   name = "shakeout";
 
   async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+    if (params.method !== FAWRY_METHOD_ID) {
+      return {
+        success: false,
+        code: 400,
+        message: "بوابة Shake-Out مخصصة للدفع عبر فوري فقط",
+        provider: "shakeout",
+        error: "Shake-Out only supports Fawry",
+      };
+    }
+
     const res: ShakeOutCreateResponse = await createShakeOutPayment({
       amount: params.amount,
-      method: params.method,
-      number: params.number,
+      method: FAWRY_METHOD_ID,
+      number: "",
       client: params.client,
       details: params.details,
       customerName: params.customerName,
@@ -68,9 +81,19 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
   name = "sha7nawy";
 
   async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+    if (!SHA7NAWY_WALLET_METHODS.has(params.method)) {
+      return {
+        success: false,
+        code: 400,
+        message: "بوابة Sha7nawy مخصصة لمحافظ فودافون كاش واتصالات كاش وأورانج كاش فقط",
+        provider: "sha7nawy",
+        error: "Sha7nawy only supports the configured mobile wallets",
+      };
+    }
+
     const res: Sha7nawyCreateResponse = await createSha7nawyPayment({
       amount: params.amount,
-      method: params.method as any,
+      method: params.method,
       number: params.number || "",
       client: params.client,
       details: params.details,
@@ -78,25 +101,6 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
     });
 
     const methodConfig = getPaymentMethod(params.method);
-
-    // Smart Fallback: If Sha7nawy returned a provider error (e.g. "خطأ لدى مزود الخدمة") or status false,
-    // and Shake-Out API key is configured, fallback to Shake-Out vendor invoice so the user can still pay.
-    if (!res.status && process.env.SHAKEOUT_PUBLIC_KEY) {
-      console.warn(`[PaymentService] Sha7nawy failed (${res.message}). Attempting fallback to Shake-Out vendor invoice...`);
-      try {
-        const shakeout = new ShakeOutPaymentProvider();
-        const fallbackRes = await shakeout.createPayment(params);
-        if (fallbackRes.success) {
-          return {
-            ...fallbackRes,
-            message: "تم تجهيز رابط الدفع الإلكتروني البديل (Shake-Out) لإتمام العملية بأمان.",
-          };
-        }
-      } catch (err) {
-        console.error("[PaymentService] Fallback to Shake-Out failed:", err);
-      }
-    }
-
     return {
       success: res.status,
       code: res.code,
@@ -114,7 +118,7 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
 export class InternalPaymentProvider implements IPaymentProvider {
   name = "internal";
 
-  async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+  async createPayment(): Promise<UnifiedPaymentResult> {
     return {
       success: true,
       code: 200,
@@ -132,19 +136,13 @@ export class PaymentService {
     internal: new InternalPaymentProvider(),
   };
 
-  /**
-   * Register or override a payment gateway provider for future expansion
-   */
   public static registerProvider(name: string, provider: IPaymentProvider) {
     this.providers[name] = provider;
   }
 
-  /**
-   * Unified entry point: inspects method config to route to Shake-Out (Fawry), Sha7nawy (Wallets), or Internal
-   */
+  /** Routes only Fawry to Shake-Out and only the enabled mobile wallets to Sha7nawy. */
   public static async createPayment(params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
     const methodConfig = getPaymentMethod(params.method);
-    
     if (!methodConfig) {
       return {
         success: false,
@@ -160,14 +158,41 @@ export class PaymentService {
         success: false,
         code: 400,
         message: methodConfig.unavailableNote || `طريقة الدفع (${methodConfig.label}) غير متاحة حالياً.`,
-        provider: methodConfig.provider as any,
+        provider: methodConfig.provider,
         error: "Payment method unavailable",
       };
     }
 
-    // Provider routing: Fawry uses Shake-Out; Wallets (vf_cash, et_cash) use Sha7nawy
-    const providerKey = methodConfig.provider;
-    const provider = this.providers[providerKey] || this.providers.sha7nawy;
+    if (methodConfig.provider === "shakeout" && params.method !== FAWRY_METHOD_ID) {
+      return {
+        success: false,
+        code: 400,
+        message: "بوابة Shake-Out مخصصة للدفع عبر فوري فقط",
+        provider: "shakeout",
+        error: "Invalid Shake-Out payment method",
+      };
+    }
+
+    if (methodConfig.provider === "sha7nawy" && !SHA7NAWY_WALLET_METHODS.has(params.method)) {
+      return {
+        success: false,
+        code: 400,
+        message: "بوابة Sha7nawy مخصصة لمحافظ فودافون كاش واتصالات كاش وأورانج كاش فقط",
+        provider: "sha7nawy",
+        error: "Invalid Sha7nawy payment method",
+      };
+    }
+
+    const provider = this.providers[methodConfig.provider];
+    if (!provider) {
+      return {
+        success: false,
+        code: 400,
+        message: "طريقة الدفع غير متاحة عبر بوابة الدفع الحالية",
+        provider: methodConfig.provider,
+        error: "Unsupported provider",
+      };
+    }
 
     return provider.createPayment(params);
   }
