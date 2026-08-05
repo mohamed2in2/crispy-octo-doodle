@@ -4,16 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { VideoWatermark } from "./VideoWatermark";
 import { useFullscreen } from "./useFullscreen";
 
-/**
- * Hardened YouTube player. Native controls are OFF and a full-surface click
- * shield swallows every pointer event, so NONE of YouTube's chrome — the title,
- * logo, share, or "Watch on YouTube" link — is ever clickable. Playback is
- * driven entirely by our own controls through the IFrame API. Combined with the
- * drifting watermark and wrapper-only fullscreen, this is the strongest practical
- * deterrent for a YouTube embed (the video ID still lives in the DOM — only
- * VdoCipher/Bunny can hide that).
- */
-
 interface YTPlayer {
   playVideo(): void;
   pauseVideo(): void;
@@ -48,60 +38,61 @@ function loadYTApi(): Promise<YTNamespace> {
     };
     if (!window.__ytApiLoading) {
       window.__ytApiLoading = true;
-      const s = document.createElement("script");
-      s.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(s);
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(script);
     }
-    // Safety poll in case the global callback was already consumed.
-    const iv = setInterval(() => {
-      if (window.YT?.Player) { clearInterval(iv); resolve(window.YT); }
+    const interval = setInterval(() => {
+      if (window.YT?.Player) {
+        clearInterval(interval);
+        resolve(window.YT);
+      }
     }, 200);
   });
 }
 
-const fmt = (s: number) => {
-  if (!isFinite(s) || s < 0) s = 0;
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${String(sec).padStart(2, "0")}`;
+const fmt = (seconds: number) => {
+  const safeSeconds = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = Math.floor(safeSeconds % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
-export function YouTubeSecurePlayer({
-  videoId, title, watermark, onEnded, startSeconds = 0, onProgress, onTimeUpdate, onPause, onPlay, paused = false,
-}: {
+type YouTubeSecurePlayerProps = {
   videoId: string;
   title: string;
   watermark: string;
   onEnded?: () => void;
-  /** Resume position in seconds — seeked once on ready. */
   startSeconds?: number;
-  /** Reports the current position (throttled to ~5s) for saving. */
   onProgress?: (seconds: number) => void;
-  /** High-frequency time updates (~333ms) for watched-ranges tracking. */
   onTimeUpdate?: (seconds: number) => void;
-  /** Fired when playback pauses. */
   onPause?: () => void;
-  /** Fired when playback resumes. */
   onPlay?: () => void;
   paused?: boolean;
-}) {
+};
+
+export function YouTubeSecurePlayer({
+  videoId,
+  title,
+  watermark,
+  onEnded,
+  startSeconds = 0,
+  onProgress,
+  onTimeUpdate,
+  onPause,
+  onPlay,
+  paused = false,
+}: YouTubeSecurePlayerProps) {
   const { ref: wrapRef, isFs, cssFs, toggle: toggleFs } = useFullscreen<HTMLDivElement>();
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const onEndedRef = useRef(onEnded);
-  onEndedRef.current = onEnded;
   const onProgressRef = useRef(onProgress);
-  onProgressRef.current = onProgress;
   const onTimeUpdateRef = useRef(onTimeUpdate);
-  onTimeUpdateRef.current = onTimeUpdate;
   const onPauseRef = useRef(onPause);
-  onPauseRef.current = onPause;
   const onPlayRef = useRef(onPlay);
-  onPlayRef.current = onPlay;
   const startRef = useRef(startSeconds);
-  startRef.current = startSeconds;
   const seekedRef = useRef(false);
-  const lastReportRef = useRef(0);
 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -109,24 +100,28 @@ export function YouTubeSecurePlayer({
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
 
-  // Play/pause programmatic control
   useEffect(() => {
-    const p = playerRef.current;
-    if (!p || !ready) return;
+    onEndedRef.current = onEnded;
+    onProgressRef.current = onProgress;
+    onTimeUpdateRef.current = onTimeUpdate;
+    onPauseRef.current = onPause;
+    onPlayRef.current = onPlay;
+    startRef.current = startSeconds;
+  }, [onEnded, onPause, onPlay, onProgress, onTimeUpdate, startSeconds]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !ready) return;
     try {
-      if (paused) {
-        p.pauseVideo();
-      } else {
-        p.playVideo();
-      }
-    } catch (e) {
-      console.error("Failed to play/pause YouTube player:", e);
+      if (paused) player.pauseVideo();
+      else player.playVideo();
+    } catch (error) {
+      console.error("Failed to play/pause YouTube player:", error);
     }
   }, [paused, ready]);
 
   useEffect(() => {
     let disposed = false;
-    let poll: ReturnType<typeof setInterval> | undefined;
 
     loadYTApi().then((YT) => {
       if (disposed || !hostRef.current) return;
@@ -134,87 +129,111 @@ export function YouTubeSecurePlayer({
         videoId,
         host: "https://www.youtube-nocookie.com",
         playerVars: {
-          controls: 0, modestbranding: 1, rel: 0, iv_load_policy: 3,
-          disablekb: 1, fs: 0, playsinline: 1, autoplay: 0,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          iv_load_policy: 3,
+          disablekb: 1,
+          fs: 0,
+          playsinline: 1,
+          autoplay: 0,
           origin: typeof window !== "undefined" ? window.location.origin : undefined,
         },
         events: {
           onReady: () => {
             if (disposed) return;
             setReady(true);
-            const d = playerRef.current?.getDuration() ?? 0;
-            setDur(d);
+            const duration = playerRef.current?.getDuration() ?? 0;
+            setDur(duration);
             setMuted(playerRef.current?.isMuted() ?? false);
-            // Resume once: only if the saved position is meaningfully into the
-            // video and not within the last 5s (avoids landing on the end card).
             const start = startRef.current;
-            if (!seekedRef.current && start > 3 && (!d || start < d - 5)) {
+            if (!seekedRef.current && start > 3 && (!duration || start < duration - 5)) {
               seekedRef.current = true;
-              try { playerRef.current?.seekTo(start, true); setCur(start); } catch { /* noop */ }
+              try {
+                playerRef.current?.seekTo(start, true);
+                setCur(start);
+              } catch {
+                // The player may be disposed while the API is becoming ready.
+              }
             }
           },
-          onStateChange: (e: { data: number }) => {
-            const YTns = window.YT;
-            if (!YTns) return;
-            if (e.data === YTns.PlayerState.PLAYING) { setPlaying(true); onPlayRef.current?.(); }
-            else if (e.data === YTns.PlayerState.PAUSED) { setPlaying(false); onPauseRef.current?.(); }
-            else if (e.data === YTns.PlayerState.ENDED) { setPlaying(false); onEndedRef.current?.(); }
+          onStateChange: (event: { data: number }) => {
+            const namespace = window.YT;
+            if (!namespace) return;
+            if (event.data === namespace.PlayerState.PLAYING) {
+              setPlaying(true);
+              onPlayRef.current?.();
+            } else if (event.data === namespace.PlayerState.PAUSED) {
+              setPlaying(false);
+              onPauseRef.current?.();
+            } else if (event.data === namespace.PlayerState.ENDED) {
+              setPlaying(false);
+              onEndedRef.current?.();
+            }
           },
         },
       });
     });
 
-    poll = setInterval(() => {
-      const p = playerRef.current;
-      if (p && typeof p.getCurrentTime === "function") {
-        const t = p.getCurrentTime() || 0;
-        setCur(t);
-        const d = p.getDuration() || 0;
-        if (d) setDur(d);
-        // High-frequency update for watched-ranges tracking
-        if (onTimeUpdateRef.current && t > 0) {
-          onTimeUpdateRef.current(t);
-        }
-        // High-frequency position update for progress saver & timed questions (called every ~333ms)
-        if (onProgressRef.current && t > 0) {
-          onProgressRef.current(t);
-        }
+    const poll = setInterval(() => {
+      const player = playerRef.current;
+      if (!player || typeof player.getCurrentTime !== "function") return;
+      const time = player.getCurrentTime() || 0;
+      setCur(time);
+      const duration = player.getDuration() || 0;
+      if (duration) setDur(duration);
+      if (time > 0) {
+        onTimeUpdateRef.current?.(time);
+        onProgressRef.current?.(time);
       }
     }, 333);
 
     return () => {
       disposed = true;
-      if (poll) clearInterval(poll);
-      // Flush the final position so leaving mid-video saves where you stopped.
+      clearInterval(poll);
       try {
-        const t = playerRef.current?.getCurrentTime?.() ?? 0;
-        if (onProgressRef.current && t > 0) onProgressRef.current(Math.floor(t));
-      } catch { /* noop */ }
-      try { playerRef.current?.destroy(); } catch { /* noop */ }
+        const time = playerRef.current?.getCurrentTime?.() ?? 0;
+        if (time > 0) onProgressRef.current?.(Math.floor(time));
+      } catch {
+        // Best-effort final progress flush.
+      }
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        // The iframe API can already have removed the player.
+      }
       playerRef.current = null;
     };
   }, [videoId]);
 
   const togglePlay = () => {
-    const p = playerRef.current;
-    if (!p) return;
-    if (playing) p.pauseVideo();
-    else p.playVideo();
-  };
-  const toggleMute = () => {
-    const p = playerRef.current;
-    if (!p) return;
-    if (p.isMuted()) { p.unMute(); setMuted(false); } else { p.mute(); setMuted(true); }
-  };
-  const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = playerRef.current;
-    if (!p || !dur) return;
-    const t = (Number(e.target.value) / 100) * dur;
-    p.seekTo(t, true);
-    setCur(t);
+    const player = playerRef.current;
+    if (!player) return;
+    if (playing) player.pauseVideo();
+    else player.playVideo();
   };
 
-  const pct = dur ? Math.min(100, (cur / dur) * 100) : 0;
+  const toggleMute = () => {
+    const player = playerRef.current;
+    if (!player) return;
+    if (player.isMuted()) {
+      player.unMute();
+      setMuted(false);
+    } else {
+      player.mute();
+      setMuted(true);
+    }
+  };
+
+  const seek = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const player = playerRef.current;
+    if (!player || !dur) return;
+    const time = (Number(event.target.value) / 100) * dur;
+    player.seekTo(time, true);
+    setCur(time);
+  };
+
+  const progressPercent = dur ? Math.min(100, (cur / dur) * 100) : 0;
 
   return (
     <div
@@ -224,18 +243,15 @@ export function YouTubeSecurePlayer({
         cssFs
           ? { position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 2147483647 }
           : isFs
-          ? { height: "100%" }
-          : { paddingTop: "56.25%" }
+            ? { height: "100%" }
+            : { paddingTop: "56.25%" }
       }
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
     >
-      {/* The YT API replaces this node with its iframe */}
       <div className="absolute inset-0 w-full h-full">
         <div ref={hostRef} className="w-full h-full" />
       </div>
 
-      {/* Full-surface click shield: swallows every click so no YouTube chrome is
-          reachable; tapping toggles play/pause through our API instead. */}
       <button
         type="button"
         onClick={togglePlay}
@@ -243,26 +259,24 @@ export function YouTubeSecurePlayer({
         className="absolute inset-0 z-10 w-full h-full cursor-pointer bg-transparent"
       />
 
-      {/* Center play affordance when paused */}
       {ready && !playing && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <span className="w-16 h-16 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center">
-            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </span>
         </div>
       )}
 
-      {/* Forensic watermark — child of the fullscreen element */}
       <VideoWatermark label={watermark} />
 
-      {/* Loading shimmer */}
       {!ready && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
           <div className="w-9 h-9 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
         </div>
       )}
 
-      {/* Custom control bar (above the shield) */}
       <div className="absolute inset-x-0 bottom-0 z-20 px-3 py-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center gap-3">
         <button type="button" onClick={togglePlay} aria-label={playing ? "إيقاف مؤقت" : "تشغيل"} className="shrink-0 text-white hover:text-sky-300 transition-colors">
           {playing ? (
@@ -273,15 +287,17 @@ export function YouTubeSecurePlayer({
         </button>
 
         <span className="shrink-0 text-[11px] font-mono text-white/85 tabular-nums" dir="ltr">{fmt(cur)}</span>
-
         <input
-          type="range" min={0} max={100} step={0.1} value={pct}
+          type="range"
+          min={0}
+          max={100}
+          step={0.1}
+          value={progressPercent}
           onChange={seek}
           aria-label="شريط التقدم"
           className="flex-1 h-1 accent-sky-400 cursor-pointer"
           dir="ltr"
         />
-
         <span className="shrink-0 text-[11px] font-mono text-white/85 tabular-nums" dir="ltr">{fmt(dur)}</span>
 
         <button type="button" onClick={toggleMute} aria-label={muted ? "تشغيل الصوت" : "كتم الصوت"} className="shrink-0 text-white hover:text-sky-300 transition-colors">
