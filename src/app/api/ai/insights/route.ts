@@ -29,7 +29,6 @@ function sanitizeInsights(candidates: InsightCandidate[]): InsightCandidate[] {
       category: candidate.category.slice(0, 80) || "general",
       title: candidate.title.replace(/\s+/g, " ").trim().slice(0, 140),
       description: candidate.description.replace(/\s+/g, " ").trim().slice(0, 600),
-      // Cap model confidence: it is a recommendation, not a verified prediction.
       confidence: Math.max(0, Math.min(0.95, Number(candidate.confidence) || 0)),
     }))
     .filter((candidate) => candidate.title.length >= 3 && candidate.description.length >= 3)
@@ -54,7 +53,7 @@ export async function GET() {
     if (!stale) return NextResponse.json({ insights: existing, refreshed: false });
 
     const context = await buildStudentContext(session.id);
-    // Do not send direct identifiers, contact details, or age to AI providers.
+    // Never send direct identifiers, contact details, or age to AI providers.
     const deidentifiedContext = {
       ...context,
       profile: { ...context.profile, name: "متعلم", email: "", age: null, phone: null },
@@ -75,7 +74,7 @@ export async function GET() {
             title: insight.title,
             description: insight.description,
             confidence: insight.confidence,
-            // Keep only aggregate evidence required to explain the recommendation.
+            // Retain only aggregate evidence needed to explain the recommendation.
             dataSnapshot: JSON.stringify({
               averageScore: context.overallStats.averageScore,
               courses: context.overallStats.totalCourses,
@@ -83,7 +82,7 @@ export async function GET() {
               generatedFrom: "first-party-learning-data",
             }),
           },
-        ),
+        }),
       ),
     );
 
