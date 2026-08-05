@@ -1,11 +1,16 @@
 /*
  * Classic components.
  *
- * The signature pattern from the reference platform is one card per page:
- * tinted icon square, bold title, short reason, a small muted "steps:" label,
- * then the steps themselves in blue, then exactly one input and one button on
- * the same row. It works because the page can only be misread one way, and
- * that way is spelled out on the card.
+ * The pattern is one card per page: tinted icon square, bold title, short
+ * reason, a small muted "steps:" label, then the steps themselves in the
+ * brand ink, then exactly one input and one button on the same row. It works
+ * because the page can only be misread one way, and that way is spelled out
+ * on the card.
+ *
+ * Tones are limited to blue (teal), green and amber. Cyan and violet were
+ * removed: both are the default palette of generated AI interfaces, which is
+ * the one thing this product must not look like. See the ban list at the top
+ * of classic-tokens.css.
  */
 
 /* ------------------------------------------------------------------ card */
@@ -44,23 +49,13 @@
 }
 
 .c-card__icon[data-tone="green"] {
-	background: rgba(79, 175, 85, 0.16);
+	background: rgba(63, 158, 77, 0.16);
 	color: var(--c-green-ink);
 }
 
-.c-card__icon[data-tone="cyan"] {
-	background: rgba(34, 184, 207, 0.16);
-	color: var(--c-cyan);
-}
-
 .c-card__icon[data-tone="amber"] {
-	background: rgba(240, 173, 78, 0.16);
+	background: rgba(217, 148, 36, 0.16);
 	color: var(--c-amber);
-}
-
-.c-card__icon[data-tone="violet"] {
-	background: rgba(139, 92, 246, 0.16);
-	color: var(--c-violet);
 }
 
 .c-card__headings {
@@ -111,9 +106,9 @@
 }
 
 /*
- * Steps are blue and bold because on the reference platform that single choice
- * does most of the reassurance work: the instructions read as the loudest
- * thing on the card, so nobody has to guess what happens after they click.
+ * Steps are in the brand ink and bold because that single choice does most of
+ * the reassurance work: the instructions read as the loudest thing on the
+ * card, so nobody has to guess what happens after they click.
  */
 .c-steps {
 	list-style: none;
@@ -283,7 +278,7 @@
 	font-weight: 800;
 }
 
-/* ------------------------------------------------------------ blue panel */
+/* ------------------------------------------------------------ brand panel */
 
 /*
  * A whole panel of solid brand colour for filters. It looks nothing like a
@@ -435,11 +430,9 @@
 /* ----------------------------------------------------------------- empty */
 
 /*
- * The reference platform prints "no questions available" in red in the middle
- * of an otherwise blank page, which reads as an error the student caused.
  * An empty state is not a failure: it is a screen whose only job is to hand
  * over the one action that fills it. Icon, what is happening, why, and a
- * button. Never red.
+ * button. Never red — red tells the student they broke something.
  */
 .c-empty {
 	display: flex;
@@ -528,25 +521,26 @@
 }
 
 .c-badge[data-tone="green"] {
-	border-color: rgba(79, 175, 85, 0.5);
-	background: rgba(79, 175, 85, 0.14);
+	border-color: rgba(63, 158, 77, 0.5);
+	background: rgba(63, 158, 77, 0.14);
 	color: var(--c-green-ink);
 }
 
 .c-badge[data-tone="amber"] {
-	border-color: rgba(240, 173, 78, 0.5);
-	background: rgba(240, 173, 78, 0.14);
+	border-color: rgba(217, 148, 36, 0.5);
+	background: rgba(217, 148, 36, 0.14);
 	color: var(--c-amber);
 }
 
 .c-badge[data-tone="red"] {
-	border-color: rgba(239, 68, 68, 0.5);
-	background: rgba(239, 68, 68, 0.14);
+	border-color: rgba(214, 69, 69, 0.5);
+	background: rgba(214, 69, 69, 0.14);
 	color: var(--c-red);
 }
 
+/* Teal, matching the brand. This border was still the old azure. */
 .c-badge[data-tone="blue"] {
-	border-color: rgba(13, 141, 228, 0.5);
+	border-color: rgba(14, 154, 138, 0.5);
 	background: var(--c-blue-wash);
 	color: var(--c-blue-ink);
 }
