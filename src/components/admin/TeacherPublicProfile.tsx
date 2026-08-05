@@ -15,6 +15,20 @@ type Profile = {
   socials: string | null; // JSON
   featuredCourseId: string | null;
   isPublished: boolean;
+  bookingEnabled: boolean;
+  arabicEnabled: boolean;
+  languagesEnabled: boolean;
+  priceMonthly1: number | null;
+  priceMonthly3: number | null;
+  priceMonthly6: number | null;
+  originalMonthly3: number | null;
+  originalMonthly6: number | null;
+  langSurcharge1: number | null;
+  langSurcharge3: number | null;
+  langSurcharge6: number | null;
+  enableMonthly1: boolean;
+  enableMonthly3: boolean;
+  enableMonthly6: boolean;
   priceMonthly: number | null;
   priceTermly: number | null;
   priceYearly: number | null;
@@ -36,7 +50,6 @@ const primaryBtn =
 const ghostBtn =
   "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink-muted)]/40 text-sm font-semibold transition-colors";
 
-// Resize an image file to a max dimension and return a JPEG data URL.
 function fileToResizedDataUrl(file: File, max = 512): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -80,7 +93,23 @@ export function TeacherPublicProfile() {
       fetch("/api/admin/courses", { credentials: "include" }).then((r) => r.json()).catch(() => ({})),
     ]).then(([prof, crs]) => {
       if (prof?.profile) {
-        setP(prof.profile);
+        setP({
+          bookingEnabled: true,
+          arabicEnabled: true,
+          languagesEnabled: true,
+          enableMonthly1: true,
+          enableMonthly3: true,
+          enableMonthly6: true,
+          priceMonthly1: 200,
+          priceMonthly3: 500,
+          priceMonthly6: 1000,
+          originalMonthly3: 600,
+          originalMonthly6: 1200,
+          langSurcharge1: 50,
+          langSurcharge3: 150,
+          langSurcharge6: 300,
+          ...prof.profile,
+        });
         try { setSocials(prof.profile.socials ? JSON.parse(prof.profile.socials) : {}); } catch { setSocials({}); }
       }
       setCourses((crs?.courses ?? []).map((c: { id: string; title: string }) => ({ id: c.id, title: c.title })));
@@ -89,7 +118,6 @@ export function TeacherPublicProfile() {
 
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => setP((prev) => (prev ? { ...prev, [k]: v } : prev));
 
-  // Debounced slug availability check
   const checkSlug = useCallback((slug: string) => {
     if (!slug || slug.length < 2) { setSlugState("invalid"); return; }
     setSlugState("checking");
@@ -125,7 +153,7 @@ export function TeacherPublicProfile() {
         body: JSON.stringify({ ...p, socials: JSON.stringify(socials) }),
       });
       const data = await res.json();
-      if (res.ok) { setP(data.profile); toastSuccess("تم حفظ صفحتك"); }
+      if (res.ok) { setP((prev) => ({ ...prev, ...data.profile })); toastSuccess("تم حفظ صفحتك وإعدادات الحجز بنجاح"); }
       else toastError(data.error || "تعذر الحفظ");
     } catch { toastError("تعذر الحفظ"); }
     finally { setSaving(false); }
@@ -147,7 +175,7 @@ export function TeacherPublicProfile() {
   const slugColor = slugState === "ok" ? "text-emerald-500" : slugState === "checking" ? "text-[var(--ink-muted)]" : "text-rose-500";
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5 max-w-3xl" dir="rtl">
       {/* Header / publish + actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -210,11 +238,11 @@ export function TeacherPublicProfile() {
 
         <div>
           <label className={label}>الاسم المعروض</label>
-          <input className={input} value={p.displayName ?? ""} onChange={(e) => set("displayName", e.target.value)} placeholder="مثال: مستر خالد" />
+          <input className={input} value={p.displayName ?? ""} onChange={(e) => set("displayName", e.target.value)} placeholder="مثال: مستر أحمد" />
         </div>
         <div>
           <label className={label}>نبذة تعريفية</label>
-          <textarea rows={3} className={`${input} resize-none`} value={p.bio ?? ""} onChange={(e) => set("bio", e.target.value)} placeholder="خبرة 10 سنوات في تدريس الرياضيات للثانوية العامة…" />
+          <textarea rows={3} className={`${input} resize-none`} value={p.bio ?? ""} onChange={(e) => set("bio", e.target.value)} placeholder="خبرة في تدريس البرمجة والذكاء الاصطناعي…" />
         </div>
 
         {/* Slug */}
@@ -222,7 +250,7 @@ export function TeacherPublicProfile() {
           <label className={label}>رابط الصفحة</label>
           <div className="flex items-center gap-2">
             <span className="text-xs text-[var(--ink-muted)] shrink-0 font-mono" dir="ltr">{origin}/</span>
-            <input className={`${input} font-mono`} dir="ltr" value={p.slug} onChange={(e) => set("slug", e.target.value)} placeholder="MR-KHALED" />
+            <input className={`${input} font-mono`} dir="ltr" value={p.slug} onChange={(e) => set("slug", e.target.value)} placeholder="MR-AHMED" />
           </div>
           {slugMsg && <p className={`text-[11px] mt-1.5 font-semibold ${slugColor}`}>{slugMsg}</p>}
         </div>
@@ -244,17 +272,6 @@ export function TeacherPublicProfile() {
               </div>
             </div>
           ))}
-        </div>
-        {/* Live preview */}
-        <div className="rounded-xl overflow-hidden border border-[var(--border)]">
-          <div className="px-4 py-3 flex items-center gap-2" style={{ background: p.navColor ?? "#0b0f19" }}>
-            <div className="w-6 h-6 rounded-full bg-white/20" />
-            <span className="text-white text-sm font-bold">{p.displayName || "اسمك هنا"}</span>
-          </div>
-          <div className="p-4 bg-[var(--bg)] flex items-center justify-between">
-            <span className="text-xs text-[var(--ink-muted)]">معاينة الزر</span>
-            <span className="px-4 py-2 rounded-lg text-white text-sm font-bold" style={{ background: p.accentColor ?? "#6366f1" }}>اشترك الآن</span>
-          </div>
         </div>
       </div>
 
@@ -281,123 +298,229 @@ export function TeacherPublicProfile() {
         </div>
       </div>
 
-      {/* Subscription Pricing & Booking Section */}
-      <div className={`${card} space-y-5`}>
-        <div>
-          <h3 className="font-bold text-[var(--ink)] flex items-center gap-2">
-            <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            إعدادات الحجز والاشتراك
-          </h3>
-          <p className="text-xs text-[var(--ink-muted)] mt-1">حدد أسعار خطط الاشتراك التي ستظهر للطلاب عند الضغط على "احجز الآن" في صفحتك.</p>
+      {/* ── NEW: Comprehensive Booking & Subscription Settings ── */}
+      <div className={`${card} space-y-6`}>
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
+          <div>
+            <h3 className="font-bold text-[var(--ink)] flex items-center gap-2 text-base">
+              <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              إعدادات الحجز والاشتراك 💳
+            </h3>
+            <p className="text-xs text-[var(--ink-muted)] mt-1">تحديد تفعيل الحجز، لغات التدريس المتاحة، وأسعار خطط 1 شهر، 3 شهور، و 6 شهور.</p>
+          </div>
+
+          {/* Booking ON/OFF Switch */}
+          <div className="flex items-center gap-3 bg-[var(--bg)] p-2.5 rounded-xl border border-[var(--border)]">
+            <span className="text-xs font-bold text-[var(--ink)]">
+              {p.bookingEnabled ? "الحجز مفعل ✅" : "الحجز مغلق 🔒"}
+            </span>
+            <button
+              type="button"
+              onClick={() => set("bookingEnabled", !p.bookingEnabled)}
+              role="switch"
+              aria-checked={p.bookingEnabled}
+              className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${p.bookingEnabled ? "bg-emerald-500" : "bg-[var(--border)]"}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${p.bookingEnabled ? "left-1" : "left-6"}`} />
+            </button>
+          </div>
         </div>
 
+        {/* Language Availability Options */}
+        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] space-y-3">
+          <h4 className="font-bold text-xs text-[var(--ink)]">🌐 لغات الشرح والتدريس المتاحة للطلاب:</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:border-emerald-500/50">
+              <input
+                type="checkbox"
+                checked={p.arabicEnabled}
+                onChange={(e) => set("arabicEnabled", e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="font-bold text-xs text-[var(--ink)]">متاح بالحجز عربي 🇪🇬</span>
+                <p className="text-[10px] text-[var(--ink-muted)]">إمكانية اختيار المسار العربي</p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] cursor-pointer hover:border-emerald-500/50">
+              <input
+                type="checkbox"
+                checked={p.languagesEnabled}
+                onChange={(e) => set("languagesEnabled", e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="font-bold text-xs text-[var(--ink)]">متاح بالحجز لغات 🇬🇧</span>
+                <p className="text-[10px] text-[var(--ink-muted)]">إمكانية اختيار مسار اللغات</p>
+              </div>
+            </label>
+          </div>
+          {!p.languagesEnabled && (
+            <p className="text-[11px] text-amber-400 font-semibold px-1">
+              سيظهر للطلاب نص: "متاح للحجز باللغة العربية فقط (This teacher teaches Arabic only)"
+            </p>
+          )}
+        </div>
+
+        {/* 1 Month, 3 Months, 6 Months Subscription Plans */}
         <div className="space-y-4">
-          {/* Monthly Plan */}
-          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
-            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
-              <span>📅</span> الاشتراك الشهري
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={label}>السعر الأصلي (جنيه)</label>
+          {/* 1 Month Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
+                <span>⚡</span> اشتراك شهر واحد (1 Month)
+              </h4>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[var(--ink-muted)] cursor-pointer">
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className={input}
-                  value={p.priceMonthly ?? ""}
-                  onChange={(e) => set("priceMonthly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 150"
+                  type="checkbox"
+                  checked={p.enableMonthly1}
+                  onChange={(e) => set("enableMonthly1", e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500"
                 />
-              </div>
-              <div>
-                <label className={label}>🏷️ نسبة الخصم (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className={input}
-                  value={p.discountMonthly ?? ""}
-                  onChange={(e) => set("discountMonthly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 10"
-                />
-              </div>
+                تفعيل الخطة
+              </label>
             </div>
+            {p.enableMonthly1 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>سعر العربي (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.priceMonthly1 ?? 200}
+                    onChange={(e) => set("priceMonthly1", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="200"
+                  />
+                </div>
+                <div>
+                  <label className={label}>إضافة سعر اللغات (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.langSurcharge1 ?? 50}
+                    onChange={(e) => set("langSurcharge1", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="+50"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Termly Plan */}
-          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
-            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
-              <span>📚</span> اشتراك الترم الكامل
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={label}>السعر الأصلي (جنيه)</label>
+          {/* 3 Months Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
+                <span>📚</span> اشتراك 3 شهور (3 Months)
+              </h4>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[var(--ink-muted)] cursor-pointer">
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className={input}
-                  value={p.priceTermly ?? ""}
-                  onChange={(e) => set("priceTermly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 350"
+                  type="checkbox"
+                  checked={p.enableMonthly3}
+                  onChange={(e) => set("enableMonthly3", e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500"
                 />
-              </div>
-              <div>
-                <label className={label}>🏷️ نسبة الخصم (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className={input}
-                  value={p.discountTermly ?? ""}
-                  onChange={(e) => set("discountTermly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 20"
-                />
-              </div>
+                تفعيل الخطة
+              </label>
             </div>
+            {p.enableMonthly3 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className={label}>سعر العربي الساري (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.priceMonthly3 ?? 500}
+                    onChange={(e) => set("priceMonthly3", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="500"
+                  />
+                </div>
+                <div>
+                  <label className={label}>السعر العربي قبل الخصم (مشطوب)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.originalMonthly3 ?? 600}
+                    onChange={(e) => set("originalMonthly3", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="600"
+                  />
+                </div>
+                <div>
+                  <label className={label}>إضافة سعر اللغات (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.langSurcharge3 ?? 150}
+                    onChange={(e) => set("langSurcharge3", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="+150"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Yearly Plan */}
-          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)]">
-            <h4 className="font-bold text-sm text-[var(--ink)] mb-3 flex items-center gap-2">
-              <span>🎓</span> الاشتراك السنوي
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className={label}>السعر الأصلي (جنيه)</label>
+          {/* 6 Months Plan */}
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
+                <span>🎓</span> اشتراك 6 شهور (6 Months)
+              </h4>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[var(--ink-muted)] cursor-pointer">
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className={input}
-                  value={p.priceYearly ?? ""}
-                  onChange={(e) => set("priceYearly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 600"
+                  type="checkbox"
+                  checked={p.enableMonthly6}
+                  onChange={(e) => set("enableMonthly6", e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500"
                 />
-              </div>
-              <div>
-                <label className={label}>🏷️ نسبة الخصم (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className={input}
-                  value={p.discountYearly ?? ""}
-                  onChange={(e) => set("discountYearly", e.target.value ? Number(e.target.value) : null)}
-                  placeholder="مثال: 30"
-                />
-              </div>
+                تفعيل الخطة
+              </label>
             </div>
+            {p.enableMonthly6 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className={label}>سعر العربي الساري (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.priceMonthly6 ?? 1000}
+                    onChange={(e) => set("priceMonthly6", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="1000"
+                  />
+                </div>
+                <div>
+                  <label className={label}>السعر العربي قبل الخصم (مشطوب)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.originalMonthly6 ?? 1200}
+                    onChange={(e) => set("originalMonthly6", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="1200"
+                  />
+                </div>
+                <div>
+                  <label className={label}>إضافة سعر اللغات (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={input}
+                    value={p.langSurcharge6 ?? 300}
+                    onChange={(e) => set("langSurcharge6", e.target.value ? Number(e.target.value) : null)}
+                    placeholder="+300"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        <p className="text-[10px] text-[var(--ink-muted)] px-1">اترك السعر فارغاً إذا لم ترد عرض هذه الخطة للطلاب. يمكنك تحديد نسبة خصم مختلفة لكل خطة.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
@@ -410,7 +533,7 @@ export function TeacherPublicProfile() {
             />
           </div>
           <div>
-            <label className={label}>🔗 رابط التواصل / الحجز</label>
+            <label className={label}>🔗 رابط التواصل / الحجز (واتساب)</label>
             <input
               className={`${input} font-mono`}
               dir="ltr"
@@ -418,13 +541,13 @@ export function TeacherPublicProfile() {
               onChange={(e) => set("bookingContactUrl", e.target.value || null)}
               placeholder="https://wa.me/201234567890"
             />
-            <p className="text-[10px] text-[var(--ink-muted)] mt-1">رابط واتساب أو رقم الهاتف المخصص للحجز.</p>
+            <p className="text-[10px] text-[var(--ink-muted)] mt-1">رابط واتساب أو رقم الهاتف المخصص لتلقي طلبات الحجز المباشرة.</p>
           </div>
         </div>
       </div>
 
-      <button onClick={save} disabled={saving} className={`${primaryBtn} w-full py-3`}>
-        {saving ? "جارٍ الحفظ…" : "حفظ صفحتي"}
+      <button onClick={save} disabled={saving} className={`${primaryBtn} w-full py-3 text-base`}>
+        {saving ? "جارٍ حفظ إعداداتك…" : "حفظ بيانات الصفحة وإعدادات الحجز 💾"}
       </button>
     </div>
   );
