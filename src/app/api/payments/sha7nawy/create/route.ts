@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
         checkoutUrl:
           checkoutUrl ||
           (reference
-            ? `https://dash.shake-out.com/invoice/${reference}`
+            ? "https://dash.shake-out.com/invoice/" + reference
             : null),
         method: methodConfig.id,
         methodLabel: methodConfig.label,

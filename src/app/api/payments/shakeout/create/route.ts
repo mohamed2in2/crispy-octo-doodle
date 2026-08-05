@@ -128,7 +128,9 @@ export async function POST(req: NextRequest) {
 
     const finalCheckoutUrl =
       checkoutUrl ||
-      (reference ? `https://dash.shake-out.com/invoice/${reference}` : null);
+      (reference
+        ? "https://dash.shake-out.com/invoice/" + reference
+        : null);
 
     return NextResponse.json({
       success: true,
