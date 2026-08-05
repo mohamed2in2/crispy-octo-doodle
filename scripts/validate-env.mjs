@@ -25,14 +25,12 @@ const merged = { ...loadEnvFile(".env"), ...loadEnvFile(".env.local"), ...proces
 const production = merged.NODE_ENV === "production";
 const placeholder = /replace-with|your-secret|your-.*key|change-me|example|xxxxxxxx|placeholder/i;
 const configured = (key) => (merged[key]?.trim() ?? "");
+const isPostgres = (value) => (value.startsWith("postgresql://") || value.startsWith("postgres://")) && !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(value);
 
 const required = [
   {
     key: "DATABASE_URL",
-    test: (value) => {
-      if (!production && (value.startsWith("file:") || value.startsWith("libsql:"))) return true;
-      return (value.startsWith("postgresql://") || value.startsWith("postgres://")) && !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(value);
-    },
+    test: (value) => !production && (value.startsWith("file:") || value.startsWith("libsql:")) || isPostgres(value),
     hint: production ? "A real PostgreSQL connection string is required in production" : "Use file:./dev.db locally or a real PostgreSQL URI",
   },
   {
@@ -41,7 +39,9 @@ const required = [
     hint: production ? "Use a unique random secret of at least 32 characters" : "Use at least 16 non-placeholder characters",
   },
   ...(production ? [
+    { key: "DIRECT_URL", test: isPostgres, hint: "Use a direct non-placeholder PostgreSQL connection for migrations" },
     { key: "CRON_SECRET", test: (value) => value.length >= 32 && !placeholder.test(value), hint: "Use a unique random secret of at least 32 characters" },
+    { key: "CONFIG_ENCRYPTION_KEY", test: (value) => value.length >= 32 && !placeholder.test(value), hint: "Use a stable unique encryption secret of at least 32 characters" },
     { key: "NEXT_PUBLIC_SITE_URL", test: (value) => /^https:\/\//.test(value) && !/localhost|example/i.test(value), hint: "Use the canonical HTTPS production URL" },
   ] : []),
 ];
@@ -49,12 +49,7 @@ const required = [
 const unsafeProductionFlags = ["BYPASS_PHONE_VERIFICATION", "DEV_SKIP_SMS", "TWILIO_BYPASS_VERIFICATION", "RECAPTCHA_BYPASS"];
 let failed = 0;
 console.log(`Environment validation (${production ? "production" : "development"})\n`);
-
 const envFiles = [".env", ".env.local"].filter((file) => existsSync(join(root, file)));
-if (!envFiles.length && Object.keys(process.env).length === 0) {
-  console.error("No environment configuration found. Copy .env.example and set real values.");
-  process.exit(1);
-}
 if (envFiles.length) console.log(`Loaded: ${envFiles.join(", ")}\n`);
 
 for (const { key, test, hint } of required) {
@@ -62,9 +57,7 @@ for (const { key, test, hint } of required) {
   if (!value || !test(value)) {
     console.error(`${value ? "INVALID" : "MISSING"}: ${key}\n         ${hint}\n`);
     failed += 1;
-  } else {
-    console.log(`OK: ${key}`);
-  }
+  } else console.log(`OK: ${key}`);
 }
 
 if (production) {
@@ -74,15 +67,8 @@ if (production) {
       failed += 1;
     }
   }
-  if (configured("DATABASE_URL").startsWith("file:") || configured("DATABASE_URL").startsWith("libsql:")) {
-    console.error("UNSAFE: SQLite/libSQL DATABASE_URL is not an approved production datastore\n");
-    failed += 1;
-  }
 }
-
-for (const key of ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_APP_URL"]) {
-  if (!configured(key)) console.warn(`WARN: ${key} is not set`);
-}
+for (const key of ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_APP_URL"]) if (!configured(key)) console.warn(`WARN: ${key} is not set`);
 
 if (failed) {
   console.error(`\n${failed} production configuration requirement(s) failed.`);
