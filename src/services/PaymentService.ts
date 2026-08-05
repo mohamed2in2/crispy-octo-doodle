@@ -79,6 +79,24 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
 
     const methodConfig = getPaymentMethod(params.method);
 
+    // Smart Fallback: If Sha7nawy returned a provider error (e.g. "خطأ لدى مزود الخدمة") or status false,
+    // and Shake-Out API key is configured, fallback to Shake-Out vendor invoice so the user can still pay.
+    if (!res.status && process.env.SHAKEOUT_PUBLIC_KEY) {
+      console.warn(`[PaymentService] Sha7nawy failed (${res.message}). Attempting fallback to Shake-Out vendor invoice...`);
+      try {
+        const shakeout = new ShakeOutPaymentProvider();
+        const fallbackRes = await shakeout.createPayment(params);
+        if (fallbackRes.success) {
+          return {
+            ...fallbackRes,
+            message: "تم تجهيز رابط الدفع الإلكتروني البديل (Shake-Out) لإتمام العملية بأمان.",
+          };
+        }
+      } catch (err) {
+        console.error("[PaymentService] Fallback to Shake-Out failed:", err);
+      }
+    }
+
     return {
       success: res.status,
       code: res.code,

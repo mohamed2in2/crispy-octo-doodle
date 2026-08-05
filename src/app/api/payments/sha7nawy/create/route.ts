@@ -129,6 +129,51 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.status) {
+      // Smart Fallback to Shake-Out if Sha7nawy API fails or returns provider error
+      if (process.env.SHAKEOUT_PUBLIC_KEY) {
+        console.warn(`[Sha7nawy Route] API error (${result.message}), attempting Shake-Out fallback...`);
+        const soWebhookUrl = `${appUrl}/api/payments/shakeout/webhook`;
+        const soResult = await createShakeOutPayment({
+          number: number || "",
+          amount: totalAmount,
+          method: methodConfig.id,
+          client: session.id,
+          customerName: session.name || "Student",
+          customerEmail: session.email || undefined,
+          details,
+          webhook_url: soWebhookUrl,
+        });
+
+        if (soResult.status) {
+          const reference = soResult.data?.reference ? String(soResult.data.reference) : null;
+          const soCheckoutUrl = soResult.data?.payment_page_url || soResult.data?.url || null;
+          if (reference) {
+            await prisma.balanceTransaction.create({
+              data: {
+                userId: session.id,
+                type: SHAKEOUT_PENDING_TYPE,
+                amount: totalAmount,
+                note: `${shakeOutRefNote(reference)}${soCheckoutUrl ? `|url:${soCheckoutUrl}` : ""}`,
+              },
+            });
+          }
+          const finalCheckoutUrl = soCheckoutUrl || (reference ? `https://dash.shake-out.com/invoice/${reference}` : null);
+          return NextResponse.json({
+            success: true,
+            provider: "shakeout",
+            reference: soResult.data?.reference,
+            checkoutUrl: finalCheckoutUrl,
+            method: methodConfig.id,
+            methodLabel: methodConfig.label,
+            baseAmount,
+            taxAmount,
+            totalAmount,
+            instructions: "تم تحويل العملية لبوابة Shake-Out المباشرة لإتمام السداد دون توقف.",
+            data: soResult.data,
+          });
+        }
+      }
+
       return NextResponse.json({ error: result.message }, { status: result.code || 400 });
     }
 

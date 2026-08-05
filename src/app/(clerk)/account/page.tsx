@@ -1058,11 +1058,19 @@ export default function AccountPage() {
                           <label className="block text-xs font-bold mb-2" style={{ color: "var(--ink-2)" }}>اختر طريقة الدفع والمحفظة:</label>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {[
-                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                              { id: "et_cash", label: "اتصالات كاش (e&)", color: "#76B900" },
+                              { id: "vf_cash", label: "فودافون كاش", color: "#E60000", disabled: false },
+                              { id: "or_cash", label: "أورانج كاش", color: "#FF7900", disabled: false },
+                              { id: "et_cash", label: "اتصالات كاش (e&)", color: "#76B900", disabled: false },
                             ].map(m => (
-                              <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
-                                className="py-2.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
+                              <button key={m.id} type="button" onClick={() => {
+                                setSelectedWalletMethod(m.id as any);
+                                if (m.disabled) {
+                                  setWalletMsg("⚠️ وسيلة اتصالات كاش معطلة حالياً من مزود الخدمة — نوصي باستخدام فودافون كاش أو فوري كشك");
+                                } else {
+                                  setWalletMsg("");
+                                }
+                              }}
+                                className={`py-2.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1 ${m.disabled ? "opacity-60" : ""}`}
                                 style={{
                                   borderColor: selectedWalletMethod === m.id ? m.color : "var(--border)",
                                   background: selectedWalletMethod === m.id ? `${m.color}15` : "var(--surface)",

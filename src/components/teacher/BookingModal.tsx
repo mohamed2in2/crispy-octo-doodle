@@ -165,7 +165,7 @@ export function BookingButton({
   // Payment method selection & UI state
   const [payMode, setPayMode] = useState<"wallet" | "fawry" | "balance" | "whatsapp" | "code">("wallet");
   const [walletPhone, setWalletPhone] = useState("");
-  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "et_cash" | "fawry">("vf_cash");
+  const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "or_cash" | "et_cash" | "fawry">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
   const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; amount: number } | null>(null);
@@ -310,7 +310,7 @@ export function BookingButton({
       window.location.href = `/login?redirect_url=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    const isWallet = methodId === "vf_cash" || methodId === "et_cash";
+    const isWallet = methodId === "vf_cash" || methodId === "or_cash" || methodId === "et_cash";
     if (isWallet && !walletPhone.trim()) {
       setWalletMsg("❌ رقم المحفظة مطلوب لإرسال طلب الخصم");
       return;
@@ -670,10 +670,13 @@ export function BookingButton({
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedWalletMethod("vf_cash")}
+                          onClick={() => {
+                            setSelectedWalletMethod("vf_cash");
+                            setWalletMsg("");
+                          }}
                           className="p-3 rounded-xl text-xs font-bold border cursor-pointer text-right space-y-1"
                           style={{
                             borderColor: selectedWalletMethod === "vf_cash" ? "#E60000" : "rgba(255,255,255,0.1)",
@@ -683,14 +686,37 @@ export function BookingButton({
                         >
                           <div className="flex items-center justify-between">
                             <span>📱 فودافون كاش</span>
-                            <span className="text-[10px] text-gray-400">تأكيد فوري</span>
+                            <span className="text-[10px] text-gray-400">*9*1#</span>
                           </div>
-                          <p className="text-[10px] text-gray-400 font-normal">طلب دفع مباشر عبر *9*1#</p>
+                          <p className="text-[10px] text-gray-400 font-normal">طلب دفع مباشر</p>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => setSelectedWalletMethod("et_cash")}
+                          onClick={() => {
+                            setSelectedWalletMethod("or_cash");
+                            setWalletMsg("");
+                          }}
+                          className="p-3 rounded-xl text-xs font-bold border cursor-pointer text-right space-y-1"
+                          style={{
+                            borderColor: selectedWalletMethod === "or_cash" ? "#FF7900" : "rgba(255,255,255,0.1)",
+                            background: selectedWalletMethod === "or_cash" ? "rgba(255,121,0,0.15)" : "#1a1f2e",
+                            color: "#fff",
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>🍊 أورانج كاش</span>
+                            <span className="text-[10px] text-gray-400">تطبيق Orange</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-normal">تأكيد عبر التطبيق</p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedWalletMethod("et_cash");
+                            setWalletMsg("");
+                          }}
                           className="p-3 rounded-xl text-xs font-bold border cursor-pointer text-right space-y-1"
                           style={{
                             borderColor: selectedWalletMethod === "et_cash" ? "#76B900" : "rgba(255,255,255,0.1)",
@@ -700,9 +726,9 @@ export function BookingButton({
                         >
                           <div className="flex items-center justify-between">
                             <span>💚 اتصالات كاش</span>
-                            <span className="text-[10px] text-gray-400">تأكيد فوري</span>
+                            <span className="text-[10px] text-gray-400">e& Money</span>
                           </div>
-                          <p className="text-[10px] text-gray-400 font-normal">عبر تطبيق e& Money</p>
+                          <p className="text-[10px] text-gray-400 font-normal">تأكيد عبر التطبيق</p>
                         </button>
                       </div>
 
@@ -727,7 +753,27 @@ export function BookingButton({
                         {walletLoading ? "جارٍ إرسال طلب الخصم..." : `خصم ${activePlan.price} ج.م من المحفظة 📱`}
                       </button>
 
-                      {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
+                      {walletMsg && (
+                        <div className="space-y-2 text-center">
+                          <p className="text-xs font-semibold" style={{ color: walletMsg.startsWith("❌") || walletMsg.startsWith("⚠️") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>
+                          {(walletMsg.includes("مزود الخدمة") || walletMsg.includes("معطلة")) && (
+                            <div className="flex gap-2 justify-center pt-1">
+                              <button
+                                onClick={() => { setPayMode("fawry"); setSelectedWalletMethod("fawry"); setWalletMsg(""); }}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 cursor-pointer"
+                              >
+                                🏪 التجربة عبر فوري كشك
+                              </button>
+                              <button
+                                onClick={() => { setPayMode("whatsapp"); setWalletMsg(""); }}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer"
+                              >
+                                💬 الدفع عبر الواتساب
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
