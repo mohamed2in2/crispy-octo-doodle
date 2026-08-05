@@ -9,6 +9,8 @@ import {
 import { calculateAmountWithTax } from "@/lib/sha7nawy";
 import { getPaymentMethod } from "@/lib/payment-methods";
 
+const FAWRY_METHOD_ID = "fawry";
+
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -17,32 +19,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { number, amount, method, courseTitle } = body as {
-      number?: string;
+    const { amount, method, courseTitle } = body as {
       amount?: number;
       method?: string;
       courseTitle?: string;
     };
 
-    if (!amount || amount < 5) {
-      return NextResponse.json({ error: "المبلغ مطلوب (الحد الأدنى 5 جنيه)" }, { status: 400 });
+    if (method !== FAWRY_METHOD_ID) {
+      return NextResponse.json({ error: "بوابة Shake-Out مخصصة للدفع عبر فوري فقط" }, { status: 400 });
     }
 
-    const selectedMethod = method || "shakeout_wallet";
-    const methodConfig = getPaymentMethod(selectedMethod);
-    const { baseAmount, taxAmount, totalAmount } = calculateAmountWithTax(amount, selectedMethod);
+    const methodConfig = getPaymentMethod(FAWRY_METHOD_ID);
+    if (!methodConfig || !methodConfig.available || methodConfig.provider !== "shakeout") {
+      return NextResponse.json({ error: "الدفع عبر فوري غير متاح حالياً" }, { status: 400 });
+    }
 
+    if (!amount || amount < methodConfig.minAmount || amount > methodConfig.maxAmount) {
+      return NextResponse.json(
+        { error: `المبلغ يجب أن يكون بين ${methodConfig.minAmount} و ${methodConfig.maxAmount.toLocaleString()} جنيه` },
+        { status: 400 }
+      );
+    }
+
+    const { baseAmount, taxAmount, totalAmount } = calculateAmountWithTax(amount, FAWRY_METHOD_ID);
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://code-up.tech").replace(/\/$/, "");
     const webhookUrl = `${appUrl}/api/payments/shakeout/webhook`;
-
     const details = courseTitle
-      ? `شراء: ${courseTitle} عبر Shake-Out (${baseAmount} جنيه + ${methodConfig?.feePercentage ?? 2}% رسوم) = ${totalAmount} جنيه`
-      : `شحن رصيد: ${baseAmount} جنيه عبر Shake-Out (+ ${methodConfig?.feePercentage ?? 2}% رسوم = ${totalAmount} جنيه)`;
+      ? `شراء: ${courseTitle} عبر فوري (${baseAmount} جنيه + ${methodConfig.feePercentage}% رسوم) = ${totalAmount} جنيه`
+      : `شحن رصيد عبر فوري: ${baseAmount} جنيه (+ ${methodConfig.feePercentage}% رسوم = ${totalAmount} جنيه)`;
 
     const result = await createShakeOutPayment({
-      number: number || "",
+      number: "",
       amount: totalAmount,
-      method: selectedMethod,
+      method: FAWRY_METHOD_ID,
       client: session.id,
       details,
       webhook_url: webhookUrl,
@@ -55,34 +64,31 @@ export async function POST(req: NextRequest) {
     const reference = result.data?.reference ? String(result.data.reference) : null;
     const checkoutUrl = result.data?.payment_page_url || result.data?.url || null;
     if (reference) {
-      const noteText = `${shakeOutRefNote(reference)}${checkoutUrl ? `|url:${checkoutUrl}` : ""}`;
       await prisma.balanceTransaction.create({
         data: {
           userId: session.id,
           type: SHAKEOUT_PENDING_TYPE,
           amount: totalAmount,
-          note: noteText,
+          note: `${shakeOutRefNote(reference)}${checkoutUrl ? `|url:${checkoutUrl}` : ""}`,
         },
       });
     }
-
-    const finalCheckoutUrl = checkoutUrl || (reference ? `https://dash.shake-out.com/invoice/${reference}` : null);
 
     return NextResponse.json({
       success: true,
       provider: "shakeout",
       reference: result.data?.reference,
-      checkoutUrl: finalCheckoutUrl,
-      method: selectedMethod,
-      methodLabel: methodConfig?.label || "Shake-Out Payment",
+      checkoutUrl,
+      method: FAWRY_METHOD_ID,
+      methodLabel: methodConfig.label,
       baseAmount,
       taxAmount,
       totalAmount,
-      instructions: result.message || methodConfig?.shortNote || "تم إنشاء الفاتورة بنجاح. جارٍ توجيهك للسداد...",
+      instructions: result.message || methodConfig.shortNote,
       data: result.data,
     });
-  } catch (error: any) {
-    console.error("[Shake-Out Create API] Error:", error);
-    return NextResponse.json({ error: "حدث خطأ غير متوقع أثناء بدء الدفع عبر Shake-Out" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Shake-Out Create API] Error:", error instanceof Error ? error.message : "unknown error");
+    return NextResponse.json({ error: "حدث خطأ غير متوقع أثناء بدء الدفع عبر فوري" }, { status: 500 });
   }
 }

@@ -45,7 +45,7 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# ── local databases (never commit — they contain real user rows) ──────────────
+# local databases (never commit — they contain real user rows)
 *.db
 *.db-journal
 *.sqlite
@@ -55,14 +55,18 @@ next-env.d.ts
 /prisma/*.db
 /prisma/*.db-journal
 
-# ── logs and captured command output ─────────────────────────────────────────
+# logs and captured command output
 *.log
 /logs/
 dev-server.log
 build-out.txt
 test-out.txt
 
-# ── binary artifacts and archives (use releases, not git) ────────────────────
+# agent execution transcripts and captured tool output
+/agents/**/wire.jsonl
+/agents/**/logs/
+
+# binary artifacts and archives (use releases, not git)
 *.deb
 *.deb.[0-9]
 *.rpm
@@ -75,13 +79,13 @@ test-out.txt
 *.tgz
 *.7z
 
-# ── editor / IDE local state ─────────────────────────────────────────────────
+# editor / IDE local state
 /.idea/
 /.vscode/*
 !/.vscode/extensions.json
 !/.vscode/settings.json
 
-# ── backups and scratch files ────────────────────────────────────────────────
+# backups and scratch files
 *.backup
 *.bak
 *.orig

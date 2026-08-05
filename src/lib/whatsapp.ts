@@ -1,16 +1,28 @@
-import { normalizeEgyptPhone } from "./phone";
 import { randomInt } from "crypto";
+import { sendVerificationSms } from "./aws-sms";
+import { normalizeEgyptPhone } from "./phone";
 
 export class WhatsAppSendError extends Error {
   status?: number;
-  errorPayload?: any;
+  errorPayload?: unknown;
 
-  constructor(message: string, status?: number, errorPayload?: any) {
+  constructor(message: string, status?: number, errorPayload?: unknown) {
     super(message);
     this.name = "WhatsAppSendError";
     this.status = status;
     this.errorPayload = errorPayload;
   }
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function providerMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== "object") return fallback;
+  const error = "error" in payload ? payload.error : undefined;
+  if (!error || typeof error !== "object" || !("message" in error)) return fallback;
+  return typeof error.message === "string" ? error.message : fallback;
 }
 
 export function generateVerificationCode(): string {
@@ -22,7 +34,6 @@ export function generateVerificationCode(): string {
  * Throws a WhatsAppSendError on failure or non-2xx response.
  */
 export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<boolean> {
-  // Offline mode — skip actual API call (useful for staging without WhatsApp credentials)
   if (process.env.WHATSAPP_OFFLINE === "true") {
     throw new WhatsAppSendError("WhatsApp is offline (WHATSAPP_OFFLINE=true)", 503);
   }
@@ -32,7 +43,6 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
   const version = process.env.WHATSAPP_API_VERSION || "v25.0";
   const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME;
   const templateLang = process.env.WHATSAPP_OTP_TEMPLATE_LANG || "ar_EG";
-  // Set WHATSAPP_TEMPLATE_HAS_BUTTON="false" if your template has no URL button
   const templateHasButton = process.env.WHATSAPP_TEMPLATE_HAS_BUTTON !== "false";
 
   if (!token || !phoneId || !templateName) {
@@ -45,22 +55,16 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
   let recipient: string;
   try {
     recipient = normalizeEgyptPhone(phoneE164).replace("+", "");
-  } catch (err: any) {
-    throw new WhatsAppSendError(`Phone normalization failed: ${err.message}`, 400);
+  } catch (error: unknown) {
+    throw new WhatsAppSendError(`Phone normalization failed: ${errorMessage(error, "invalid number")}`, 400);
   }
 
   let components: object[] | undefined;
-
-  // WHATSAPP_PARAMETER_NAME: the named variable defined in your Meta template (e.g. "otp_code", "code").
-  // Required for templates created with named params ({{variable_name}} style).
-  // Leave empty/unset only if your template uses old positional params ({{1}}, {{2}}).
   const paramName = process.env.WHATSAPP_PARAMETER_NAME || "";
 
   if (templateName === "3p_direct_integration_test_template") {
-    // Meta's built-in test template needs no components
     components = undefined;
   } else {
-    // Build the body parameter object — include parameter_name for named-variable templates
     const bodyParam: Record<string, string> = { type: "text", text: code };
     if (paramName) bodyParam.parameter_name = paramName;
 
@@ -72,14 +76,13 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
     ];
 
     if (templateHasButton) {
-      const btnParam: Record<string, string> = { type: "text", text: code };
-      if (paramName) btnParam.parameter_name = paramName;
-
+      const buttonParam: Record<string, string> = { type: "text", text: code };
+      if (paramName) buttonParam.parameter_name = paramName;
       bodyComponents.push({
         type: "button",
         index: "0",
         sub_type: "url",
-        parameters: [btnParam],
+        parameters: [buttonParam],
       });
     }
 
@@ -93,9 +96,7 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
     type: "template",
     template: {
       name: templateName,
-      language: {
-        code: templateLang,
-      },
+      language: { code: templateLang },
       components,
     },
   };
@@ -104,37 +105,30 @@ export async function sendOtpWhatsApp(phoneE164: string, code: string): Promise<
     const res = await fetch(`https://graph.facebook.com/${version}/${phoneId}/messages`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json().catch(() => ({}));
-
+    const data: unknown = await res.json().catch(() => undefined);
     if (!res.ok) {
-      const errorMsg = data?.error?.message || `HTTP ${res.status}`;
       throw new WhatsAppSendError(
-        `Meta API error: ${errorMsg}`,
+        `Meta API error: ${providerMessage(data, `HTTP ${res.status}`)}`,
         res.status,
-        data?.error || data
+        data
       );
     }
 
     return true;
-  } catch (err: any) {
-    if (err instanceof WhatsAppSendError) {
-      throw err;
-    }
-    throw new WhatsAppSendError(`Network/connection failure: ${err.message}`, 500);
+  } catch (error: unknown) {
+    if (error instanceof WhatsAppSendError) throw error;
+    throw new WhatsAppSendError(`Network/connection failure: ${errorMessage(error, "unknown error")}`, 500);
   }
 }
 
-import { sendVerificationSms } from "./aws-sms";
-
 /**
- * Orchestrator: Try to send via WhatsApp, and fall back to SMS on failure (or directly if forceChannel === 'sms').
- * Returns which channel was used.
+ * Tries WhatsApp first and falls back to SMS. Returns the channel that was used.
  */
 export async function sendVerificationCode(
   phone: string,
@@ -149,12 +143,9 @@ export async function sendVerificationCode(
   try {
     await sendOtpWhatsApp(phone, code);
     return { channel: "whatsapp" };
-  } catch (err: any) {
-    console.error("WhatsApp delivery failed, falling back to SMS:", {
-      message: err.message,
-      status: err.status,
-      errorPayload: err.errorPayload ? JSON.stringify(err.errorPayload).substring(0, 500) : undefined,
-    });
+  } catch (error: unknown) {
+    const status = error instanceof WhatsAppSendError ? error.status : undefined;
+    console.error("WhatsApp delivery failed; falling back to SMS", { status });
     await sendVerificationSms(phone, code);
     return { channel: "sms" };
   }

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
+type AttributionDatabase = Pick<typeof prisma, "user" | "teacherReferralAttribution">;
+
 export interface ProcessAttributionInput {
   studentId: string;
   teacherIdOfContent: string;
@@ -9,7 +11,7 @@ export interface ProcessAttributionInput {
   folderId?: string;
   videoId?: string;
   promoCodeInput?: string | null;
-  tx?: any;
+  tx?: AttributionDatabase;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface ProcessAttributionInput {
  * - Case B: Student previously referred by content teacher on signup (only attributes for content teacher's own content).
  */
 export async function processTeacherAttribution(input: ProcessAttributionInput) {
-  const db = input.tx || prisma;
+  const db = input.tx ?? prisma;
   const {
     studentId,
     teacherIdOfContent,
