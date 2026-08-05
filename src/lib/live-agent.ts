@@ -1,13 +1,14 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
 // =========================================================
 // LIVE AGENT — Code-UP Platform (CLIENT-SIDE ONLY)
 // WebSocket connection to Gemini Live API (∞ RPD quota).
 // Use for: real-time student chat, voice, translation.
 // =========================================================
 
-// Live model IDs
 export type LiveModel =
-  | "gemini-2.0-flash-live-001"                      // Gemini Flash Live — text chat (∞)
-  | "gemini-2.5-flash-preview-native-audio-dialog";  // Native Audio — voice (∞)
+  | "gemini-2.0-flash-live-001"
+  | "gemini-2.5-flash-preview-native-audio-dialog";
 
 export interface LiveSession {
   send: (text: string) => void;
@@ -15,7 +16,6 @@ export interface LiveSession {
   isReady: () => boolean;
 }
 
-// ── Core WebSocket factory ─────────────────────────────────────────────────
 export function createLiveSession(params: {
   model: LiveModel;
   systemPrompt: string;
@@ -27,8 +27,7 @@ export function createLiveSession(params: {
 }): LiveSession {
   const { model, systemPrompt, onMessage, onReady, onError, onClose } = params;
   const modality = params.responseModality ?? "TEXT";
-  // Key injected at runtime when Live API is enabled — empty by default
-  const apiKey   = process.env.NEXT_PUBLIC_GEMINI_LIVE_KEY ?? "";
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_LIVE_KEY ?? "";
 
   const ws = new WebSocket(
     `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`,
@@ -38,57 +37,64 @@ export function createLiveSession(params: {
   const queue: string[] = [];
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({
-      setup: {
-        model: `models/${model}`,
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        generation_config: { response_modalities: [modality] },
-      },
-    }));
+    ws.send(
+      JSON.stringify({
+        setup: {
+          model: `models/${model}`,
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          generation_config: { response_modalities: [modality] },
+        },
+      }),
+    );
   };
 
   ws.onmessage = (event) => {
     let data: Record<string, unknown>;
-    try { data = JSON.parse(event.data as string); } catch { return; }
+    try {
+      data = JSON.parse(event.data as string) as Record<string, unknown>;
+    } catch {
+      return;
+    }
 
     if (data.setupComplete) {
       ready = true;
-      queue.forEach(msg => ws.send(msg));
+      queue.forEach((message) => ws.send(message));
       queue.length = 0;
       onReady?.();
       return;
     }
 
-    // Extract text from model turn
     type Part = { text?: string; inlineData?: unknown };
     type Turn = { parts?: Part[] };
     const turn = (data.serverContent as { modelTurn?: Turn } | undefined)?.modelTurn;
-    const text = turn?.parts?.map(p => p.text ?? "").join("") ?? "";
+    const text = turn?.parts?.map((part) => part.text ?? "").join("") ?? "";
     if (text) onMessage(text);
   };
 
   ws.onerror = () => onError?.(new Error("WebSocket connection error"));
-  ws.onclose = () => { ready = false; onClose?.(); };
+  ws.onclose = () => {
+    ready = false;
+    onClose?.();
+  };
 
-  const buildClientMsg = (text: string) => JSON.stringify({
-    client_content: {
-      turns: [{ role: "user", parts: [{ text }] }],
-      turn_complete: true,
-    },
-  });
+  const buildClientMsg = (text: string) =>
+    JSON.stringify({
+      client_content: {
+        turns: [{ role: "user", parts: [{ text }] }],
+        turn_complete: true,
+      },
+    });
 
   return {
     send: (text: string) => {
-      const msg = buildClientMsg(text);
-      if (ready) ws.send(msg);
-      else queue.push(msg);
+      const message = buildClientMsg(text);
+      if (ready) ws.send(message);
+      else queue.push(message);
     },
     close: () => ws.close(),
     isReady: () => ready,
   };
 }
-
-// ── System prompts ─────────────────────────────────────────────────────────
 
 export const CHAT_TUTOR_PROMPT = `
 أنت مدرس ذكي ومشجع داخل منصة Code-UP التعليمية للطلاب المصريين.
@@ -120,10 +126,6 @@ export const IQ_COACH_PROMPT = `
 - ردودك لا تتجاوز 3 جمل
 `.trim();
 
-// ── React hook (optional helper) ──────────────────────────────────────────
-// Import in client components:
-// const { messages, send, status } = useLiveChat("student-chat");
-
 export function useLiveChat(
   model: LiveModel = "gemini-2.0-flash-live-001",
   systemPrompt: string = CHAT_TUTOR_PROMPT,
@@ -133,47 +135,55 @@ export function useLiveChat(
   send: (text: string) => void;
   reset: () => void;
 } {
-  // Dynamic import to avoid SSR issues with React
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useState, useEffect, useRef, useCallback } = require("react") as typeof import("react");
-
   const [messages, setMessages] = useState<{ role: "user" | "ai"; text: string }[]>([]);
   const [status, setStatus] = useState<"connecting" | "ready" | "closed" | "error">("connecting");
   const sessionRef = useRef<LiveSession | null>(null);
 
-  const initSession = useCallback(() => {
-    setStatus("connecting");
-    sessionRef.current?.close();
-    sessionRef.current = createLiveSession({
+  const createSession = useCallback(() => {
+    return createLiveSession({
       model,
       systemPrompt,
-      onMessage: (text) => setMessages(prev => {
-        const last = prev[prev.length - 1];
-        // Accumulate streaming tokens into the last AI message
-        if (last?.role === "ai") return [...prev.slice(0, -1), { role: "ai", text: last.text + text }];
-        return [...prev, { role: "ai", text }];
-      }),
-      onReady:  () => setStatus("ready"),
-      onError:  () => setStatus("error"),
-      onClose:  () => setStatus("closed"),
+      onMessage: (text) =>
+        setMessages((previous) => {
+          const last = previous[previous.length - 1];
+          if (last?.role === "ai") {
+            return [...previous.slice(0, -1), { role: "ai", text: last.text + text }];
+          }
+          return [...previous, { role: "ai", text }];
+        }),
+      onReady: () => setStatus("ready"),
+      onError: () => setStatus("error"),
+      onClose: () => setStatus("closed"),
     });
   }, [model, systemPrompt]);
 
   useEffect(() => {
-    initSession();
-    return () => sessionRef.current?.close();
-  }, [initSession]);
+    const previous = sessionRef.current;
+    previous?.close();
+
+    const session = createSession();
+    sessionRef.current = session;
+
+    return () => {
+      session.close();
+      if (sessionRef.current === session) {
+        sessionRef.current = null;
+      }
+    };
+  }, [createSession]);
 
   const send = useCallback((text: string) => {
     if (!sessionRef.current) return;
-    setMessages(prev => [...prev, { role: "user", text }]);
+    setMessages((previous) => [...previous, { role: "user", text }]);
     sessionRef.current.send(text);
   }, []);
 
   const reset = useCallback(() => {
     setMessages([]);
-    initSession();
-  }, [initSession]);
+    setStatus("connecting");
+    sessionRef.current?.close();
+    sessionRef.current = createSession();
+  }, [createSession]);
 
   return { messages, status, send, reset };
 }
