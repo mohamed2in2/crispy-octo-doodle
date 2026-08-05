@@ -33,6 +33,7 @@ import { EngineRequest, EngineResponse, GenerateResult } from "./types";
 import { SimilarQuestionDetector } from "./providers/cost/SimilarQuestionDetector";
 import { DailyBudgetManager } from "./providers/cost/DailyBudgetManager";
 import { PromptBudgetManager } from "./providers/cost/PromptBudgetManager";
+import { isLongExplanationTriggered } from "./config/explanation-triggers";
 
 export class AIEngine {
   private configManager: ConfigManager;
@@ -326,18 +327,17 @@ export class AIEngine {
 
     // Stage 6 & 7: AI Gateway Execution & Provider Fallback
     let genResult: GenerateResult;
-    let usedFallback = false;
-
     try {
+      const isDetailed = isLongExplanationTriggered(request.userMessage) || (action.type as string) === "TUTOR_LESSON";
       const config = this.configManager.getConfig();
       const gatewayResult = await this.gateway.executeRequest(
         request.studentId || "anon",
         action.type,
         {
           prompt: finalPrompt,
-          temperature: config.temperature,
-          maxTokens: config.maxTokens,
-          timeoutMs: config.timeoutMs,
+          temperature: isDetailed ? config.temperature : 0.2,
+          maxTokens: isDetailed ? Math.min(config.maxTokens, 1024) : 250,
+          timeoutMs: isDetailed ? config.timeoutMs : 10000,
         }
       );
 

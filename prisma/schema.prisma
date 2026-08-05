@@ -220,10 +220,36 @@ model TeacherProfile {
   featuredCourseId String?
   isPublished      Boolean @default(false)
 
+  /// Booking enabled toggle (ON / OFF)
+  bookingEnabled   Boolean @default(true)
+
+  /// Language availability flags
+  arabicEnabled    Boolean @default(true)
+  languagesEnabled Boolean @default(true)
+
   /// "احجز الان" subscription plan prices (null = plan not offered)
   priceMonthly      Float?
   priceTermly       Float?
   priceYearly       Float?
+
+  /// New 1, 3, 6 Month Arabic Prices (defaults: 200, 500, 1000 EGP)
+  priceMonthly1     Float?   @default(200)
+  priceMonthly3     Float?   @default(500)
+  priceMonthly6     Float?   @default(1000)
+
+  /// Original pre-discount prices for strikethrough display (600 -> 500, 1200 -> 1000)
+  originalMonthly3  Float?   @default(600)
+  originalMonthly6  Float?   @default(1200)
+
+  /// Languages Surcharges (+50, +150, +300 EGP)
+  langSurcharge1    Float?   @default(50)
+  langSurcharge3    Float?   @default(150)
+  langSurcharge6    Float?   @default(300)
+
+  /// Enable/disable specific duration
+  enableMonthly1    Boolean  @default(true)
+  enableMonthly3    Boolean  @default(true)
+  enableMonthly6    Boolean  @default(true)
 
   /// Per-plan discount percentages (0-100)
   discountMonthly   Float?
@@ -758,8 +784,9 @@ model TeacherSubscription {
   id               String    @id @default(cuid())
   studentId        String
   teacherId        String
-  planType         String    // "monthly" | "termly" | "yearly"
-  planLabel        String    // e.g. "اشتراك سنوي"
+  planType         String    // "monthly" | "termly" | "yearly" | "1month" | "3months" | "6months"
+  planLabel        String    // e.g. "اشتراك 3 شهور"
+  language         String    @default("arabic") // "arabic" | "languages"
   amount           Float
   educationalStage String?   // e.g. "sec_1", "sec_2"
   studentName      String?

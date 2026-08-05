@@ -3,23 +3,42 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-interface BookingPlan {
-  type: "monthly" | "termly" | "yearly";
+export type BookingPlanType = "1month" | "3months" | "6months";
+export type BookingLanguage = "arabic" | "languages";
+
+export interface BookingPlan {
+  type: BookingPlanType;
   label: string;
   sublabel: string;
   price: number;
   originalPrice?: number;
   discountPercent?: number;
+  durationDays: number;
   icon: string;
   accent: string;
   accentBg: string;
 }
 
-interface BookingModalProps {
+export interface BookingModalProps {
   teacherId?: string;
-  priceMonthly: number | null;
-  priceTermly: number | null;
-  priceYearly: number | null;
+  bookingEnabled?: boolean;
+  arabicEnabled?: boolean;
+  languagesEnabled?: boolean;
+  priceMonthly1?: number | null;
+  priceMonthly3?: number | null;
+  priceMonthly6?: number | null;
+  originalMonthly3?: number | null;
+  originalMonthly6?: number | null;
+  langSurcharge1?: number | null;
+  langSurcharge3?: number | null;
+  langSurcharge6?: number | null;
+  enableMonthly1?: boolean;
+  enableMonthly3?: boolean;
+  enableMonthly6?: boolean;
+  // Legacy compatibility props
+  priceMonthly?: number | null;
+  priceTermly?: number | null;
+  priceYearly?: number | null;
   discountMonthly?: number | null;
   discountTermly?: number | null;
   discountYearly?: number | null;
@@ -54,6 +73,7 @@ function buildWhatsAppUrl(
   studentName: string,
   gradeLabel: string,
   plan: BookingPlan,
+  language: BookingLanguage,
   teacherName: string,
   startDateStr: string | null
 ): string {
@@ -74,19 +94,21 @@ function buildWhatsAppUrl(
   rawNumber = rawNumber.replace("+", "");
 
   const startDateFormatted = startDateStr ? formatArabicDate(startDateStr) : "";
+  const langLabel = language === "languages" ? "لغات" : "عربي";
 
   let msg = `السلام عليكم أستاذ ${teacherName} 👋\n`;
   if (studentName) msg += `👤 اسم الطالب: ${studentName}\n`;
   if (gradeLabel) msg += `📚 الصف الدراسي: ${gradeLabel}\n`;
+  msg += `🌐 لغة الدراسة: ${langLabel}\n`;
 
-  if (plan.discountPercent && plan.originalPrice) {
-    msg += `💳 خطة الاشتراك المطلوبة: ${plan.label} (خصم ${plan.discountPercent}% 🔥 - بسعر ${plan.price} جنيه بدلاً من ${plan.originalPrice} جنيه)\n`;
+  if (plan.originalPrice && plan.originalPrice > plan.price) {
+    msg += `💳 خطة الاشتراك: ${plan.label} (${plan.price} جنيه بدلاً من ${plan.originalPrice} جنيه) 🔥\n`;
   } else {
-    msg += `💳 خطة الاشتراك المطلوبة: ${plan.label} (${plan.price} جنيه)\n`;
+    msg += `💳 خطة الاشتراك: ${plan.label} (${plan.price} جنيه)\n`;
   }
 
-  if (startDateFormatted) msg += `📅 تاريخ بدء الكورس: ${startDateFormatted}\n`;
-  msg += `\nأود الاشتراك ومتابعة خطوات التسجيل والتفعيل. شكراً لك!`;
+  if (startDateFormatted) msg += `📅 موعد بدء الكورس: ${startDateFormatted}\n`;
+  msg += `\nأود الاشتراك ومتابعة تفعيل الحساب. شكراً لك!`;
 
   const encodedMsg = encodeURIComponent(msg);
 
@@ -98,43 +120,61 @@ function buildWhatsAppUrl(
 
 export function BookingButton({
   teacherId,
+  bookingEnabled = true,
+  arabicEnabled = true,
+  languagesEnabled = true,
+  priceMonthly1,
+  priceMonthly3,
+  priceMonthly6,
+  originalMonthly3,
+  originalMonthly6,
+  langSurcharge1,
+  langSurcharge3,
+  langSurcharge6,
+  enableMonthly1 = true,
+  enableMonthly3 = true,
+  enableMonthly6 = true,
   priceMonthly,
   priceTermly,
   priceYearly,
-  discountMonthly,
-  discountTermly,
-  discountYearly,
   courseStartDate,
   bookingContactUrl,
   accentColor,
   teacherName,
 }: BookingModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [studentName, setStudentName] = useState("");
   const [studentGrade, setStudentGrade] = useState("sec_1");
+  const [selectedLanguage, setSelectedLanguage] = useState<BookingLanguage>(
+    arabicEnabled ? "arabic" : "languages"
+  );
   const [userBalance, setUserBalance] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [selectedPlanType, setSelectedPlanType] = useState<"monthly" | "termly" | "yearly" | null>(null);
+  const [selectedPlanType, setSelectedPlanType] = useState<BookingPlanType>("3months");
 
-  // Booking & Payment Mode State
+  // Gateway health diagnostic status
+  const [gatewayHealth, setGatewayHealth] = useState<{
+    sha7nawy: "operational" | "degraded";
+    shakeout: "operational" | "degraded";
+  }>({ sha7nawy: "operational", shakeout: "operational" });
+
+  // Payment method selection & UI state
   const [payMode, setPayMode] = useState<"wallet" | "fawry" | "balance" | "whatsapp" | "code">("wallet");
-  
-  // Wallet state
   const [walletPhone, setWalletPhone] = useState("");
   const [selectedWalletMethod, setSelectedWalletMethod] = useState<"vf_cash" | "et_cash" | "fawry">("vf_cash");
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletMsg, setWalletMsg] = useState("");
-  const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; methodLabel: string; amount: number } | null>(null);
+  const [walletModal, setWalletModal] = useState<{ reference: string; instructions: string; amount: number } | null>(null);
 
-  // Balance state
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceMsg, setBalanceMsg] = useState("");
 
-  // Code state
   const [code, setCode] = useState("");
   const [codeApplying, setCodeApplying] = useState(false);
   const [codeMsg, setCodeMsg] = useState("");
 
+  // Check auth & fetch user info
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
@@ -149,6 +189,21 @@ export function BookingButton({
       .catch(() => {});
   }, []);
 
+  // Fetch gateway health diagnostics
+  useEffect(() => {
+    fetch("/api/payments/health")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.gateways) {
+          setGatewayHealth({
+            sha7nawy: d.gateways.sha7nawy?.status || "operational",
+            shakeout: d.gateways.shakeout?.status || "operational",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const refreshBalance = () => {
     fetch("/api/student/balance", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
@@ -158,118 +213,131 @@ export function BookingButton({
       .catch(() => {});
   };
 
-  const createPlan = (
-    type: "monthly" | "termly" | "yearly",
-    label: string,
-    sublabel: string,
-    rawPrice: number,
-    discountPct: number | null | undefined,
-    icon: string,
-    accent: string,
-    accentBg: string
-  ): BookingPlan => {
-    const hasDisc = discountPct != null && discountPct > 0 && discountPct <= 100;
-    if (hasDisc) {
-      const discountedPrice = Math.round(rawPrice * (1 - discountPct! / 100));
-      return {
-        type,
-        label,
-        sublabel,
-        price: discountedPrice,
-        originalPrice: rawPrice,
-        discountPercent: discountPct!,
-        icon,
-        accent,
-        accentBg,
-      };
-    }
-    return {
-      type,
-      label,
-      sublabel,
-      price: rawPrice,
-      icon,
-      accent,
-      accentBg,
-    };
-  };
+  // Build 1, 3, 6 Month Plans based on defaults + teacher overrides + language surcharges
+  const isLang = selectedLanguage === "languages";
+
+  const p1Base = priceMonthly1 ?? priceMonthly ?? 200;
+  const p1Surcharge = isLang ? (langSurcharge1 ?? 50) : 0;
+  const p1Final = p1Base + p1Surcharge;
+
+  const p3Base = priceMonthly3 ?? priceTermly ?? 500;
+  const p3Surcharge = isLang ? (langSurcharge3 ?? 150) : 0;
+  const p3Final = p3Base + p3Surcharge;
+  const p3OriginalBase = originalMonthly3 ?? 600;
+  const p3Original = isLang ? p3OriginalBase + 150 : p3OriginalBase;
+
+  const p6Base = priceMonthly6 ?? priceYearly ?? 1000;
+  const p6Surcharge = isLang ? (langSurcharge6 ?? 300) : 0;
+  const p6Final = p6Base + p6Surcharge;
+  const p6OriginalBase = originalMonthly6 ?? 1200;
+  const p6Original = isLang ? p6OriginalBase + 300 : p6OriginalBase;
 
   const plans: BookingPlan[] = [];
 
-  if (priceMonthly != null && priceMonthly > 0) {
-    plans.push(createPlan("monthly", "اشتراك شهري", "شهر واحد", priceMonthly, discountMonthly, "📅", "#3B82F6", "rgba(59,130,246,0.1)"));
+  if (enableMonthly1) {
+    plans.push({
+      type: "1month",
+      label: "اشتراك شهر واحد",
+      sublabel: "30 يوماً وصول كامل للمحتوى",
+      price: p1Final,
+      durationDays: 30,
+      icon: "⚡",
+      accent: "#3B82F6",
+      accentBg: "rgba(59,130,246,0.1)",
+    });
   }
 
-  if (priceTermly != null && priceTermly > 0) {
-    plans.push(createPlan("termly", "اشتراك ترم كامل", "ترم دراسي كامل", priceTermly, discountTermly, "📚", "#F59E0B", "rgba(245,158,11,0.1)"));
+  if (enableMonthly3) {
+    const discPct = Math.round(((p3Original - p3Final) / p3Original) * 100);
+    plans.push({
+      type: "3months",
+      label: "اشتراك 3 شهور",
+      sublabel: "90 يوماً مع متابعة واختبارات",
+      price: p3Final,
+      originalPrice: p3Original,
+      discountPercent: discPct > 0 ? discPct : undefined,
+      durationDays: 90,
+      icon: "📚",
+      accent: "#F59E0B",
+      accentBg: "rgba(245,158,11,0.1)",
+    });
   }
 
-  if (priceYearly != null && priceYearly > 0) {
-    plans.push(createPlan("yearly", "اشتراك سنوي", "سنة دراسية كاملة", priceYearly, discountYearly, "🎓", "#10B981", "rgba(16,185,129,0.1)"));
+  if (enableMonthly6) {
+    const discPct = Math.round(((p6Original - p6Final) / p6Original) * 100);
+    plans.push({
+      type: "6months",
+      label: "اشتراك 6 شهور",
+      sublabel: "180 يوماً المسار الأوفر والأشمل",
+      price: p6Final,
+      originalPrice: p6Original,
+      discountPercent: discPct > 0 ? discPct : undefined,
+      durationDays: 180,
+      icon: "🎓",
+      accent: "#10B981",
+      accentBg: "rgba(16,185,129,0.1)",
+    });
   }
 
-  const maxDiscount = plans.reduce((max, p) => (p.discountPercent && p.discountPercent > max ? p.discountPercent : max), 0);
+  // Requirement 3: If booking is disabled by teacher, hide the button completely
+  if (!bookingEnabled) {
+    return (
+      <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        🔒 الحجز مغلق حالياً مع هذا المعلم
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    if (plans.length > 0 && !selectedPlanType) {
-      setSelectedPlanType(plans[plans.length - 1].type);
-    }
-  }, [plans, selectedPlanType]);
+  const activePlan = plans.find((p) => p.type === selectedPlanType) || plans[0] || {
+    type: "1month",
+    label: "اشتراك شهر واحد",
+    sublabel: "",
+    price: 200,
+    durationDays: 30,
+    icon: "⚡",
+    accent: "#3B82F6",
+    accentBg: "rgba(59,130,246,0.1)",
+  };
 
-  if (plans.length === 0 && !courseStartDate) return null;
-
-  const activePlan = plans.find((p) => p.type === selectedPlanType) || plans[0];
   const gradeObj = STAGE_OPTIONS.find((s) => s.value === studentGrade);
   const gradeLabel = gradeObj ? gradeObj.label : studentGrade;
 
-  const handleBookViaWhatsApp = (plan: BookingPlan) => {
-    const waUrl = buildWhatsAppUrl(
-      bookingContactUrl,
-      studentName,
-      gradeLabel,
-      plan,
-      teacherName,
-      courseStartDate
-    );
-    window.open(waUrl, "_blank");
-  };
-
-  const handlePayViaWallet = async (plan: BookingPlan) => {
+  const handlePayViaGateway = async (plan: BookingPlan, methodId: string) => {
     if (!isLoggedIn) {
       window.location.href = `/login?redirect_url=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash";
+    const isWallet = methodId === "vf_cash" || methodId === "et_cash";
     if (isWallet && !walletPhone.trim()) {
-      setWalletMsg("❌ رقم المحفظة مطلوب");
+      setWalletMsg("❌ رقم المحفظة مطلوب لإرسال طلب الخصم");
       return;
     }
     setWalletLoading(true);
     setWalletMsg("");
+
     try {
-      const res = await fetch("/api/payments/sha7nawy/create", {
+      const res = await fetch("/api/payments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          number: isWallet ? walletPhone.trim() : "",
           amount: plan.price,
-          method: selectedWalletMethod,
+          method: methodId,
+          number: isWallet ? walletPhone.trim() : "",
           client: studentName || "Student",
-          details: `حجز اشتراك (${plan.label}) - أستاذ ${teacherName}`,
+          details: `حجز ${plan.label} (${selectedLanguage === "languages" ? "لغات" : "عربي"}) - أستاذ ${teacherName}`,
         }),
       });
       const d = await res.json().catch(() => ({}));
       setWalletLoading(false);
+
       if (res.ok && d.success) {
-        const targetUrl = d.checkoutUrl || d.data?.payment_page_url || d.data?.url || (d.reference ? `https://dash.shake-out.com/invoice/${d.reference}` : null);
-        if (targetUrl) {
-          window.location.href = targetUrl;
+        if (d.checkoutUrl) {
+          window.location.href = d.checkoutUrl;
           return;
         }
         setWalletModal({
-          reference: d.reference || "SH-PENDING",
-          instructions: d.instructions,
-          methodLabel: d.methodLabel,
+          reference: d.reference || "SO-PENDING",
+          instructions: d.instructions || "يرجى اتباع خطوات السداد والموافقة على الخصم",
           amount: plan.price,
         });
       } else {
@@ -277,7 +345,7 @@ export function BookingButton({
       }
     } catch {
       setWalletLoading(false);
-      setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع");
+      setWalletMsg("❌ حدث خطأ أثناء الاتصال ببوابة الدفع الإلكتروني");
     }
   };
 
@@ -295,9 +363,7 @@ export function BookingButton({
         body: JSON.stringify({
           teacherId: teacherId || "",
           planType: plan.type,
-          amount: plan.price,
-          planLabel: plan.label,
-          teacherName,
+          language: selectedLanguage,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -340,33 +406,25 @@ export function BookingButton({
 
   return (
     <>
-      {/* "احجز الان" Button + Start Date */}
+      {/* Booking CTA Button */}
       <div className="flex flex-col items-center gap-2 mt-6">
-        {plans.length > 0 && (
-          <button
-            onClick={() => { refreshBalance(); setIsOpen(true); }}
-            className="relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-black text-white text-base border-none cursor-pointer transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98]"
-            style={{
-              background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-              boxShadow: `0 8px 32px -8px ${accentColor}80`,
-            }}
-          >
-            {maxDiscount > 0 && (
-              <span className="absolute -top-3 -right-2 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-md animate-bounce">
-                خصومات تصل لـ {maxDiscount}% 🔥
-              </span>
-            )}
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            احجز الآن
-          </button>
-        )}
+        <button
+          onClick={() => { refreshBalance(); setStep(1); setIsOpen(true); }}
+          className="relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-black text-white text-base border-none cursor-pointer transition-all hover:brightness-110 hover:scale-[1.03] active:scale-[0.98]"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+            boxShadow: `0 8px 32px -8px ${accentColor}80`,
+          }}
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          احجز الآن
+        </button>
 
         {courseStartDate && (
           <p className="text-sm font-bold mt-1" style={{ color: "var(--ink-muted)" }}>
-            <span style={{ color: accentColor }}>📍</span>
-            {" "}بدء الكورس: {formatArabicDate(courseStartDate)}
+            <span style={{ color: accentColor }}>📍</span> بدء الكورس: {formatArabicDate(courseStartDate)}
           </p>
         )}
       </div>
@@ -378,7 +436,6 @@ export function BookingButton({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center px-4 py-6 overflow-y-auto"
             style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", background: "rgba(0,0,0,0.65)" }}
             onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}
@@ -388,7 +445,7 @@ export function BookingButton({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 24 }}
               transition={{ duration: 0.35, ease: EASE }}
-              className="relative w-full max-w-lg rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-lg rounded-3xl p-6 sm:p-8 max-h-[92vh] overflow-y-auto"
               dir="rtl"
               style={{
                 background: "var(--surface, #1a1f2e)",
@@ -404,405 +461,390 @@ export function BookingButton({
                 style={{ background: "var(--border, rgba(255,255,255,0.1))", color: "var(--ink-muted, #999)" }}
                 aria-label="إغلاق"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ✕
               </button>
 
               {/* Modal Header */}
               <div className="text-center mb-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-3"
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-2"
                   style={{ background: `${accentColor}15`, color: accentColor, border: `1px solid ${accentColor}30` }}>
                   حجز الاشتراك مع {teacherName}
                 </div>
-
-                {maxDiscount > 0 && (
-                  <div className="mb-2">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      🔥 عروض خاصة: خصومات تصل لـ {maxDiscount}% على خطط الاشتراك!
-                    </span>
-                  </div>
-                )}
-
                 <h2 className="text-xl sm:text-2xl font-black" style={{ color: "var(--ink, #fff)" }}>
-                  حدد تفاصيل الحجز والدفع
+                  {step === 1 ? "1. تفاصيل الحجز والخطة" : "2. اختيار طريقة السداد"}
                 </h2>
-                <p className="text-xs sm:text-sm mt-1.5" style={{ color: "var(--ink-muted, #999)" }}>
-                  اختر الخطة والطريقة المناسبة لك للدفع أو إرسال الحجز
-                </p>
               </div>
 
-              {/* Student Info Inputs */}
-              <div className="space-y-4 mb-6 p-4 rounded-2xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>
-                    👤 اسم الطالب
-                  </label>
-                  <input
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="اكتب اسمك الثلاثي..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border,rgba(255,255,255,0.1))] bg-[var(--surface,#1a1f2e)] text-[var(--ink,#fff)] text-sm focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>
-                    📚 الصف الدراسي / المرحلة
-                  </label>
-                  <select
-                    value={studentGrade}
-                    onChange={(e) => setStudentGrade(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border,rgba(255,255,255,0.1))] bg-[var(--surface,#1a1f2e)] text-[var(--ink,#fff)] text-sm focus:outline-none focus:border-emerald-500"
-                  >
-                    {STAGE_OPTIONS.map((st) => (
-                      <option key={st.value} value={st.value}>
-                        {st.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Plans Selection */}
-              <div className="space-y-3 mb-6">
-                <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>
-                  💳 اختر خطة الاشتراك:
-                </label>
-
-                {plans.map((plan, i) => {
-                  const isSelected = selectedPlanType === plan.type;
-                  return (
-                    <motion.div
-                      key={plan.type}
-                      initial={{ opacity: 0, x: -16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.08, ease: EASE }}
-                    >
-                      <div
-                        className="relative flex items-center justify-between gap-4 p-4 rounded-2xl transition-all duration-200 cursor-pointer"
-                        style={{
-                          background: isSelected ? `${plan.accent}15` : "var(--bg, #0f1420)",
-                          border: isSelected ? `2px solid ${plan.accent}` : "1px solid var(--border, rgba(255,255,255,0.08))",
-                          boxShadow: isSelected ? `0 0 20px -4px ${plan.accent}35` : "none",
-                        }}
-                        onClick={() => setSelectedPlanType(plan.type)}
+              {/* ── STEP 1: SUMMARY & SELECTION ── */}
+              {step === 1 && (
+                <div className="space-y-5">
+                  {/* Student Name & Grade Inputs */}
+                  <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                    <div>
+                      <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>👤 اسم الطالب</label>
+                      <input
+                        type="text"
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="اكتب اسمك..."
+                        className="w-full px-3.5 py-2 rounded-xl border border-[var(--border,rgba(255,255,255,0.1))] bg-[var(--surface,#1a1f2e)] text-[var(--ink,#fff)] text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>📚 الصف الدراسي</label>
+                      <select
+                        value={studentGrade}
+                        onChange={(e) => setStudentGrade(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-[var(--border,rgba(255,255,255,0.1))] bg-[var(--surface,#1a1f2e)] text-[var(--ink,#fff)] text-sm focus:outline-none focus:border-emerald-500"
                       >
-                        {/* Selected Radio Indicator */}
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? "border-emerald-500" : "border-slate-500"}`}>
-                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
-                          </div>
+                        {STAGE_OPTIONS.map((st) => (
+                          <option key={st.value} value={st.value}>{st.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                            style={{ background: plan.accentBg }}>
-                            {plan.icon}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-sm sm:text-base" style={{ color: "var(--ink, #fff)" }}>
-                                {plan.label}
-                              </h3>
-                              {plan.discountPercent && (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                                  -{plan.discountPercent}%
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs" style={{ color: "var(--ink-muted, #888)" }}>
-                              {plan.sublabel}
-                            </p>
-                          </div>
-                        </div>
+                  {/* Language Selection (Req 5) */}
+                  <div className="p-4 rounded-2xl space-y-2" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                    <label className="block text-xs font-bold" style={{ color: "var(--ink-muted, #aaa)" }}>🌐 اختر لغة الدراسية:</label>
 
-                        {/* Price */}
-                        <div className="text-left shrink-0">
-                          {plan.originalPrice && (
-                            <span className="text-xs line-through text-slate-400 font-bold block">
-                              {plan.originalPrice} جنيه
-                            </span>
-                          )}
-                          <span className="text-xl font-black" style={{ color: plan.accent }}>
-                            {plan.price}
-                          </span>
-                          <span className="text-xs font-bold mr-1" style={{ color: "var(--ink-muted, #888)" }}>
-                            جنيه
-                          </span>
-                        </div>
+                    {!languagesEnabled ? (
+                      <div className="p-3 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 text-center">
+                        متاح للحجز باللغة العربية فقط (This teacher teaches Arabic only).
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLanguage("arabic")}
+                          className="py-2.5 px-3 rounded-xl font-bold text-xs border cursor-pointer transition-all flex items-center justify-center gap-2"
+                          style={{
+                            borderColor: selectedLanguage === "arabic" ? accentColor : "var(--border, rgba(255,255,255,0.1))",
+                            background: selectedLanguage === "arabic" ? `${accentColor}20` : "var(--surface, #1a1f2e)",
+                            color: selectedLanguage === "arabic" ? accentColor : "var(--ink-muted, #aaa)",
+                          }}
+                        >
+                          🇪🇬 عربي
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLanguage("languages")}
+                          className="py-2.5 px-3 rounded-xl font-bold text-xs border cursor-pointer transition-all flex items-center justify-center gap-2"
+                          style={{
+                            borderColor: selectedLanguage === "languages" ? accentColor : "var(--border, rgba(255,255,255,0.1))",
+                            background: selectedLanguage === "languages" ? `${accentColor}20` : "var(--surface, #1a1f2e)",
+                            color: selectedLanguage === "languages" ? accentColor : "var(--ink-muted, #aaa)",
+                          }}
+                        >
+                          🇬🇧 لغات (+فرق السعر)
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Start Date Footer */}
-              {courseStartDate && (
-                <p className="text-center text-xs font-bold mb-4 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", color: "var(--ink-muted, #888)" }}>
-                  📍 موعد بدء الكورس: <span style={{ color: accentColor }}>{formatArabicDate(courseStartDate)}</span>
-                </p>
+                  {/* Duration Selection (Req 6: 1m, 3m, 6m) */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold" style={{ color: "var(--ink-muted, #aaa)" }}>💳 اختر فترة الاشتراك:</label>
+                    {plans.map((plan) => {
+                      const isSelected = selectedPlanType === plan.type;
+                      return (
+                        <div
+                          key={plan.type}
+                          onClick={() => setSelectedPlanType(plan.type)}
+                          className="p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+                          style={{
+                            background: isSelected ? `${plan.accent}15` : "var(--bg, #0f1420)",
+                            border: isSelected ? `2px solid ${plan.accent}` : "1px solid var(--border, rgba(255,255,255,0.08))",
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base" style={{ background: plan.accentBg }}>
+                              {plan.icon}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-sm" style={{ color: "var(--ink, #fff)" }}>{plan.label}</h4>
+                                {plan.discountPercent && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                    خصم {plan.discountPercent}%
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400">{plan.sublabel}</p>
+                            </div>
+                          </div>
+
+                          <div className="text-left">
+                            {plan.originalPrice && plan.originalPrice > plan.price && (
+                              <span className="text-xs line-through text-gray-400 font-bold block">
+                                {plan.originalPrice} ج.م
+                              </span>
+                            )}
+                            <span className="text-lg font-black" style={{ color: plan.accent }}>
+                              {plan.price} ج.م
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Summary Box */}
+                  <div className="p-4 rounded-2xl space-y-1 text-xs" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
+                    <div className="flex justify-between text-gray-400"><span>المعلم:</span><span className="font-bold text-white">{teacherName}</span></div>
+                    <div className="flex justify-between text-gray-400"><span>المنتج:</span><span className="font-bold text-white">{activePlan.label}</span></div>
+                    <div className="flex justify-between text-gray-400"><span>اللغة:</span><span className="font-bold text-white">{selectedLanguage === "languages" ? "لغات" : "عربي"}</span></div>
+                    <div className="flex justify-between pt-2 border-t border-gray-800 text-emerald-400 font-black text-sm">
+                      <span>إجمالي السداد:</span><span>{activePlan.price} ج.م</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setStep(2)}
+                    className="w-full py-3.5 rounded-xl text-white font-black text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2"
+                    style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` }}
+                  >
+                    الانتقال لاختيار طريقة الدفع ←
+                  </button>
+                </div>
               )}
 
-              {/* Payment Method Tabs (Wallet / Balance / WhatsApp / Code) */}
-              <div className="space-y-3 pt-2 border-t border-[var(--border,rgba(255,255,255,0.1))]">
-                <label className="block text-xs font-bold text-center" style={{ color: "var(--ink-muted, #aaa)" }}>
-                  اختر طريقة الحجز والدفع:
-                </label>
-
-                <div className="grid grid-cols-5 gap-1 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
-                  <button
-                    onClick={() => { setPayMode("wallet"); setSelectedWalletMethod("vf_cash"); }}
-                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
-                    style={{
-                      background: payMode === "wallet" ? "var(--brand, #6366f1)" : "transparent",
-                      color: payMode === "wallet" ? "#fff" : "var(--ink-muted, #aaa)",
-                    }}
-                  >
-                    📱 محفظة
-                  </button>
-
-                  <button
-                    onClick={() => { setPayMode("fawry"); setSelectedWalletMethod("fawry"); }}
-                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
-                    style={{
-                      background: payMode === "fawry" ? "#FFCC00" : "transparent",
-                      color: payMode === "fawry" ? "#000" : "var(--ink-muted, #aaa)",
-                    }}
-                  >
-                    🏪 فوري
-                  </button>
-
-                  <button
-                    onClick={() => setPayMode("balance")}
-                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
-                    style={{
-                      background: payMode === "balance" ? "#D97706" : "transparent",
-                      color: payMode === "balance" ? "#fff" : "var(--ink-muted, #aaa)",
-                    }}
-                  >
-                    💰 بالرصيد
-                  </button>
-
-                  <button
-                    onClick={() => setPayMode("whatsapp")}
-                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
-                    style={{
-                      background: payMode === "whatsapp" ? "#25D366" : "transparent",
-                      color: payMode === "whatsapp" ? "#fff" : "var(--ink-muted, #aaa)",
-                    }}
-                  >
-                    💬 واتساب
-                  </button>
-
-                  <button
-                    onClick={() => setPayMode("code")}
-                    className="py-2 px-1 rounded-lg text-xs font-bold border-none cursor-pointer transition-all text-center"
-                    style={{
-                      background: payMode === "code" ? "#10B981" : "transparent",
-                      color: payMode === "code" ? "#fff" : "var(--ink-muted, #aaa)",
-                    }}
-                  >
-                    🔑 كود
-                  </button>
-                </div>
-
-                {/* Option 1: Mobile Wallet / Fawry / Card Payment */}
-                {(payMode === "wallet" || payMode === "fawry") && activePlan && (
-                  <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                    {payMode === "wallet" && (
-                      <div>
-                        <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--ink-muted, #aaa)" }}>اختر طريقة الدفع المباشر:</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                          {[
-                            { id: "vf_cash", label: "فودافون كاش", color: "#E60000" },
-                            { id: "et_cash", label: "اتصالات كاش (e&)", color: "#76B900" },
-                          ].map(m => (
-                            <button key={m.id} type="button" onClick={() => setSelectedWalletMethod(m.id as any)}
-                              className="py-2 px-1 rounded-lg text-xs font-bold border cursor-pointer transition-all text-center flex items-center justify-center gap-1"
-                              style={{
-                                borderColor: selectedWalletMethod === m.id ? m.color : "var(--border, rgba(255,255,255,0.1))",
-                                background: selectedWalletMethod === m.id ? `${m.color}20` : "var(--surface, #1a1f2e)",
-                                color: selectedWalletMethod === m.id ? m.color : "var(--ink-muted, #aaa)",
-                              }}>
-                              {m.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 2% Tax / Fee Breakdown */}
-                    <div className="p-3 rounded-xl text-xs space-y-1" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.06))" }}>
-                      <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
-                        <span>المبلغ الأصلي:</span>
-                        <span className="font-bold">{activePlan.price} جنيه</span>
-                      </div>
-                      <div className="flex justify-between" style={{ color: "var(--ink-muted, #aaa)" }}>
-                        <span>رسوم المعاملة والخدمة (2%):</span>
-                        <span className="font-bold">{Math.round(activePlan.price * 0.02 * 100) / 100} جنيه</span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t border-[var(--border,rgba(255,255,255,0.1))]" style={{ color: "var(--brand, #6366f1)" }}>
-                        <span className="font-black">الإجمالي المطلوب خصمه:</span>
-                        <span className="font-black text-sm">{Math.round((activePlan.price * 1.02) * 100) / 100} جنيه</span>
-                      </div>
-                    </div>
-
-                    {(() => {
-                      const isWallet = selectedWalletMethod === "vf_cash" || selectedWalletMethod === "et_cash";
-                      const isFawry = selectedWalletMethod === "fawry";
-                      const totalAmount = Math.round((activePlan.price * (isFawry ? 1.025 : 1.02)) * 100) / 100;
-
-                      return (
-                        <>
-                          {isWallet && (
-                            <div>
-                              <label className="block text-xs font-bold mb-1" style={{ color: "var(--ink-muted, #aaa)" }}>
-                                رقم المحفظة (11 رقماً):
-                              </label>
-                              <input type="tel" value={walletPhone} onChange={e => setWalletPhone(e.target.value)}
-                                placeholder="01xxxxxxxxx" dir="ltr"
-                                className="w-full p-2.5 rounded-xl text-center font-mono text-sm border focus:outline-none"
-                                style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
-                            </div>
-                          )}
-
-                          {isFawry && (
-                            <div className="p-3 rounded-xl text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 text-center leading-relaxed font-bold">
-                              🏪 خيار فوري كشك: سيتم إصدار كود مرجعي (Fawry Code). يمكنك الدفع كاش بهذا الكود في أي منفذ فوري أو سوبرماركت دون الحاجة لرقم محفظة.
-                            </div>
-                          )}
-
-                          <button
-                            onClick={() => handlePayViaWallet(activePlan)}
-                            disabled={walletLoading}
-                            className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}
-                          >
-                            {walletLoading
-                              ? "جارٍ المعالجة..."
-                              : isWallet
-                              ? `خصم ${totalAmount} جنيه من المحفظة 📱`
-                              : isFawry
-                              ? `إصدار كود الدفع كاش بقيمة ${totalAmount} جنيه 🏪`
-                              : `الانتقال للبوابة البنكية للدفع (${totalAmount} جنيه) 💳`}
-                          </button>
-                        </>
-                      );
-                    })()}
-                    {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
-                  </div>
-                )}
-
-                {/* Option 2: Account Balance Payment */}
-                {payMode === "balance" && activePlan && (
-                  <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                    <div className="flex items-center justify-between text-xs p-3 rounded-xl" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
-                      <span style={{ color: "var(--ink-muted, #aaa)" }}>رصيدك الحالي في المنصة:</span>
-                      <span className="font-black text-amber-400 text-sm">{userBalance !== null ? `${userBalance} جنيه` : "غير معروف"}</span>
-                    </div>
-
-                    <button
-                      onClick={() => handlePayViaBalance(activePlan)}
-                      disabled={balanceLoading || (userBalance !== null && userBalance < activePlan.price)}
-                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md flex items-center justify-center gap-2"
-                      style={{ background: "linear-gradient(135deg, #D97706, #B45309)" }}
-                    >
-                      {balanceLoading ? "جارٍ خصم الرصيد وتأكيد الحجز..." : `شراء بـ ${activePlan.price} جنيه من رصيدك 💰`}
+              {/* ── STEP 2: PAYMENT METHODS CARDS ── */}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                    <button onClick={() => setStep(1)} className="text-emerald-400 font-bold hover:underline bg-transparent border-none cursor-pointer">
+                      ← تعديل الخطة واللغة
                     </button>
-                    
-                    {userBalance !== null && userBalance < activePlan.price && (
-                      <p className="text-xs text-center text-amber-400 font-semibold">
-                        ⚠️ رصيدك لا يكفي. يمكنك التبديل إلى تبويب المحفظة 📱 أو الكود 🔑 للشحن.
-                      </p>
-                    )}
-                    {balanceMsg && <p className="text-xs font-semibold text-center" style={{ color: balanceMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{balanceMsg}</p>}
+                    <span className="font-bold text-white">{activePlan.label} ({activePlan.price} ج.م)</span>
                   </div>
-                )}
 
-                {/* Option 3: WhatsApp Booking */}
-                {payMode === "whatsapp" && activePlan && (
-                  <button
-                    onClick={() => handleBookViaWhatsApp(activePlan)}
-                    className="w-full py-4 rounded-2xl text-base font-black text-white text-center flex items-center justify-center gap-2.5 border-none cursor-pointer transition-all hover:brightness-110 shadow-lg"
-                    style={{
-                      background: "linear-gradient(135deg, #25D366, #128C7E)",
-                      boxShadow: "0 8px 24px -4px rgba(37,211,102,0.4)",
-                    }}
-                  >
-                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.399.636-1.157 4.227 4.321-1.133.58.337z"/>
-                    </svg>
-                    إرسال طلب الحجز عبر الواتساب ➔
-                  </button>
-                )}
+                  {/* Method Tabs */}
+                  <div className="grid grid-cols-5 gap-1 p-1 rounded-xl" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }}>
+                    <button
+                      onClick={() => { setPayMode("wallet"); setSelectedWalletMethod("vf_cash"); }}
+                      className="py-2 rounded-lg text-xs font-bold border-none cursor-pointer text-center"
+                      style={{ background: payMode === "wallet" ? accentColor : "transparent", color: payMode === "wallet" ? "#fff" : "#aaa" }}
+                    >
+                      📱 محفظة
+                    </button>
+                    <button
+                      onClick={() => { setPayMode("fawry"); setSelectedWalletMethod("fawry"); }}
+                      className="py-2 rounded-lg text-xs font-bold border-none cursor-pointer text-center"
+                      style={{ background: payMode === "fawry" ? "#FFCC00" : "transparent", color: payMode === "fawry" ? "#000" : "#aaa" }}
+                    >
+                      🏪 فوري
+                    </button>
+                    <button
+                      onClick={() => setPayMode("balance")}
+                      className="py-2 rounded-lg text-xs font-bold border-none cursor-pointer text-center"
+                      style={{ background: payMode === "balance" ? "#D97706" : "transparent", color: payMode === "balance" ? "#fff" : "#aaa" }}
+                    >
+                      💰 رصيد
+                    </button>
+                    <button
+                      onClick={() => setPayMode("whatsapp")}
+                      className="py-2 rounded-lg text-xs font-bold border-none cursor-pointer text-center"
+                      style={{ background: payMode === "whatsapp" ? "#25D366" : "transparent", color: payMode === "whatsapp" ? "#fff" : "#aaa" }}
+                    >
+                      💬 واتساب
+                    </button>
+                    <button
+                      onClick={() => setPayMode("code")}
+                      className="py-2 rounded-lg text-xs font-bold border-none cursor-pointer text-center"
+                      style={{ background: payMode === "code" ? "#10B981" : "transparent", color: payMode === "code" ? "#fff" : "#aaa" }}
+                    >
+                      🔑 كود
+                    </button>
+                  </div>
 
-                {/* Option 4: Access Code */}
-                {payMode === "code" && (
-                  <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                    <p className="text-xs font-medium text-center" style={{ color: "var(--ink-muted, #aaa)" }}>أدخل كود تفعيل الاشتراك:</p>
-                    <div className="flex gap-2">
-                      <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
-                        onKeyDown={e => e.key === "Enter" && handleApplyCode()} placeholder="كود الاشتراك" maxLength={16} dir="ltr"
-                        className="flex-1 rounded-xl px-3 py-2.5 text-center font-mono text-sm tracking-widest focus:outline-none border"
-                        style={{ border: "1px solid var(--border, rgba(255,255,255,0.1))", background: "var(--surface, #1a1f2e)", color: "var(--ink, #fff)" }} />
-                      <button onClick={handleApplyCode} disabled={codeApplying || !code.trim()}
-                        className="rounded-xl px-4 py-2.5 text-white font-bold text-sm transition-colors disabled:opacity-50"
-                        style={{ background: "#10B981" }}>
-                        {codeApplying ? "..." : "تفعيل"}
+                  {/* 1. Mobile Wallets (Sha7nawy Gateway) */}
+                  {payMode === "wallet" && (
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                      {gatewayHealth.sha7nawy === "degraded" && (
+                        <div className="p-2.5 rounded-xl text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 text-center font-bold">
+                          ⚠️ بوابة المحافظ تعمل بصورة غير مكتملة حالياً
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedWalletMethod("vf_cash")}
+                          className="p-3 rounded-xl text-xs font-bold border cursor-pointer text-right space-y-1"
+                          style={{
+                            borderColor: selectedWalletMethod === "vf_cash" ? "#E60000" : "rgba(255,255,255,0.1)",
+                            background: selectedWalletMethod === "vf_cash" ? "rgba(230,0,0,0.15)" : "#1a1f2e",
+                            color: "#fff",
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>📱 فودافون كاش</span>
+                            <span className="text-[10px] text-gray-400">تأكيد فوري</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-normal">طلب دفع مباشر عبر *9*1#</p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedWalletMethod("et_cash")}
+                          className="p-3 rounded-xl text-xs font-bold border cursor-pointer text-right space-y-1"
+                          style={{
+                            borderColor: selectedWalletMethod === "et_cash" ? "#76B900" : "rgba(255,255,255,0.1)",
+                            background: selectedWalletMethod === "et_cash" ? "rgba(118,185,0,0.15)" : "#1a1f2e",
+                            color: "#fff",
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>💚 اتصالات كاش</span>
+                            <span className="text-[10px] text-gray-400">تأكيد فوري</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-normal">عبر تطبيق e& Money</p>
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-300">رقم المحفظة (11 رقماً):</label>
+                        <input
+                          type="tel"
+                          value={walletPhone}
+                          onChange={(e) => setWalletPhone(e.target.value)}
+                          placeholder="01xxxxxxxxx"
+                          dir="ltr"
+                          className="w-full p-2.5 rounded-xl text-center font-mono text-sm border border-gray-700 bg-gray-900 text-white focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => handlePayViaGateway(activePlan, selectedWalletMethod)}
+                        disabled={walletLoading}
+                        className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md disabled:opacity-50"
+                        style={{ background: "linear-gradient(135deg, #E60000, #b30000)" }}
+                      >
+                        {walletLoading ? "جارٍ إرسال طلب الخصم..." : `خصم ${activePlan.price} ج.م من المحفظة 📱`}
                       </button>
-                    </div>
-                    {codeMsg && <p className="text-xs font-semibold text-center" style={{ color: codeMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{codeMsg}</p>}
-                  </div>
-                )}
-              </div>
 
-              {/* Sha7nawy Instruction Modal */}
+                      {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
+                    </div>
+                  )}
+
+                  {/* 2. Fawry Kiosk Pay (Shake-Out Gateway) */}
+                  {payMode === "fawry" && (
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                      {gatewayHealth.shakeout === "degraded" && (
+                        <div className="p-2.5 rounded-xl text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 text-center font-bold">
+                          ⚠️ بوابة فوري تعمل بصورة غير مكتملة حالياً
+                        </div>
+                      )}
+
+                      <div className="p-3 rounded-xl text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 leading-relaxed font-semibold">
+                        🏪 <strong>فوري باي (Shake-Out Gateway):</strong> سيتم إصدار كود مرجعي كاش. اعرض الكود على أي سوبرماركت أو منفذ فوري للدفع المباشر دون الحاجة لمحفظة إلكترونية.
+                      </div>
+
+                      <button
+                        onClick={() => handlePayViaGateway(activePlan, "fawry")}
+                        disabled={walletLoading}
+                        className="w-full py-3.5 rounded-xl text-black font-extrabold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md disabled:opacity-50"
+                        style={{ background: "#FFCC00" }}
+                      >
+                        {walletLoading ? "جارٍ إنشاء الفاتورة..." : `إصدار كود فوري بقيمة ${activePlan.price} ج.م 🏪`}
+                      </button>
+
+                      {walletMsg && <p className="text-xs font-semibold text-center" style={{ color: walletMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{walletMsg}</p>}
+                    </div>
+                  )}
+
+                  {/* 3. Account Balance */}
+                  {payMode === "balance" && (
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                      <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-gray-900 border border-gray-800">
+                        <span className="text-gray-400">رصيدك بالمنصة:</span>
+                        <span className="font-black text-amber-400 text-sm">{userBalance !== null ? `${userBalance} ج.م` : "غير معروف"}</span>
+                      </div>
+
+                      <button
+                        onClick={() => handlePayViaBalance(activePlan)}
+                        disabled={balanceLoading || (userBalance !== null && userBalance < activePlan.price)}
+                        className="w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all disabled:opacity-50 hover:opacity-90 shadow-md"
+                        style={{ background: "linear-gradient(135deg, #D97706, #B45309)" }}
+                      >
+                        {balanceLoading ? "جارٍ خصم الرصيد..." : `خصم ${activePlan.price} ج.م من رصيدك 💰`}
+                      </button>
+
+                      {userBalance !== null && userBalance < activePlan.price && (
+                        <p className="text-xs text-center text-amber-400 font-semibold">
+                          ⚠️ رصيدك لا يكفي. يمكنك استخدام تبويب المحفظة 📱 أو الكود 🔑 للشحن.
+                        </p>
+                      )}
+                      {balanceMsg && <p className="text-xs font-semibold text-center" style={{ color: balanceMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{balanceMsg}</p>}
+                    </div>
+                  )}
+
+                  {/* 4. WhatsApp Booking */}
+                  {payMode === "whatsapp" && (
+                    <button
+                      onClick={() => {
+                        const waUrl = buildWhatsAppUrl(
+                          bookingContactUrl,
+                          studentName,
+                          gradeLabel,
+                          activePlan,
+                          selectedLanguage,
+                          teacherName,
+                          courseStartDate
+                        );
+                        window.open(waUrl, "_blank");
+                      }}
+                      className="w-full py-4 rounded-2xl text-base font-black text-white text-center flex items-center justify-center gap-2.5 border-none cursor-pointer transition-all hover:brightness-110 shadow-lg"
+                      style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
+                    >
+                      إرسال طلب الحجز عبر الواتساب ➔
+                    </button>
+                  )}
+
+                  {/* 5. Voucher Access Code */}
+                  {payMode === "code" && (
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
+                      <p className="text-xs font-medium text-center text-gray-400">أدخل كود التفعيل المطبوع:</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={code}
+                          onChange={(e) => setCode(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => e.key === "Enter" && handleApplyCode()}
+                          placeholder="كود الشحن"
+                          maxLength={16}
+                          dir="ltr"
+                          className="flex-1 rounded-xl px-3 py-2.5 text-center font-mono text-sm border border-gray-700 bg-gray-900 text-white focus:outline-none"
+                        />
+                        <button
+                          onClick={handleApplyCode}
+                          disabled={codeApplying || !code.trim()}
+                          className="rounded-xl px-4 py-2.5 text-white font-bold text-sm bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 border-none cursor-pointer"
+                        >
+                          {codeApplying ? "..." : "تفعيل"}
+                        </button>
+                      </div>
+                      {codeMsg && <p className="text-xs font-semibold text-center" style={{ color: codeMsg.startsWith("❌") ? "#ef4444" : "#10b981" }}>{codeMsg}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Instructions Modal */}
               {walletModal && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.7)" }} onClick={() => setWalletModal(null)}>
-                  <div className="w-full max-w-md rounded-2xl p-6 text-center space-y-4 shadow-2xl" style={{ background: "var(--surface, #1a1f2e)", border: "1px solid var(--border, rgba(255,255,255,0.1))" }} onClick={e => e.stopPropagation()}>
+                  <div className="w-full max-w-md rounded-2xl p-6 text-center space-y-4 shadow-2xl bg-gray-900 border border-gray-800" onClick={(e) => e.stopPropagation()}>
                     <div className="text-4xl">📲</div>
-                    <h3 className="text-lg font-bold" style={{ color: "var(--ink, #fff)" }}>تم إرسال طلب الخصم بنجاح!</h3>
+                    <h3 className="text-lg font-bold text-white">تم إصدار التقديم بنجاح!</h3>
                     <p className="text-xs text-gray-400 font-mono">رقم المرجع: {walletModal.reference}</p>
-                    
-                    <div className="p-4 rounded-xl space-y-2 text-right text-sm" style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-                      <p className="font-bold text-center" style={{ color: "var(--brand, #6366f1)" }}>تعليمات إتمام العملية:</p>
-                      <p className="text-xs leading-relaxed" style={{ color: "var(--ink-muted, #aaa)" }}>{walletModal.instructions}</p>
+                    <div className="p-4 rounded-xl space-y-2 text-right text-xs bg-gray-950 border border-gray-800 text-gray-300">
+                      <p className="font-bold text-emerald-400">التعليمات:</p>
+                      <p>{walletModal.instructions}</p>
                     </div>
-
-                    <div className="pt-2 space-y-2">
-                      <button onClick={async () => {
-                        setWalletLoading(true);
-                        try {
-                          const res = await fetch("/api/payments/sha7nawy/confirm", {
-                            method: "POST", credentials: "include",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ ref_code: walletModal.reference }),
-                          });
-                          const d = await res.json().catch(() => ({}));
-                          setWalletLoading(false);
-                          if (res.ok && d.success) {
-                            setWalletModal(null);
-                            setWalletMsg("✅ تم تأكيد السحب وشحن حسابك بنجاح!");
-                            refreshBalance();
-                          } else {
-                            setWalletMsg(`⚠️ ${d.error || "العملية معلقة بانتظار موافقة العميل من المحفظة"}`);
-                          }
-                        } catch {
-                          setWalletLoading(false);
-                          setWalletMsg("❌ تعذر الاتصال بسيرفر التأكيد");
-                        }
-                      }} disabled={walletLoading}
-                        className="w-full py-3 rounded-xl text-white font-bold text-sm cursor-pointer border-none transition-all hover:opacity-90 shadow-md"
-                        style={{ background: "linear-gradient(135deg, var(--brand, #6366f1), #4f46e5)" }}>
-                        {walletLoading ? "جارٍ التحقق والتأكيد..." : "تأكيد واستعلام حالة الدفع 🔄"}
-                      </button>
-
-                      <button onClick={() => setWalletModal(null)}
-                        className="w-full py-2.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors"
-                        style={{ background: "var(--bg, #0f1420)", border: "1px solid var(--border, rgba(255,255,255,0.1))", color: "var(--ink-muted, #aaa)" }}>
-                        إغلاق النافذة
-                      </button>
-                    </div>
+                    <button onClick={() => setWalletModal(null)} className="w-full py-2.5 rounded-xl bg-gray-800 text-white text-xs font-bold border-none cursor-pointer">
+                      إغلاق
+                    </button>
                   </div>
                 </div>
               )}

@@ -5,6 +5,8 @@ import { AdaptiveDifficulty } from "../brain/AdaptiveDifficulty";
 import { LayeredTeacher } from "../brain/LayeredTeacher";
 import { SubjectRulesRegistry } from "../subject_rules/SubjectRulesRegistry";
 
+import { isLongExplanationTriggered } from "../config/explanation-triggers";
+
 export class PromptBuilder {
   private configManager: ConfigManager;
   private subjectRulesRegistry: SubjectRulesRegistry;
@@ -32,15 +34,19 @@ export class PromptBuilder {
 
     const isDetailedExplanationRequested =
       (options.context.currentAction as string) === "TUTOR_LESSON" ||
-      options.userMessage.includes("اشرح بالتفصيل") ||
-      options.userMessage.includes("شرح مفصل");
+      isLongExplanationTriggered(options.userMessage);
+
     const layeredInstructions = isDetailedExplanationRequested
       ? LayeredTeacher.getPromptInstructions()
-      : `استجب مباشرة وبشكل سلس وطبيعي بدون التقيد بهياكل جامدة أو عناوين تكرارية، وركز على تلبية احتياجات الطالب بوضوح وتكيف.`;
+      : `[ULTRA-CONCISE MODE — SAVE TIME & TOKENS]:
+1. Internal Analysis: Quietly determine: (a) Student's exact need, (b) Student's emotional state, (c) Whether a direct short answer suffices.
+2. Ultra-Short Direct Answer: Give the shortest correct answer possible (1-2 sentences or exact result).
+3. Zero Fluff: NO greetings, NO intro/outro, NO repeating the question, NO motivational paragraphs. Answer immediately and directly.`;
 
     const identity = `أنت المساعد التعليمي الذكي الخبير لمنصة Code-UP والتعليم المصري.`;
-    const teachingStyle = `نمط التدريس المعتمد: ${config.teachingStyle}\n` +
-      `التزم بالطول المناسب للسؤال. أجب مباشرة وفقاً لطلب الطالب بدون مقدمات طويلة أو تمبلت ثابت مفروض.`;
+    const teachingStyle = isDetailedExplanationRequested
+      ? `نمط التدريس المعتمد: ${config.teachingStyle}\nالتزم بالطول المناسب للسؤال.`
+      : `نمط التدريس: مباشر جداً ومختصر للغاية (إجابة مباشرة بدون مقدمات أو حشو).`;
 
     const actionInstructions = options.actionInstructions;
     const subjectRules = `${pedagogicalSubjectRules}\n\n${options.subjectRules}`;

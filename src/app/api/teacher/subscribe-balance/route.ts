@@ -9,39 +9,76 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "يجب تسجيل الدخول أولاً لشراء الاشتراك بالرصيد" }, { status: 401 });
     }
 
-    const { teacherId, planType } = await req.json().catch(() => ({}));
+    const { teacherId, planType, language: requestedLang } = await req.json().catch(() => ({}));
 
     if (!teacherId || typeof teacherId !== "string") {
       return NextResponse.json({ error: "معرف الأستاذ مطلوب" }, { status: 400 });
     }
 
-    const validPlanTypes = ["monthly", "termly", "yearly"];
+    const validPlanTypes = ["monthly", "termly", "yearly", "1month", "3months", "6months"];
     if (!planType || !validPlanTypes.includes(planType)) {
       return NextResponse.json({ error: "نوع الباقة غير صحيح" }, { status: 400 });
     }
 
     const profile = await prisma.teacherProfile.findUnique({
       where: { teacherId },
-      select: { priceMonthly: true, priceTermly: true, priceYearly: true, displayName: true, slug: true },
     });
 
     if (!profile) {
       return NextResponse.json({ error: "لم يتم العثور على الأستاذ" }, { status: 400 });
     }
 
-    const priceMap: Record<string, number | null> = {
-      monthly: profile.priceMonthly,
-      termly: profile.priceTermly,
-      yearly: profile.priceYearly,
-    };
-    const numAmount = priceMap[planType];
+    if (profile.bookingEnabled === false) {
+      return NextResponse.json({ error: "عفواً، الحجز مغلق حالياً مع هذا الأستاذ" }, { status: 403 });
+    }
+
+    const isLanguages = requestedLang === "languages";
+    if (isLanguages && profile.languagesEnabled === false) {
+      return NextResponse.json({ error: "هذا المعلم متاح للحجز باللغة العربية فقط" }, { status: 400 });
+    }
+    if (!isLanguages && profile.arabicEnabled === false) {
+      return NextResponse.json({ error: "هذا المعلم متاح للحجز لغات فقط" }, { status: 400 });
+    }
+
+    // Map 1month, 3months, 6months (and legacy types) to prices
+    let numAmount: number | null = null;
+    let durationDays = 30;
+    let label = "اشتراك شهري";
+
+    if (planType === "1month" || planType === "monthly") {
+      if (profile.enableMonthly1 === false) {
+        return NextResponse.json({ error: "خطة شهر واحد غير مفعّلة لدى المعلم" }, { status: 400 });
+      }
+      const base = profile.priceMonthly1 ?? profile.priceMonthly ?? 200;
+      const surcharge = isLanguages ? (profile.langSurcharge1 ?? 50) : 0;
+      numAmount = base + surcharge;
+      durationDays = 30;
+      label = isLanguages ? "اشتراك 1 شهر (لغات)" : "اشتراك 1 شهر (عربي)";
+    } else if (planType === "3months" || planType === "termly") {
+      if (profile.enableMonthly3 === false) {
+        return NextResponse.json({ error: "خطة 3 شهور غير مفعّلة لدى المعلم" }, { status: 400 });
+      }
+      const base = profile.priceMonthly3 ?? profile.priceTermly ?? 500;
+      const surcharge = isLanguages ? (profile.langSurcharge3 ?? 150) : 0;
+      numAmount = base + surcharge;
+      durationDays = 90;
+      label = isLanguages ? "اشتراك 3 شهور (لغات)" : "اشتراك 3 شهور (عربي)";
+    } else if (planType === "6months" || planType === "yearly") {
+      if (profile.enableMonthly6 === false) {
+        return NextResponse.json({ error: "خطة 6 شهور غير مفعّلة لدى المعلم" }, { status: 400 });
+      }
+      const base = profile.priceMonthly6 ?? profile.priceYearly ?? 1000;
+      const surcharge = isLanguages ? (profile.langSurcharge6 ?? 300) : 0;
+      numAmount = base + surcharge;
+      durationDays = 180;
+      label = isLanguages ? "اشتراك 6 شهور (لغات)" : "اشتراك 6 شهور (عربي)";
+    }
 
     if (numAmount == null) {
       return NextResponse.json({ error: "هذه الباقة غير متوفرة" }, { status: 400 });
     }
 
     const teacherName = profile.displayName || profile.slug;
-    const planLabel = planType.charAt(0).toUpperCase() + planType.slice(1);
 
     const user = await prisma.user.findUnique({
       where: { id: session.id },
@@ -66,6 +103,8 @@ export async function POST(req: NextRequest) {
       select: { name: true, phone: true, parentPhone: true, educationalStage: true },
     });
 
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
     const updatedUser = await prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: session.id },
@@ -77,7 +116,7 @@ export async function POST(req: NextRequest) {
           userId: session.id,
           type: "debit_purchase",
           amount: -numAmount,
-          note: `حجز اشتراك (${planLabel || "خطة حجز"}) - أستاذ ${teacherName || "المعلم"}`,
+          note: `حجز اشتراك (${label}) - أستاذ ${teacherName || "المعلم"}`,
         },
       });
 
@@ -93,22 +132,26 @@ export async function POST(req: NextRequest) {
           studentId: session.id,
           teacherId: teacherId,
           planType: planType,
-          planLabel: planLabel || "حجز اشتراك",
+          planLabel: label,
+          language: isLanguages ? "languages" : "arabic",
           amount: numAmount,
           educationalStage: userDetails?.educationalStage,
           studentName: userDetails?.name,
           studentPhone: userDetails?.phone,
           parentPhone: userDetails?.parentPhone,
           status: "active",
+          expiresAt: expiresAt,
         },
         update: {
-          planLabel: planLabel || "حجز اشتراك",
+          planLabel: label,
+          language: isLanguages ? "languages" : "arabic",
           amount: numAmount,
           educationalStage: userDetails?.educationalStage,
           studentName: userDetails?.name,
           studentPhone: userDetails?.phone,
           parentPhone: userDetails?.parentPhone,
           status: "active",
+          expiresAt: expiresAt,
         },
       });
 

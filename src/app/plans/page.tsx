@@ -310,68 +310,43 @@ export default function PlansPage() {
           </main>
         )}
 
-        {/* ── Empty State — Skeleton Roadmap ── */}
+        {/* ── Empty State — Human, Clean & Intentional ── */}
         {hasNoPlans && (
-          <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-16 text-center flex flex-col items-center justify-center">
+          <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-16 text-center flex flex-col items-center justify-center">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-8 md:p-12 rounded-2xl text-center max-w-lg w-full"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-lg)" }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="p-8 md:p-10 rounded-3xl text-center max-w-md w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm"
             >
-              {/* Skeleton Roadmap Preview */}
-              <div className="mb-6 flex flex-col items-center gap-3">
-                <div className="flex items-center gap-3 w-full max-w-xs">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.3)" }}>
-                    <span className="text-xs font-black" style={{ color: "#14B8A6" }}>1</span>
-                  </div>
-                  <div className="flex-1 h-3 rounded-full" style={{ background: "var(--border)" }} />
-                </div>
-                <div className="w-px h-4" style={{ background: "var(--border)" }} />
-                <div className="flex items-center gap-3 w-full max-w-xs">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                    <span className="text-xs font-black" style={{ color: "#F59E0B" }}>2</span>
-                  </div>
-                  <div className="flex-1 h-3 rounded-full" style={{ background: "var(--border)" }} />
-                </div>
-                <div className="w-px h-4" style={{ background: "var(--border)" }} />
-                <div className="flex items-center gap-3 w-full max-w-xs">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)" }}>
-                    <span className="text-xs font-black" style={{ color: "#10B981" }}>3</span>
-                  </div>
-                  <div className="flex-1 h-3 rounded-full" style={{ background: "var(--border)" }} />
-                </div>
+              {/* Friendly Icon Badge */}
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mx-auto mb-5 border border-emerald-100 dark:border-emerald-900/30">
+                📚
               </div>
 
-              <h2 className="text-xl md:text-2xl font-black mb-2" style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}>
-                الخطة الدراسية قيد التحديث
+              <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                لا تتوفر خطط دراسية جديدة حالياً
               </h2>
-              <p className="text-xs md:text-sm mb-6 leading-relaxed" style={{ color: "var(--ink-2)" }}>
-                جاري إعداد مسارات تعليمية جديدة لطلبة هذه المرحلة.
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                يعمل فريق معلمينا الخبراء على تجهيز المسارات والخطط الدراسية للمرحلة المحددة. يمكنك تصفح جميع الكورسات المتاحة الآن أو العودة لاحقاً.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                {selectedStage !== "all" && (
-                  <button
-                    onClick={() => setSelectedStage("all")}
-                    className="px-5 py-2.5 text-xs font-bold rounded-xl border-none cursor-pointer transition-colors hover:opacity-90"
-                    style={{ color: "#14B8A6", background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.25)" }}
-                  >
-                    عرض جميع المراحل
-                  </button>
-                )}
-                <button
-                  className="px-5 py-2.5 text-xs font-bold rounded-xl border-none cursor-pointer transition-all hover:opacity-90"
-                  style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}
-                >
-                  أبلغني عند توفر الخطة 🔔
-                </button>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   href="/courses"
-                  className="px-6 py-2.5 text-xs font-black text-white rounded-xl no-underline transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)", boxShadow: "0 4px 14px -4px rgba(16,185,129,0.4)" }}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors no-underline shadow-sm"
                 >
-                  تصفح الكورسات المتاحة ➔
+                  تصفح جميع الكورسات ➔
                 </Link>
+                {selectedStage !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStage("all")}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-none cursor-pointer transition-colors"
+                  >
+                    عرض كل المراحل
+                  </button>
+                )}
               </div>
             </motion.div>
           </main>

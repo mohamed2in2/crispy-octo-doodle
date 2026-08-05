@@ -123,6 +123,20 @@ export default async function TeacherPage({ params }: { params: Promise<{ teache
         {/* Booking Button + Modal */}
         <BookingButton
           teacherId={p.teacherId}
+          bookingEnabled={p.bookingEnabled}
+          arabicEnabled={p.arabicEnabled}
+          languagesEnabled={p.languagesEnabled}
+          priceMonthly1={p.priceMonthly1}
+          priceMonthly3={p.priceMonthly3}
+          priceMonthly6={p.priceMonthly6}
+          originalMonthly3={p.originalMonthly3}
+          originalMonthly6={p.originalMonthly6}
+          langSurcharge1={p.langSurcharge1}
+          langSurcharge3={p.langSurcharge3}
+          langSurcharge6={p.langSurcharge6}
+          enableMonthly1={p.enableMonthly1}
+          enableMonthly3={p.enableMonthly3}
+          enableMonthly6={p.enableMonthly6}
           priceMonthly={p.priceMonthly}
           priceTermly={p.priceTermly}
           priceYearly={p.priceYearly}

@@ -33,7 +33,6 @@ export function Footer() {
               { href: "/courses",     label: "الكورسات" },
               { href: "/library",     label: "مكتبتي" },
               { href: "/account",     label: "حسابي" },
-              { href: "/payment-methods", label: "طرق الدفع" },
               { href: "/leaderboard", label: "لوحة الشرف" },
             ].map(({ href, label }) => (
               <li key={href}>
