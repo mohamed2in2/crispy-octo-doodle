@@ -1,0 +1,81 @@
+/*
+ * M8 migration bridge. Financial behavior and markup remain unchanged while
+ * every visual token now resolves through the active Classic system.
+ * Future financial components should consume --c-* directly.
+ */
+.ds-fin-shell {
+	--ds-surface-0: var(--c-bg);
+	--ds-surface-1: var(--c-surface);
+	--ds-surface-2: var(--c-surface-2);
+	--ds-surface-3: var(--c-surface-3);
+	--ds-border: var(--c-border);
+	--ds-border-strong: var(--c-border-strong);
+	--ds-text: var(--c-text);
+	--ds-text-muted: var(--c-text-muted);
+	--ds-accent: var(--c-blue);
+	--ds-accent-hover: var(--c-blue-hover);
+	--ds-accent-subtle: var(--c-blue-wash);
+	--ds-success: var(--c-green-ink);
+	--ds-warning: var(--c-amber);
+	--ds-danger: var(--c-red);
+	--ds-neutral: var(--c-text-muted);
+	--ds-radius-control: var(--c-r-sm);
+	--ds-radius-card: var(--c-r);
+	--ds-space-1: var(--c-s1);
+	--ds-space-2: var(--c-s2);
+	--ds-space-3: var(--c-s3);
+	--ds-space-4: var(--c-s4);
+	--ds-space-6: var(--c-s6);
+	--ds-space-8: var(--c-s8);
+	--ds-space-12: var(--c-s12);
+	--ds-space-16: var(--c-s16);
+	--ds-ease: var(--c-ease);
+	--ds-dur-fast: var(--c-dur);
+	--ds-dur-base: var(--c-dur);
+
+	max-width: none;
+	min-height: 100dvh;
+	padding-inline: max(var(--c-s5), calc((100vw - var(--c-page-max)) / 2));
+	background-color: var(--c-bg);
+	background-image:
+		radial-gradient(var(--c-bg-dots) 1px, transparent 1px),
+		linear-gradient(var(--c-bg-tint), transparent 620px);
+	background-size: 22px 22px, 100% 620px;
+	color: var(--c-text);
+}
+
+.ds-fin-nav {
+	position: sticky;
+	top: var(--c-s5);
+	padding: var(--c-s3);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	background: var(--c-navy);
+}
+
+.ds-fin-nav__link {
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	font-weight: 700;
+}
+
+.ds-fin-nav__link:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.ds-fin-nav__link[data-active="true"] { background: var(--c-blue); color: #fff; }
+.ds-fin-nav__link:focus-visible { outline: none; box-shadow: var(--c-ring); }
+
+.ds-fin-shell .ds-card,
+.ds-fin-shell [class*="ds-card"] {
+	box-shadow: none;
+}
+
+.ds-fin-shell .ds-skeleton {
+	background-image: none;
+	background-color: var(--c-surface-3);
+}
+
+@media (max-width: 900px) {
+	.ds-fin-shell { padding-inline: var(--c-s4); }
+	.ds-fin-nav { position: static; padding: var(--c-s2); }
+	.ds-fin-nav__link { border-color: rgba(255, 255, 255, 0.16); }
+}
