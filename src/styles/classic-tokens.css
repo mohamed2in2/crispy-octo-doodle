@@ -3,16 +3,36 @@
  *
  * Deliberately NOT the palette in financial-tokens.css. That file chased a
  * restrained Stripe/Linear look on the theory that money screens should feel
- * boring. Watching the reference platform changed the brief: it reads as
- * *easier* precisely because it is loud. Solid saturated colour blocks, hard
- * edges, chunky controls, instructions printed in blue directly on the card.
+ * boring. The reference platform changed the brief: it reads as *easier*
+ * precisely because it is loud. Solid saturated colour blocks, hard edges,
+ * chunky controls, instructions printed in blue directly on the card.
  * Nothing is subtle, so nothing has to be decoded.
  *
- * Every name here is prefixed --c- so this layer can coexist with --ds-*
- * while screens migrate one at a time.
+ * ------------------------------------------------------------------------
+ * BANNED IN THIS LAYER
+ * ------------------------------------------------------------------------
+ * Four things read as "a machine designed this" to anyone who has touched an
+ * AI product recently. None of them are allowed here:
+ *
+ *   1. Purple / violet - the default accent of every "magic" button since
+ *      2023. Removed outright (was --c-violet #8b5cf6).
+ *   2. Neon cyan on near-black - the cyberpunk dark-mode pairing. Removed
+ *      outright (was --c-cyan #22b8cf, the active tab underline).
+ *   3. Deep teal-green (the #10a37f family). Our green stays on the grass
+ *      axis so it reads like a pay button in a shop, not a chatbot's mark.
+ *   4. Gradients, especially multi-stop pastels. There is not one
+ *      linear-gradient in this layer and none may be added. Every coloured
+ *      surface is a single flat fill.
+ *
+ * The blue also moved off electric azure (#0d8de4) to a flatter
+ * institutional blue: same loudness, but it reads like a school portal
+ * rather than a product launch.
+ *
+ * Every name is prefixed --c- so this layer coexists with --ds-* while
+ * screens migrate one at a time.
  *
  * Font is deliberately not tokenised: the app already sets Cairo on <body>
- * and inheritance is more reliable than guessing the CSS variable name.
+ * and inheritance is more reliable than guessing the variable name.
  */
 
 :root {
@@ -25,7 +45,7 @@
 	--c-surface-3: #2a3547;
 	--c-input-bg: #151d29;
 
-	/* Lines. Visible on purpose — a card should have an edge you can see. */
+	/* Lines. Visible on purpose - a card should have an edge you can see. */
 	--c-border: #2b3646;
 	--c-border-strong: #3b4859;
 
@@ -35,26 +55,35 @@
 	--c-text-faint: #6d7a8b;
 	--c-on-color: #ffffff;
 
-	/* Brand blue — the sidebar, primary buttons, active states */
-	--c-blue: #0d8de4;
-	--c-blue-hover: #0a76bf;
-	--c-blue-active: #0966a5;
-	--c-blue-ink: #4aa8ff; /* numbered steps and links ON dark surfaces */
-	--c-blue-wash: rgba(13, 141, 228, 0.14);
-	--c-blue-panel: #1173c4; /* the solid blue filter panel */
+	/* Brand blue - the sidebar, primary buttons, active states */
+	--c-blue: #1266bd;
+	--c-blue-hover: #0f579f;
+	--c-blue-active: #0d4a89;
+	--c-blue-ink: #6fa8dd; /* numbered steps and links ON dark surfaces */
+	--c-blue-wash: rgba(18, 102, 189, 0.16);
+	--c-blue-panel: #14589f; /* the solid blue filter panel */
 
-	/* Header green */
-	--c-green: #4faf55;
-	--c-green-hover: #429347;
-	--c-green-ink: #6ed073;
+	/* Header green. Grass, not teal - see the ban list above. */
+	--c-green: #45984d;
+	--c-green-hover: #3a8041;
+	--c-green-ink: #71bd78;
 
 	/* Accents */
-	--c-cyan: #22b8cf; /* active tab underline */
-	--c-red: #ef4444;
-	--c-amber: #f0ad4e;
-	--c-violet: #8b5cf6;
+	--c-underline: #5aa0e6; /* active tab underline (replaces neon cyan) */
+	--c-red: #d64545;
+	--c-amber: #d99424;
+	--c-brick: #bd6039; /* fourth icon tone (replaces violet) */
 
-	/* Geometry — chunkier than the financial system, on purpose */
+	/*
+	 * Deprecated aliases. classic-shell.css and classic-components.css still
+	 * reference these two names; they now resolve to non-AI colours, so no
+	 * cyan or violet renders anywhere. Delete both when those two
+	 * stylesheets are next rewritten.
+	 */
+	--c-cyan: var(--c-underline);
+	--c-violet: var(--c-brick);
+
+	/* Geometry - chunkier than the financial system, on purpose */
 	--c-r: 10px;
 	--c-r-sm: 8px;
 	--c-r-lg: 14px;
@@ -79,7 +108,7 @@
 	--c-sidebar-w-min: 68px;
 	--c-page-max: 1120px;
 
-	--c-ring: 0 0 0 3px rgba(13, 141, 228, 0.4);
+	--c-ring: 0 0 0 3px rgba(18, 102, 189, 0.45);
 	--c-lift: 0 2px 0 0 rgba(0, 0, 0, 0.35);
 
 	--c-dur: 160ms;
@@ -107,8 +136,9 @@
 	--c-text-muted: #5a6878;
 	--c-text-faint: #8593a3;
 
-	--c-blue-ink: #0a6cb0;
-	--c-blue-wash: rgba(13, 141, 228, 0.1);
+	--c-blue-ink: #0f5796;
+	--c-blue-wash: rgba(18, 102, 189, 0.1);
+	--c-underline: #1266bd;
 
 	--c-lift: 0 1px 2px rgba(16, 32, 46, 0.1);
 }
