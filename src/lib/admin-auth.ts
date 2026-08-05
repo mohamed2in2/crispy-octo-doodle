@@ -1,7 +1,6 @@
-import { timingSafeEqual } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "./prisma";
 
-// ─── Action type constants ────────────────────────────────────────────────────
 export const LOG_ACTIONS = {
   SUSPEND_STUDENT: "SUSPEND_STUDENT",
   UNSUSPEND_STUDENT: "UNSUSPEND_STUDENT",
@@ -27,25 +26,20 @@ export const LOG_ACTIONS = {
 
 export type LogAction = (typeof LOG_ACTIONS)[keyof typeof LOG_ACTIONS];
 
-// ─── Password verification ────────────────────────────────────────────────────
-
+/**
+ * Hash both values to a fixed length before timingSafeEqual. This avoids the
+ * old early length return leaking the size of deployment secrets.
+ */
 function timingSafeCompare(a: string, b: string): boolean {
   try {
-    const aBuf = Buffer.from(a, "utf8");
-    const bBuf = Buffer.from(b, "utf8");
-    if (aBuf.length !== bBuf.length) return false;
-    return timingSafeEqual(aBuf, bBuf);
+    const left = createHash("sha256").update(a, "utf8").digest();
+    const right = createHash("sha256").update(b, "utf8").digest();
+    return timingSafeEqual(left, right);
   } catch {
     return false;
   }
 }
 
-/**
- * Verifies the action password for a given admin role.
- * superadmin → SUPERADMIN_ACTION_PASSWORD
- * admin      → ADMIN_ACTION_PASSWORD
- * staff      → always false (read-only role, no actions)
- */
 export function verifyRoleActionPassword(role: string, password: string): boolean {
   if (!password) return false;
   const envVar =
@@ -54,8 +48,7 @@ export function verifyRoleActionPassword(role: string, password: string): boolea
       : role === "admin"
       ? process.env.ADMIN_ACTION_PASSWORD
       : null;
-  if (!envVar) return false;
-  return timingSafeCompare(password, envVar);
+  return Boolean(envVar) && timingSafeCompare(password, envVar);
 }
 
 /** @deprecated Use verifyRoleActionPassword instead */
@@ -63,29 +56,20 @@ export function verifyActionPassword(password: string): boolean {
   return verifyRoleActionPassword("superadmin", password);
 }
 
-// ─── Superadmin master (break-glass owner) password ──────────────────────────
-// Just the env value — one place, no DB override, no "which password?" confusion.
 export function verifyMasterPassword(password: string): boolean {
   const env = process.env.SUPERADMIN_MASTER_PASSWORD;
-  if (!env || !password) return false;
-  return timingSafeCompare(password, env);
+  return Boolean(env && password) && timingSafeCompare(password, env);
 }
 
-/** Verifies the bulk/danger access password (gates Danger Zone + Instance). */
 export function verifyBulkPassword(password: string): boolean {
   const env = process.env.BULK_DELETE_PASSWORD;
-  if (!env || !password) return false;
-  return timingSafeCompare(password, env);
+  return Boolean(env && password) && timingSafeCompare(password, env);
 }
 
-/** Verifies the wallet access password (gates WalletSection). */
 export function verifyWalletPassword(password: string): boolean {
   const env = process.env.WALLET_PASSWORD;
-  if (!env || !password) return false;
-  return timingSafeCompare(password, env);
+  return Boolean(env && password) && timingSafeCompare(password, env);
 }
-
-// ─── Activity logging ─────────────────────────────────────────────────────────
 
 export interface ActivityLogParams {
   adminId: string;
@@ -97,10 +81,7 @@ export interface ActivityLogParams {
   metadata?: Record<string, unknown>;
 }
 
-/**
- * Writes a structured audit log entry to stdout AND the ActivityLog table.
- * Never throws — DB failures are swallowed so they don't break the main flow.
- */
+/** Writes a structured audit log entry to stdout and the ActivityLog table. */
 export async function logAdminAction(params: ActivityLogParams): Promise<void> {
   console.log(
     JSON.stringify({
