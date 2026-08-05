@@ -1,10 +1,16 @@
 /*
- * Classic app shell: right-hand solid-blue sidebar, green top bar, scrolling
- * tab strip, one content column, footer, floating contact buttons.
+ * Classic app shell: navy sidebar on the inline-start edge of the viewport
+ * (the right, under dir="rtl"), a dark top bar, a segmented control, one
+ * content column, footer, floating assistant.
  *
  * Layout uses logical properties (inline-start/inline-end) throughout, so the
  * sidebar lands on the right under dir="rtl" and on the left if this is ever
  * rendered LTR. No RTL-specific overrides needed anywhere in this file.
+ *
+ * Two deliberate departures from the platform this app is measured against:
+ * the top bar is a dark surface rather than a saturated green band, and the
+ * tab strip is a segmented control rather than an arrow-flanked scroller.
+ * Both were the most recognisable pieces of their chrome.
  */
 
 .c-app {
@@ -12,8 +18,22 @@
 	grid-template-columns: var(--c-sidebar-w) minmax(0, 1fr);
 	min-height: 100vh;
 	min-height: 100dvh;
-	background: var(--c-bg);
+	background-color: var(--c-bg);
 	color: var(--c-text);
+
+	/*
+	 * Background texture: a dot lattice over a tint that fades out by the
+	 * first fold. Flat #0d1117 reads as unfinished, and a photo or a
+	 * multi-stop gradient would both date instantly. Two flat layers cost
+	 * nothing and give the surface somewhere to catch light.
+	 */
+	background-image:
+		radial-gradient(var(--c-bg-dots) 1px, transparent 1px),
+		linear-gradient(var(--c-bg-tint), transparent 620px);
+	background-size: 22px 22px, 100% 620px;
+	background-position: 0 0, 0 0;
+	background-repeat: repeat, no-repeat;
+	background-attachment: fixed, scroll;
 }
 
 .c-app[data-collapsed="true"] {
@@ -24,8 +44,9 @@
 
 .c-sidebar {
 	grid-column: 1;
-	background: var(--c-blue);
+	background: var(--c-navy);
 	color: var(--c-on-color);
+	border-inline-end: 1px solid rgba(255, 255, 255, 0.06);
 	padding: var(--c-s4) var(--c-s3) var(--c-s8);
 	display: flex;
 	flex-direction: column;
@@ -61,7 +82,7 @@
 	padding: 0 var(--c-s3);
 	border: 0;
 	border-radius: var(--c-r-sm);
-	background: rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.08);
 	color: var(--c-on-color);
 	font: inherit;
 	font-size: 13px;
@@ -70,7 +91,7 @@
 }
 
 .c-sidebar__collapse:hover {
-	background: rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.16);
 }
 
 .c-sidebar__collapse-icon {
@@ -80,8 +101,8 @@
 	width: 24px;
 	height: 24px;
 	border-radius: 6px;
-	background: rgba(255, 255, 255, 0.9);
-	color: var(--c-blue);
+	background: var(--c-blue);
+	color: #ffffff;
 	flex: none;
 }
 
@@ -95,13 +116,14 @@
 }
 
 .c-sidebar__link {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: var(--c-s3);
 	min-height: 46px;
 	padding: 0 var(--c-s3);
 	border-radius: var(--c-r-sm);
-	color: var(--c-on-color);
+	color: rgba(255, 255, 255, 0.86);
 	text-decoration: none;
 	font-size: 15px;
 	font-weight: 600;
@@ -111,17 +133,32 @@
 }
 
 .c-sidebar__link:hover {
-	background: rgba(255, 255, 255, 0.16);
+	background: rgba(255, 255, 255, 0.08);
+	color: #ffffff;
 }
 
 /*
- * Active state is a filled white pill with dark text — the single loudest
- * signal in the shell. Deliberately not a left border or a tint: at a glance
- * you should be able to see where you are from across the room.
+ * Active state is a teal edge bar plus a lifted panel, not the filled white
+ * pill this replaced. The white pill was the loudest single element in the
+ * reference platform's sidebar and the first thing anyone would recognise.
+ * An edge bar is just as unambiguous from across the room and reads as part
+ * of a system rather than a sticker.
  */
 .c-sidebar__link[data-active="true"] {
-	background: #ffffff;
-	color: #16202e;
+	background: rgba(255, 255, 255, 0.1);
+	color: #ffffff;
+	font-weight: 800;
+}
+
+.c-sidebar__link[data-active="true"]::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 0;
+	top: 8px;
+	bottom: 8px;
+	width: 3px;
+	border-radius: 0 3px 3px 0;
+	background: var(--c-blue-ink);
 }
 
 .c-sidebar__icon {
@@ -164,18 +201,18 @@
 	display: block;
 	padding: var(--c-s2) var(--c-s2);
 	border-radius: 6px;
-	color: rgba(255, 255, 255, 0.82);
+	color: rgba(255, 255, 255, 0.7);
 	text-decoration: none;
 	font-size: 13.5px;
 }
 
 .c-sidebar__sublink:hover {
 	color: #ffffff;
-	background: rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.08);
 }
 
 .c-sidebar__sublink[data-active="true"] {
-	color: #ffffff;
+	color: var(--c-blue-ink);
 	font-weight: 700;
 }
 
@@ -190,14 +227,24 @@
 
 /* ----------------------------------------------------------------- topbar */
 
+/*
+ * A dark surface with a hairline underneath, not a saturated colour band.
+ * The colour band forced every control inside it to be white-on-colour,
+ * which is why the search field and the balance chip on the reference
+ * platform both read as holes punched in the header.
+ */
 .c-topbar {
 	display: flex;
 	align-items: center;
 	gap: var(--c-s4);
 	min-height: var(--c-topbar-h);
 	padding: var(--c-s2) var(--c-s5);
-	background: var(--c-green);
-	color: var(--c-on-color);
+	background: var(--c-surface);
+	border-bottom: 1px solid var(--c-border);
+	color: var(--c-text);
+	position: sticky;
+	top: 0;
+	z-index: 20;
 }
 
 .c-topbar__title {
@@ -205,6 +252,18 @@
 	font-size: 19px;
 	font-weight: 800;
 	white-space: nowrap;
+	color: var(--c-text);
+}
+
+/* A teal rule under the page name, so the title is not just bold text. */
+.c-topbar__title::after {
+	content: "";
+	display: block;
+	width: 28px;
+	height: 3px;
+	margin-top: 5px;
+	border-radius: 3px;
+	background: var(--c-blue);
 }
 
 .c-topbar__search {
@@ -224,30 +283,31 @@
 
 .c-topbar__search-input {
 	width: 100%;
-	height: 34px;
+	height: 36px;
 	padding-inline: var(--c-s8) var(--c-s3);
-	border: 1px solid rgba(0, 0, 0, 0.12);
-	border-radius: var(--c-r-sm);
-	background: #ffffff;
-	color: #16202e;
+	border: 1px solid var(--c-border-strong);
+	border-radius: var(--c-r-pill);
+	background: var(--c-input-bg);
+	color: var(--c-text);
 	font: inherit;
 	font-size: 14px;
 }
 
 .c-topbar__search-input::placeholder {
-	color: #8593a3;
+	color: var(--c-text-faint);
 }
 
 .c-topbar__search-input:focus-visible {
 	outline: none;
-	box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
+	border-color: var(--c-blue);
+	box-shadow: var(--c-ring);
 }
 
 .c-topbar__search-icon {
 	position: absolute;
 	inset-inline-start: var(--c-s3);
 	display: inline-flex;
-	color: #8593a3;
+	color: var(--c-text-faint);
 	pointer-events: none;
 }
 
@@ -265,9 +325,10 @@
 	gap: var(--c-s2);
 	height: 32px;
 	padding: 0 var(--c-s3);
+	border: 1px solid var(--c-blue);
 	border-radius: var(--c-r-pill);
-	background: rgba(0, 0, 0, 0.35);
-	color: #ffffff;
+	background: var(--c-blue-wash);
+	color: var(--c-blue-ink);
 	font-size: 13px;
 	font-weight: 700;
 	text-decoration: none;
@@ -275,7 +336,8 @@
 }
 
 .c-wallet-chip:hover {
-	background: rgba(0, 0, 0, 0.5);
+	background: var(--c-blue);
+	color: #ffffff;
 }
 
 .c-iconbtn {
@@ -287,21 +349,24 @@
 	border: 0;
 	border-radius: var(--c-r-pill);
 	background: transparent;
-	color: #ffffff;
+	color: var(--c-text-muted);
 	cursor: pointer;
 	text-decoration: none;
 	position: relative;
-	transition: background var(--c-dur) var(--c-ease);
+	transition:
+		background var(--c-dur) var(--c-ease),
+		color var(--c-dur) var(--c-ease);
 }
 
 .c-iconbtn:hover {
-	background: rgba(0, 0, 0, 0.22);
+	background: var(--c-surface-3);
+	color: var(--c-text);
 }
 
 .c-iconbtn__dot {
 	position: absolute;
-	top: 5px;
-	inset-inline-end: 5px;
+	top: 3px;
+	inset-inline-end: 3px;
 	min-width: 16px;
 	height: 16px;
 	padding: 0 4px;
@@ -318,8 +383,9 @@
 	width: 34px;
 	height: 34px;
 	border-radius: var(--c-r-pill);
-	background: rgba(0, 0, 0, 0.28);
-	color: #ffffff;
+	background: var(--c-navy);
+	border: 1px solid var(--c-border-strong);
+	color: var(--c-blue-ink);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -329,79 +395,58 @@
 	flex: none;
 }
 
-/* ------------------------------------------------------------- tab strip */
+/* -------------------------------------------------------- segmented control */
 
-.c-tabs {
+/*
+ * Replaces the arrow-flanked scrolling tab strip.
+ *
+ * It wraps instead of scrolling, so every destination is visible without a
+ * gesture. The active item is a solid teal pill: one filled shape in a row
+ * of transparent ones is the least ambiguous "you are here" available.
+ */
+.c-seg {
 	display: flex;
-	align-items: stretch;
+	flex-wrap: wrap;
 	gap: var(--c-s1);
 	margin: var(--c-s5) var(--c-s5) 0;
 	padding: var(--c-s1);
 	border: 1px solid var(--c-border);
-	border-radius: var(--c-r);
+	border-radius: var(--c-r-pill);
 	background: var(--c-surface);
 }
 
-.c-tabs__scroll {
-	display: flex;
-	gap: var(--c-s1);
-	overflow-x: auto;
-	scrollbar-width: none;
-	scroll-behavior: smooth;
-	flex: 1 1 auto;
-}
-
-.c-tabs__scroll::-webkit-scrollbar {
-	display: none;
-}
-
-.c-tabs__link {
+.c-seg__item {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--c-s2);
-	padding: var(--c-s3) var(--c-s4);
-	border-radius: var(--c-r-sm);
-	border-bottom: 3px solid transparent;
+	justify-content: center;
+	flex: 1 1 auto;
+	min-height: 38px;
+	padding: 0 var(--c-s4);
+	border-radius: var(--c-r-pill);
 	color: var(--c-text-muted);
 	text-decoration: none;
 	font-size: 14px;
 	font-weight: 600;
 	white-space: nowrap;
-	transition: color var(--c-dur) var(--c-ease);
+	transition:
+		background var(--c-dur) var(--c-ease),
+		color var(--c-dur) var(--c-ease);
 }
 
-.c-tabs__link:hover {
+.c-seg__item:hover {
 	color: var(--c-text);
 	background: var(--c-surface-2);
 }
 
-.c-tabs__link[data-active="true"] {
-	color: var(--c-text);
-	border-bottom-color: var(--c-cyan);
-	font-weight: 700;
+.c-seg__item[data-active="true"] {
+	background: var(--c-blue);
+	color: #ffffff;
+	font-weight: 800;
 }
 
-.c-tabs__arrow {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	flex: none;
-	border: 0;
-	border-radius: var(--c-r-sm);
-	background: var(--c-surface-2);
-	color: var(--c-text-muted);
-	cursor: pointer;
-}
-
-.c-tabs__arrow:hover {
-	color: var(--c-text);
-	background: var(--c-surface-3);
-}
-
-.c-tabs__arrow:disabled {
-	opacity: 0.35;
-	cursor: default;
+.c-seg__item:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
 }
 
 /* ------------------------------------------------------------------ main */
@@ -436,7 +481,7 @@
 
 .c-footer {
 	border-top: 1px solid var(--c-border);
-	background: var(--c-bg);
+	background: var(--c-surface);
 	padding: var(--c-s10) var(--c-s5) var(--c-s8);
 }
 
@@ -496,7 +541,7 @@
 }
 
 .c-footer__link:hover {
-	color: var(--c-text);
+	color: var(--c-blue-ink);
 }
 
 .c-footer__copy {
@@ -507,43 +552,46 @@
 	font-size: 12.5px;
 }
 
-/* ------------------------------------------------------- floating buttons */
+/* ------------------------------------------------------- floating assistant */
 
-.c-float {
+/*
+ * One labelled pill, not a stack of unlabelled circles.
+ *
+ * The circles that used to live here (WhatsApp, support) are the most
+ * duplicated chrome on the Arabic ed-tech web, and neither said what it did.
+ * This says what it is, in words, and points at the one feature the
+ * competition does not have.
+ */
+.c-ai-float {
 	position: fixed;
 	inset-inline-start: var(--c-s5);
 	bottom: var(--c-s5);
 	z-index: 40;
-	display: flex;
-	flex-direction: column-reverse;
-	gap: var(--c-s3);
-}
-
-.c-float__btn {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	width: 46px;
-	height: 46px;
-	border: 0;
+	gap: var(--c-s2);
+	height: 48px;
+	padding: 0 var(--c-s5);
 	border-radius: var(--c-r-pill);
+	background: var(--c-blue);
 	color: #ffffff;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-	cursor: pointer;
+	font-size: 14.5px;
+	font-weight: 800;
 	text-decoration: none;
-	transition: transform var(--c-dur) var(--c-ease);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+	transition:
+		background var(--c-dur) var(--c-ease),
+		transform var(--c-dur) var(--c-ease);
 }
 
-.c-float__btn:hover {
+.c-ai-float:hover {
+	background: var(--c-blue-hover);
 	transform: translateY(-2px);
 }
 
-.c-float__btn[data-kind="whatsapp"] {
-	background: #25d366;
-}
-
-.c-float__btn[data-kind="support"] {
-	background: var(--c-blue);
+.c-ai-float:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
 }
 
 /* --------------------------------------------------------------- mobile */
@@ -577,6 +625,8 @@
 		align-items: center;
 		gap: var(--c-s1);
 		padding: var(--c-s2);
+		border-inline-end: 0;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
 		overflow-x: auto;
 		overflow-y: hidden;
 		z-index: 30;
@@ -603,8 +653,30 @@
 		font-weight: 600;
 	}
 
-	.c-float {
+	/* The edge bar becomes a top bar when the rail is horizontal. */
+	.c-sidebar__link[data-active="true"]::before {
+		top: 0;
+		bottom: auto;
+		inset-inline: 10px;
+		width: auto;
+		height: 3px;
+		border-radius: 0 0 3px 3px;
+	}
+
+	/*
+	 * The label would collide with the bottom rail, so on phones the
+	 * assistant collapses to a circle. It keeps its accessible name from
+	 * aria-label, so nothing is lost to a screen reader.
+	 */
+	.c-ai-float {
 		bottom: 76px;
+		width: 48px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.c-ai-float__label {
+		display: none;
 	}
 
 	.c-footer__inner {
@@ -625,7 +697,7 @@
 		max-width: none;
 	}
 
-	.c-tabs {
+	.c-seg {
 		margin-inline: var(--c-s4);
 	}
 
