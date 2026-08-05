@@ -1,5 +1,6 @@
-import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type AttributionDatabase = Pick<typeof prisma, "user" | "teacherReferralAttribution">;
 
 export interface ProcessAttributionInput {
   studentId: string;
@@ -10,7 +11,7 @@ export interface ProcessAttributionInput {
   folderId?: string;
   videoId?: string;
   promoCodeInput?: string | null;
-  tx?: Prisma.TransactionClient;
+  tx?: AttributionDatabase;
 }
 
 /**
