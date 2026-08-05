@@ -1,0 +1,144 @@
+/*
+ * Code-UP signature layer.
+ *
+ * This is not another theme. It is a scoped migration bridge for student-facing
+ * routes that still contain the retired green-gradient dashboard language.
+ * The identity is a "study ledger": square teal registration marks, visible
+ * rules, compact geometry, and the three-step brand line (ذاكر · طبّق · اتقدم).
+ */
+.cu-signature {
+  display: contents;
+  --cu-mark: var(--c-blue, #0e9a8a);
+  --cu-ink: var(--c-text, #f4f7fb);
+  --cu-surface: var(--c-surface, #18212e);
+  --cu-rule: var(--c-border, #2b3646);
+}
+
+/* A recognisable wordmark treatment shared by public and signed-in chrome. */
+.cu-signature .c-pubhead__brand,
+.cu-signature .c-sidebar__brand {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  letter-spacing: .02em;
+}
+
+.cu-signature .c-pubhead__brand::before,
+.cu-signature .c-sidebar__brand::before {
+  content: "";
+  inline-size: 11px;
+  block-size: 22px;
+  flex: none;
+  border: 3px solid var(--cu-mark);
+  border-block-start-width: 7px;
+  border-radius: 2px;
+  transform: skewY(-8deg);
+}
+
+.cu-signature .c-pubhead__brand::after,
+.cu-signature .c-sidebar__brand::after {
+  content: "ذاكر · طبّق · اتقدم";
+  display: block;
+  color: var(--c-text-faint, #8793a3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.cu-signature .c-sidebar__brand::after {
+  color: rgba(255,255,255,.55);
+}
+
+/* Ledger headings: a square registration mark, not a copied underline. */
+.cu-signature main h2:not([class*="sr-only"])::before,
+.cu-signature .c-section__title::before {
+  content: "";
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-inline-end: 9px;
+  border: 2px solid var(--cu-mark);
+  border-radius: 1px;
+  vertical-align: .08em;
+}
+
+/* Remove the recognisable AI-dashboard styling from legacy screens. */
+.cu-signature [style*="linear-gradient"],
+.cu-signature [style*="radial-gradient"],
+.cu-signature [class*="bg-gradient-to-"] {
+  background-image: none !important;
+  background-color: var(--cu-surface) !important;
+}
+
+.cu-signature [class*="from-purple"],
+.cu-signature [class*="to-purple"],
+.cu-signature [class*="from-fuchsia"],
+.cu-signature [class*="to-fuchsia"],
+.cu-signature [class*="from-indigo"],
+.cu-signature [class*="to-indigo"] {
+  color: var(--cu-ink) !important;
+  border-color: var(--cu-rule) !important;
+  background-color: var(--cu-surface) !important;
+}
+
+.cu-signature [class*="backdrop-blur"],
+.cu-signature [style*="backdrop-filter"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Bring oversized marketplace-card geometry back to the Code-UP rhythm. */
+.cu-signature main .rounded-3xl,
+.cu-signature main .rounded-2xl {
+  border-radius: 12px !important;
+}
+
+.cu-signature main [class*="shadow-xl"],
+.cu-signature main [class*="shadow-2xl"],
+.cu-signature main [style*="box-shadow"] {
+  box-shadow: 0 2px 0 rgba(0,0,0,.28) !important;
+}
+
+/* A small corner registration mark makes important cards feel like worksheets. */
+.cu-signature .c-card,
+.cu-signature .ds-fin-card,
+.cu-signature main section > .rounded-3xl {
+  position: relative;
+}
+
+.cu-signature .c-card::after,
+.cu-signature .ds-fin-card::after,
+.cu-signature main section > .rounded-3xl::after {
+  content: "";
+  position: absolute;
+  inset-block-start: -1px;
+  inset-inline-start: -1px;
+  inline-size: 18px;
+  block-size: 18px;
+  border-block-start: 3px solid var(--cu-mark);
+  border-inline-start: 3px solid var(--cu-mark);
+  border-start-start-radius: 6px;
+  pointer-events: none;
+}
+
+.cu-signature :is(a, button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14,154,138,.42) !important;
+}
+
+@media (max-width: 720px) {
+  .cu-signature .c-pubhead__brand::after,
+  .cu-signature .c-sidebar__brand::after { display: none; }
+  .cu-signature main h2::before { inline-size: 7px; block-size: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cu-signature *, .cu-signature *::before, .cu-signature *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
