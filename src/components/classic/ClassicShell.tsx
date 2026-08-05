@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 
 import { SHELL } from "./copy";
 import { ACCOUNT_TABS, SIDEBAR, isActive } from "./nav";
 import type { NavIconName, TabItem } from "./nav";
-import { FloatingActions, SiteFooter } from "./SiteFooter";
+import { FloatingAssistant, SiteFooter } from "./SiteFooter";
 import {
 	IconBell,
 	IconBook,
@@ -27,14 +27,14 @@ import {
  * The single client boundary for the app chrome.
  *
  * Only two things here genuinely need the client: the collapse toggle and the
- * tab strip's scroll buttons. Splitting the chrome into four boundaries to
- * save a few kilobytes would mean four copies of the active-state logic, and
+ * theme toggle. Splitting the chrome into four boundaries to save a few
+ * kilobytes would mean four copies of the active-state logic, and
  * inconsistent active states are exactly the "collection of pages" feeling
  * this redesign exists to remove.
  *
- * The footer and the floating contact buttons are rendered here rather than
- * per page, for the same reason: chrome that appears on some pages and not
- * others is the single loudest symptom of that problem.
+ * The footer and the floating assistant are rendered here rather than per
+ * page, for the same reason: chrome that appears on some pages and not others
+ * is the single loudest symptom of that problem.
  */
 
 const NAV_ICONS: Record<NavIconName, (props: { size?: number }) => ReactNode> = {
@@ -47,7 +47,7 @@ const NAV_ICONS: Record<NavIconName, (props: { size?: number }) => ReactNode> = 
 };
 
 export type ClassicShellProps = {
-	/** Shown in the green bar. Should name the page, not the product. */
+	/** Shown in the top bar. Should name the page, not the product. */
 	title: string;
 	/** Formatted balance. The caller converts to pounds; this only prints. */
 	balanceLabel: string;
@@ -69,15 +69,6 @@ export function ClassicShell({
 }: ClassicShellProps) {
 	const pathname = usePathname() ?? "";
 	const [collapsed, setCollapsed] = useState(false);
-	const stripRef = useRef<HTMLDivElement | null>(null);
-
-	const scrollStrip = useCallback((direction: 1 | -1) => {
-		const el = stripRef.current;
-		if (!el) return;
-		// Under dir="rtl" scrollLeft runs negative, so "forward" has to be a
-		// signed multiple of the direction rather than a fixed positive delta.
-		el.scrollBy({ left: direction * 220, behavior: "smooth" });
-	}, []);
 
 	/*
 	 * The theme lives entirely on the <html> element. Mirroring it into React
@@ -227,50 +218,34 @@ export function ClassicShell({
 					</div>
 				</header>
 
+				{/*
+				 * A segmented control, not the arrow-flanked scrolling strip this
+				 * replaced. Two reasons. The arrows hid destinations behind a
+				 * gesture nobody performs — a tab you cannot see is a tab you do
+				 * not have. And the arrow strip is the single most recognisable
+				 * piece of chrome on the platform this app is measured against;
+				 * reproducing it made every page look borrowed.
+				 *
+				 * Wrapping is safe here because the strip sits directly under the
+				 * top bar and above the content: gaining a row pushes the page
+				 * down once, on a viewport change, rather than on every scroll.
+				 */}
 				{tabs && tabs.length > 0 ? (
-					<nav className="c-tabs" aria-label={title}>
-						{/*
-						 * The arrows are aria-hidden and untabbable on purpose. They
-						 * are a mouse affordance for a strip that keyboard and
-						 * screen-reader users already traverse link by link; exposing
-						 * them would add two meaningless stops to every page.
-						 */}
-						<button
-							type="button"
-							className="c-tabs__arrow"
-							onClick={() => scrollStrip(-1)}
-							aria-hidden="true"
-							tabIndex={-1}
-						>
-							<IconChevronStart />
-						</button>
-
-						<div className="c-tabs__scroll" ref={stripRef}>
-							{tabs.map((tab) => {
-								const active = isActive(pathname, tab.href, tab.exact);
-								return (
-									<Link
-										key={tab.key}
-										className="c-tabs__link"
-										href={tab.href}
-										data-active={active ? "true" : "false"}
-										aria-current={active ? "page" : undefined}
-									>
-										{tab.label}
-									</Link>
-								);
-							})}
-						</div>
-
-						<button
-							type="button"
-							className="c-tabs__arrow"
-							onClick={() => scrollStrip(1)}
-							aria-hidden="true"
-							tabIndex={-1}
-						>
-							<IconChevronEnd />
-						</button>
+					<nav className="c-seg" aria-label={title}>
+						{tabs.map((tab) => {
+							const active = isActive(pathname, tab.href, tab.exact);
+							return (
+								<Link
+									key={tab.key}
+									className="c-seg__item"
+									href={tab.href}
+									data-active={active ? "true" : "false"}
+									aria-current={active ? "page" : undefined}
+								>
+									{tab.label}
+								</Link>
+							);
+						})}
 					</nav>
 				) : null}
 
@@ -281,7 +256,7 @@ export function ClassicShell({
 				<SiteFooter />
 			</div>
 
-			<FloatingActions />
+			<FloatingAssistant />
 		</div>
 	);
 }
