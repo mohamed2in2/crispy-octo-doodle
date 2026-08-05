@@ -1,353 +1,216 @@
-"use client";
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { Navbar } from "@/components/ui/Navbar";
-import { Footer } from "@/components/ui/Footer";
-import { SkeletonCard } from "@/components/ui/Skeleton";
-import { CourseCard } from "@/components/courses/CourseCard";
 
-interface Teacher {
-  id: string;
-  name: string;
-  photoUrl?: string | null;
-  courseCount?: number;
-  slug?: string | null;
-  hasPublicPage?: boolean;
+import { PublicHeader } from "@/components/classic/PublicHeader";
+import { SiteFooter } from "@/components/classic/SiteFooter";
+import { Badge, Band, Empty, LinkButton } from "@/components/classic/pieces";
+import { IconBook, IconSearch, IconUsers } from "@/components/classic/icons";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+import "@/styles/classic-tokens.css";
+import "@/styles/classic-components.css";
+import "@/styles/classic-landing.css";
+import "@/styles/classic-courses.css";
+
+export const dynamic = "force-dynamic";
+
+const COPY = {
+	title: "\u0627\u0644\u0643\u0648\u0631\u0633\u0627\u062a",
+	lead: "\u0627\u062e\u062a\u0627\u0631 \u0627\u0644\u0645\u0627\u062f\u0629 \u0623\u0648 \u0627\u0644\u0645\u062f\u0631\u0633\u060c \u0648\u0627\u0639\u0631\u0641 \u0627\u0644\u0633\u0639\u0631 \u0648\u0645\u062d\u062a\u0648\u0649 \u0627\u0644\u0643\u0648\u0631\u0633 \u0642\u0628\u0644 \u0645\u0627 \u062a\u0634\u062a\u0631\u0643.",
+	search: "\u0627\u0628\u062d\u062b \u0628\u0627\u0633\u0645 \u0627\u0644\u0643\u0648\u0631\u0633 \u0623\u0648 \u0627\u0644\u0645\u0627\u062f\u0629",
+	searchButton: "\u0628\u062d\u062b",
+	filters: "\u0627\u062e\u062a\u064a\u0627\u0631\u0627\u062a \u0627\u0644\u0628\u062d\u062b",
+	all: "\u0627\u0644\u0643\u0644",
+	subject: "\u0627\u0644\u0645\u0627\u062f\u0629",
+	teacher: "\u0627\u0644\u0645\u062f\u0631\u0633",
+	stage: "\u0627\u0644\u0645\u0631\u062d\u0644\u0629",
+	results: "\u0643\u0648\u0631\u0633 \u0645\u062a\u0627\u062d",
+	lecture: "\u0645\u062d\u0627\u0636\u0631\u0629",
+	quiz: "\u0627\u062e\u062a\u0628\u0627\u0631",
+	free: "\u0645\u062c\u0627\u0646\u064a",
+	currency: "\u062c\u0646\u064a\u0647",
+	access: "\u0645\u0636\u0627\u0641 \u0644\u0645\u0643\u062a\u0628\u062a\u0643",
+	view: "\u0634\u0648\u0641 \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644",
+	empty: "\u0645\u0641\u064a\u0634 \u0643\u0648\u0631\u0633\u0627\u062a \u0645\u0637\u0627\u0628\u0642\u0629",
+	emptyText: "\u063a\u064a\u0651\u0631 \u0643\u0644\u0645\u0629 \u0627\u0644\u0628\u062d\u062b \u0623\u0648 \u0627\u0645\u0633\u062d \u0628\u0639\u0636 \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631\u0627\u062a.",
+	unavailable: "\u0645\u0634 \u0642\u0627\u062f\u0631\u064a\u0646 \u0646\u062d\u0645\u0644 \u0627\u0644\u0643\u0648\u0631\u0633\u0627\u062a \u062f\u0644\u0648\u0642\u062a\u064a. \u062c\u0631\u0628 \u062a\u0627\u0646\u064a \u0628\u0639\u062f \u0634\u0648\u064a\u0629.",
+	clear: "\u0645\u0633\u062d \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631\u0627\u062a",
+} as const;
+
+const STAGES: Record<string, string> = {
+	sec_1: "\u0623\u0648\u0644\u0649 \u0628\u0643\u0627\u0644\u0648\u0631\u064a\u0627",
+	sec_2: "\u062b\u0627\u0646\u064a\u0629 \u0628\u0643\u0627\u0644\u0648\u0631\u064a\u0627",
+};
+
+type SearchValue = string | string[] | undefined;
+type CourseSearch = Record<string, SearchValue>;
+type CatalogCourse = {
+	id: string;
+	slug: string | null;
+	title: string;
+	description: string | null;
+	subject: string;
+	educationalStage: string;
+	thumbnailUrl: string | null;
+	isPaid: boolean;
+	price: number | null;
+	teacher: { id: string; name: string; teacherProfile: { displayName: string | null; photoUrl: string | null } | null };
+	folders: Array<{ _count: { videos: number; quizzes: number } }>;
+};
+
+function one(value: SearchValue) {
+	return (Array.isArray(value) ? value[0] ?? "" : value ?? "").trim();
 }
 
-interface Course {
-  id: string;
-  title: string;
-  description?: string;
-  subject?: string;
-  educationalStage?: string;
-  thumbnailUrl?: string;
-  teacher: { id: string; name: string; teacherProfile?: { photoUrl?: string | null } | null };
-  isPaid?: boolean;
-  price?: number | null;
-  discountPercent?: number | null;
-  discountExpiresAt?: string | null;
-  hasAccess?: boolean;
+function safeImage(value: string | null) {
+	if (!value) return null;
+	return /^https?:\/\//i.test(value) || value.startsWith("data:image/") || value.startsWith("/") ? value : null;
 }
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-
-const teacherListeners = new Set<() => void>();
-
-function subscribeToTeacher(listener: () => void) {
-  teacherListeners.add(listener);
-  window.addEventListener("popstate", listener);
-  return () => {
-    teacherListeners.delete(listener);
-    window.removeEventListener("popstate", listener);
-  };
+function formatPounds(value: number) {
+	return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 }
 
-function readTeacherParam() {
-  if (typeof window === "undefined") return "";
-  return new URLSearchParams(window.location.search).get("teacher") ?? "";
+function hrefWith(current: { q: string; subject: string; teacher: string; stage: string }, patch: Partial<typeof current>) {
+	const next = { ...current, ...patch };
+	const params = new URLSearchParams();
+	if (next.q) params.set("q", next.q);
+	if (next.subject) params.set("subject", next.subject);
+	if (next.teacher) params.set("teacher", next.teacher);
+	if (next.stage) params.set("stage", next.stage);
+	return params.size ? `/courses?${params.toString()}` : "/courses";
 }
 
-function writeTeacherParam(teacherId: string) {
-  const url = new URL(window.location.href);
-  if (teacherId) url.searchParams.set("teacher", teacherId);
-  else url.searchParams.delete("teacher");
-  window.history.replaceState(null, "", url.toString());
-  teacherListeners.forEach((notify) => notify());
+export default async function CoursesPage({ searchParams }: { searchParams: Promise<CourseSearch> }) {
+	const raw = await searchParams;
+	const selected = { q: one(raw.q), subject: one(raw.subject), teacher: one(raw.teacher), stage: one(raw.stage) };
+	const session = await getSession();
+	let unavailable = false;
+	let courses: CatalogCourse[] = [];
+	let teacherOptions: Array<{ id: string; name: string }> = [];
+	let allSubjects: string[] = [];
+	let allStages: string[] = [];
+
+	try {
+		const [courseRows, teacherRows, optionRows] = await Promise.all([
+			prisma.course.findMany({
+				where: {
+					teacher: { isDeleted: false },
+					...(selected.subject ? { subject: selected.subject } : {}),
+					...(selected.teacher ? { teacherId: selected.teacher } : {}),
+					...(selected.stage ? { educationalStage: selected.stage } : {}),
+					...(selected.q ? { OR: [
+						{ title: { contains: selected.q, mode: "insensitive" as const } },
+						{ subject: { contains: selected.q, mode: "insensitive" as const } },
+						{ description: { contains: selected.q, mode: "insensitive" as const } },
+					] } : {}),
+				},
+				orderBy: { createdAt: "desc" },
+				take: 100,
+				include: {
+					teacher: { select: { id: true, name: true, teacherProfile: { select: { displayName: true, photoUrl: true } } } },
+					folders: { select: { _count: { select: { videos: true, quizzes: true } } } },
+				},
+			}),
+			prisma.user.findMany({
+				where: { role: "teacher", isDeleted: false, courses: { some: {} } },
+				orderBy: { name: "asc" },
+				select: { id: true, name: true, teacherProfile: { select: { displayName: true } } },
+			}),
+			prisma.course.findMany({
+				where: { teacher: { isDeleted: false } },
+				select: { subject: true, educationalStage: true },
+			}),
+		]);
+		courses = courseRows as CatalogCourse[];
+		teacherOptions = teacherRows.map((teacher) => ({ id: teacher.id, name: teacher.teacherProfile?.displayName ?? teacher.name }));
+		allSubjects = Array.from(new Set(optionRows.map((item) => item.subject).filter(Boolean))).sort();
+		allStages = Array.from(new Set(optionRows.map((item) => item.educationalStage).filter(Boolean))).sort();
+	} catch {
+		unavailable = true;
+	}
+
+	const access = new Set<string>();
+	if (!unavailable && session?.role === "student" && courses.length) {
+		try {
+			const rows = await prisma.accessCode.findMany({
+				where: { studentId: session.id, courseId: { in: courses.map((course) => course.id) } },
+				select: { courseId: true },
+			});
+			rows.forEach((row) => access.add(row.courseId));
+		} catch {
+			// Personal access badges are optional; the public catalogue still renders.
+		}
+	}
+
+	const hasFilters = Boolean(selected.q || selected.subject || selected.teacher || selected.stage);
+
+	return (
+		<div className="c-pub c-catalog" dir="rtl">
+			<PublicHeader signedIn={Boolean(session)} />
+			<main className="c-catalog__inner">
+				<header className="c-catalog__hero">
+					<div><span className="c-catalog__kicker">Code-UP</span><h1>{COPY.title}</h1><p>{COPY.lead}</p></div>
+					<form className="c-catalog__search" action="/courses" method="get" role="search">
+						<span aria-hidden="true"><IconSearch /></span>
+						<input name="q" type="search" defaultValue={selected.q} placeholder={COPY.search} aria-label={COPY.search} />
+						{selected.subject ? <input type="hidden" name="subject" value={selected.subject} /> : null}
+						{selected.teacher ? <input type="hidden" name="teacher" value={selected.teacher} /> : null}
+						{selected.stage ? <input type="hidden" name="stage" value={selected.stage} /> : null}
+						<button type="submit">{COPY.searchButton}</button>
+					</form>
+				</header>
+
+				{unavailable ? <Band tone="warning" text={COPY.unavailable} /> : null}
+				{!unavailable ? (
+					<section className="c-catalog__filters" aria-labelledby="catalog-filters">
+						<div className="c-catalog__filters-head"><h2 id="catalog-filters">{COPY.filters}</h2>{hasFilters ? <Link href="/courses">{COPY.clear}</Link> : null}</div>
+						<FilterRow label={COPY.subject} allLabel={COPY.all} allHref={hrefWith(selected, { subject: "" })} allActive={!selected.subject} items={allSubjects.map((subject) => ({ key: subject, label: subject, href: hrefWith(selected, { subject }), active: selected.subject === subject }))} />
+						<FilterRow label={COPY.teacher} allLabel={COPY.all} allHref={hrefWith(selected, { teacher: "" })} allActive={!selected.teacher} items={teacherOptions.map((teacher) => ({ key: teacher.id, label: teacher.name, href: hrefWith(selected, { teacher: teacher.id }), active: selected.teacher === teacher.id }))} />
+						<FilterRow label={COPY.stage} allLabel={COPY.all} allHref={hrefWith(selected, { stage: "" })} allActive={!selected.stage} items={allStages.map((stage) => ({ key: stage, label: STAGES[stage] ?? stage, href: hrefWith(selected, { stage }), active: selected.stage === stage }))} />
+					</section>
+				) : null}
+
+				{!unavailable ? (
+					<section className="c-catalog__results">
+						<div className="c-catalog__results-head"><h2>{COPY.title}</h2><span dir="ltr">{courses.length} <bdi>{COPY.results}</bdi></span></div>
+						{courses.length === 0 ? (
+							<div className="c-card"><Empty icon={<IconBook />} title={COPY.empty} text={COPY.emptyText} action={hasFilters ? <LinkButton href="/courses" label={COPY.clear} inline /> : undefined} /></div>
+						) : (
+							<ul className="c-catalog-grid">
+								{courses.map((course) => {
+									const videos = course.folders.reduce((sum, folder) => sum + folder._count.videos, 0);
+									const quizzes = course.folders.reduce((sum, folder) => sum + folder._count.quizzes, 0);
+									const teacherName = course.teacher.teacherProfile?.displayName ?? course.teacher.name;
+									const thumb = safeImage(course.thumbnailUrl);
+									const hasAccess = access.has(course.id);
+									return (
+										<li key={course.id}><Link className="c-catalog-card" href={`/courses/${course.slug ?? course.id}`}>
+											{thumb ? <img className="c-catalog-card__thumb" src={thumb} alt="" /> : <span className="c-catalog-card__thumb c-catalog-card__thumb--empty" aria-hidden="true"><IconBook size={34} /></span>}
+											<div className="c-catalog-card__body">
+												<div className="c-catalog-card__badges"><Badge label={course.subject} tone="blue" />{hasAccess ? <Badge label={COPY.access} tone="green" /> : null}</div>
+												<h3>{course.title}</h3>
+												<p className="c-catalog-card__teacher"><IconUsers size={16} /> {teacherName}</p>
+												{course.description ? <p className="c-catalog-card__desc">{course.description}</p> : null}
+												<div className="c-catalog-card__meta"><span>{STAGES[course.educationalStage] ?? course.educationalStage}</span><span>{videos} {COPY.lecture}</span>{quizzes ? <span>{quizzes} {COPY.quiz}</span> : null}</div>
+												<div className="c-catalog-card__foot"><strong dir="ltr">{!course.isPaid || !course.price ? COPY.free : `${formatPounds(course.price)} ${COPY.currency}`}</strong><span>{hasAccess ? COPY.access : COPY.view}</span></div>
+											</div>
+										</Link></li>
+									);
+								})}
+							</ul>
+						)}
+					</section>
+				) : null}
+			</main>
+			<SiteFooter />
+		</div>
+	);
 }
 
-export default function CoursesPage() {
-  const router = useRouter();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-
-  const selectedTeacherId = useSyncExternalStore(subscribeToTeacher, readTeacherParam, () => "");
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then(async (r) => {
-        const raw = await r.text();
-        return raw ? JSON.parse(raw) : {};
-      })
-      .then((d) => setUser(d.user ? { name: d.user.name, role: d.user.role } : null))
-      .catch(() => setUser(null));
-  }, []);
-
-  const fetchCourses = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/courses");
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.error || "تعذر الاتصال بالخادم. حاول مرة أخرى.");
-      }
-
-      const allCourses: Course[] = data.courses || [];
-      const apiTeachers: Teacher[] = data.teachers || [];
-      setCourses(allCourses);
-
-      // Extract & merge all teachers (both from API list of registered teachers and courses)
-      const teacherMap = new Map<string, Teacher>();
-
-      for (const t of apiTeachers) {
-        teacherMap.set(t.id, {
-          id: t.id,
-          name: t.name,
-          photoUrl: t.photoUrl || null,
-          courseCount: t.courseCount || 0,
-          slug: t.slug || null,
-          hasPublicPage: t.hasPublicPage || false,
-        });
-      }
-
-      for (const c of allCourses) {
-        if (c.teacher?.id) {
-          const existing = teacherMap.get(c.teacher.id);
-          const photoUrl = c.teacher.teacherProfile?.photoUrl || null;
-          if (existing) {
-            if (!existing.photoUrl && photoUrl) existing.photoUrl = photoUrl;
-          } else {
-            teacherMap.set(c.teacher.id, {
-              id: c.teacher.id,
-              name: c.teacher.name,
-              photoUrl: photoUrl,
-              courseCount: 1,
-            });
-          }
-        }
-      }
-
-      setTeachers(Array.from(teacherMap.values()));
-    } catch (err) {
-      console.error("Fetch courses error:", err);
-      setCourses([]);
-      setTeachers([]);
-      setError(err instanceof Error ? err.message : "حدث خطأ أثناء تحميل البيانات");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
-
-  const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
-  const filteredCourses = selectedTeacherId
-    ? courses.filter((c) => c.teacher?.id === selectedTeacherId)
-    : [];
-
-  return (
-    <MotionConfig reducedMotion="user">
-      <div className="flex flex-col min-h-screen" style={{ background: "var(--bg)" }} dir="rtl">
-        <Navbar user={user} />
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 md:py-12">
-
-          {/* ── Page Header ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: EASE }}
-            className="mb-8"
-          >
-            {selectedTeacherId && (
-              <button
-                onClick={() => writeTeacherParam("")}
-                className="mb-4 inline-flex items-center gap-2 text-sm font-bold border-none bg-transparent cursor-pointer transition-colors"
-                style={{ color: "#14B8A6" }}
-              >
-                ← اختر مدرس آخر
-              </button>
-            )}
-
-            <h1
-              className="text-3xl md:text-4xl font-black tracking-tight mb-2"
-              style={{ color: "var(--ink)", fontFamily: "var(--font-head)" }}
-            >
-              {selectedTeacherId ? `كورسات ${selectedTeacher?.name || "المدرس"}` : "الكورسات"}
-            </h1>
-            <p className="text-base font-medium" style={{ color: "var(--ink-2)" }}>
-              {selectedTeacherId
-                ? `جميع الكورسات والشروحات المتاحة للمدرس`
-                : "اختر مدرسك وابدأ المذاكرة خلال دقيقة واحدة."}
-            </p>
-          </motion.div>
-
-          {/* ── Error State ── */}
-          {error && (
-            <div
-              className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl px-5 py-4 text-sm"
-              style={{ border: "1px solid var(--danger)", background: "var(--danger-soft)", color: "var(--danger)" }}
-            >
-              <span>{error}</span>
-              <button
-                onClick={fetchCourses}
-                className="shrink-0 rounded-lg px-4 py-2 text-xs font-bold text-white border-none cursor-pointer hover:opacity-90"
-                style={{ background: "var(--danger)" }}
-              >
-                إعادة المحاولة
-              </button>
-            </div>
-          )}
-
-          {/* ── Loading Skeletons ── */}
-          {loading ? (
-            <div className="space-y-4 max-w-3xl">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-20 rounded-[20px] animate-pulse"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                />
-              ))}
-            </div>
-          ) : selectedTeacherId ? (
-            /* ── Selected Teacher's Course View ── */
-            filteredCourses.length > 0 ? (
-              <motion.div
-                layout
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {filteredCourses.map((course, i) => (
-                    <motion.div
-                      key={course.id}
-                      layout
-                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                        transition: { duration: 0.32, ease: EASE, delay: Math.min(i * 0.035, 0.32) },
-                      }}
-                      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.16 } }}
-                      className="h-full"
-                    >
-                      <CourseCard course={course} onCodeApplied={fetchCourses} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>
-                  لا توجد كورسات متاحة لهذا المدرس حالياً
-                </p>
-                <button
-                  onClick={() => writeTeacherParam("")}
-                  className="mt-4 px-6 py-2.5 rounded-xl text-sm font-bold text-white border-none cursor-pointer"
-                  style={{ background: "#14B8A6" }}
-                >
-                  العودة لقائمة المدرسين
-                </button>
-              </div>
-            )
-          ) : (
-            /* ── Minimal Teacher Selection Cards List (Matching Prompt & Screenshot) ── */
-            <motion.div
-              layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE }}
-              className="space-y-3.5 max-w-3xl"
-            >
-              {teachers.length > 0 ? (
-                teachers.map((teacher, i) => {
-                  const targetHref = teacher.hasPublicPage && teacher.slug ? `/${teacher.slug}` : `/courses?teacher=${teacher.id}`;
-                  const isPublic = teacher.hasPublicPage && teacher.slug;
-
-                  const cardContent = (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.04 }}
-                      onClick={(e) => {
-                        if (!isPublic) {
-                          e.preventDefault();
-                          writeTeacherParam(teacher.id);
-                        }
-                      }}
-                      onMouseEnter={() => {
-                        if (isPublic) {
-                          router.prefetch(`/${teacher.slug}`);
-                        }
-                      }}
-                      className="group relative flex items-center justify-between h-[76px] px-5 rounded-[20px] transition-all duration-200 cursor-pointer select-none"
-                      style={{
-                        background: "var(--surface)",
-                        border: "1px solid var(--border)",
-                        boxShadow: "var(--shadow-sm)",
-                      }}
-                      whileHover={{
-                        scale: 1.01,
-                        borderColor: "rgba(56,189,248,0.8)",
-                        boxShadow: "0 0 20px rgba(56,189,248,0.3)",
-                      }}
-                      whileTap={{ scale: 0.99 }}
-                    >
-                      {/* Right side in RTL: Avatar Photo + Name */}
-                      <div className="flex items-center gap-4">
-                        {/* Circular Teacher Photo (56-60px) */}
-                        <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 border border-white/10" style={{ background: "rgba(255,255,255,0.05)" }}>
-                          {teacher.photoUrl ? (
-                            <img
-                              src={teacher.photoUrl}
-                              alt={teacher.name}
-                              className="w-full h-full object-cover"
-                              loading="eager"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center font-black text-xl text-white" style={{ background: "linear-gradient(135deg, #10B981, #14B8A6)" }}>
-                              {teacher.name.trim().charAt(0)}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Teacher Name Only */}
-                        <span className="font-bold text-lg text-[var(--ink)] tracking-tight">
-                          {teacher.name}
-                        </span>
-                      </div>
-
-                      {/* Left side: subtle arrow indicator on hover */}
-                      <div className="text-slate-400 group-hover:text-sky-400 transition-colors">
-                        <svg className="w-5 h-5 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </motion.div>
-                  );
-
-                  return isPublic ? (
-                    <Link key={teacher.id} href={targetHref} prefetch={true} className="block no-underline">
-                      {cardContent}
-                    </Link>
-                  ) : (
-                    <div key={teacher.id} className="block">
-                      {cardContent}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-16">
-                  <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>
-                    لا يوجد مدرسون متاحون حالياً
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </main>
-        <Footer />
-      </div>
-    </MotionConfig>
-  );
+function FilterRow({ label, allLabel, allHref, allActive, items }: { label: string; allLabel: string; allHref: string; allActive: boolean; items: Array<{ key: string; label: string; href: string; active: boolean }> }) {
+	if (!items.length) return null;
+	return (
+		<div className="c-filter-row"><strong>{label}</strong><div><Link href={allHref} data-active={allActive}>{allLabel}</Link>{items.map((item) => <Link key={item.key} href={item.href} data-active={item.active}>{item.label}</Link>)}</div></div>
+	);
 }

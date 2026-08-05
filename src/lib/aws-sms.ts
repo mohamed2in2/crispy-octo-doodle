@@ -3,7 +3,6 @@ import { normalizeEgyptPhone } from "@/lib/phone";
 
 const awsRegion = process.env.AWS_REGION || "eu-north-1";
 
-// SNS client initialization (uses explicit credentials if set, or default AWS SDK chain)
 const snsClient = new SNSClient({
   region: awsRegion,
   credentials:
@@ -22,21 +21,27 @@ export type AwsSmsResult = {
   messageId?: string;
 };
 
-export async function sendVerificationSms(phone: string, code: string): Promise<AwsSmsResult> {
-  let toNumber: string;
-  if (typeof phone === "string" && /^\+20\d{10}$/.test(phone)) {
-    toNumber = phone;
-  } else {
-    toNumber = normalizeEgyptPhone(phone);
-  }
+/** Development-only escape hatch. It is deliberately impossible in production. */
+function shouldSkipSmsInDevelopment(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    (process.env.DEV_SKIP_SMS === "true" ||
+      process.env.BYPASS_PHONE_VERIFICATION === "true")
+  );
+}
 
-  if (process.env.DEV_SKIP_SMS === "true" || process.env.BYPASS_PHONE_VERIFICATION === "true") {
-    console.log(`[AWS SNS DEV_SKIP] Skipping SMS to ${toNumber} — code=${code}`);
+export async function sendVerificationSms(phone: string, code: string): Promise<AwsSmsResult> {
+  const toNumber =
+    typeof phone === "string" && /^\+20\d{10}$/.test(phone)
+      ? phone
+      : normalizeEgyptPhone(phone);
+
+  if (shouldSkipSmsInDevelopment()) {
+    console.log(`[AWS SNS DEV_SKIP] Skipping SMS to ${toNumber}`);
     return { dev: true, code, method: "dev" };
   }
 
   const message = `رمز التحقق من Code-UP: ${code}. ينتهي خلال 10 دقائق.`;
-
   const command = new PublishCommand({
     Message: message,
     PhoneNumber: toNumber,
@@ -56,12 +61,16 @@ export async function sendVerificationSms(phone: string, code: string): Promise<
     const response = await snsClient.send(command);
     console.log(`[AWS SNS SMS] Message sent to ${toNumber}; MessageId=${response.MessageId}`);
     return { method: "sns", messageId: response.MessageId };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`[AWS SNS SMS] Error sending SMS to ${toNumber}:`, err);
-    throw new Error(`AWS SNS SMS delivery failed: ${err?.message || err}`);
+    throw new Error("AWS SNS SMS delivery failed");
   }
 }
 
-export function isPhoneVerificationBypassed() {
-  return process.env.BYPASS_PHONE_VERIFICATION === "true";
+/** Never allow bypassing the verification-code comparison in production. */
+export function isPhoneVerificationBypassed(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.BYPASS_PHONE_VERIFICATION === "true"
+  );
 }

@@ -64,10 +64,11 @@ export const SHELL = {
 	/* منصة تعليمية تذاكر معاك خطوة بخطوة. */
 	tagline:
 		"\u0645\u0646\u0635\u0629 \u062a\u0639\u0644\u064a\u0645\u064a\u0629 \u062a\u0630\u0627\u0643\u0631 \u0645\u0639\u0627\u0643 \u062e\u0637\u0648\u0629 \u0628\u062e\u0637\u0648\u0629.",
-	/* واتساب */
-	whatsapp: "\u0648\u0627\u062a\u0633\u0627\u0628",
-	/* الدعم */
-	support: "\u0627\u0644\u062f\u0639\u0645",
+	/*
+	 * المساعد الذكي — the floating assistant. Replaces the pair of
+	 * contact bubbles (WhatsApp, support inbox) that used to sit here.
+	 */
+	ai: "\u0627\u0644\u0645\u0633\u0627\u0639\u062f \u0627\u0644\u0630\u0643\u064a",
 	/* فيسبوك */
 	facebook: "\u0641\u064a\u0633\u0628\u0648\u0643",
 	/* انستجرام */

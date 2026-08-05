@@ -14,7 +14,10 @@ export function usePositionSaver(videoId: string | null) {
   const pendingDeltaRef = useRef(0);    // accumulated delta since last save
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoIdRef = useRef(videoId);
-  videoIdRef.current = videoId;
+
+  useEffect(() => {
+    videoIdRef.current = videoId;
+  }, [videoId]);
 
   // Send position to server
   const flush = useCallback(async () => {

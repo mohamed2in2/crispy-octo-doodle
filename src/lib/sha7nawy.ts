@@ -176,6 +176,7 @@ export async function createSha7nawyPayment(
   try {
     const res = await fetch(endpoint, {
       method: "POST",
+      signal: AbortSignal.timeout(6000),
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",

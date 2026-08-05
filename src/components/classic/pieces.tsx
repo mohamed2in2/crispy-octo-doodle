@@ -6,12 +6,12 @@ import { SHELL } from "./copy";
 /*
  * The classic component set. All server components — none owns state.
  *
- * The shape is taken from the pattern that makes the reference platform
- * legible: one card per page, a tinted icon square, a bold title, a short
- * reason, the steps in blue, then exactly one input and one button.
+ * The shape is taken from the pattern that makes a page legible: one card
+ * per page, a tinted icon square, a bold title, a short reason, the steps
+ * in the brand ink, then exactly one input and one button.
  */
 
-export type Tone = "blue" | "green" | "cyan" | "amber" | "violet";
+export type Tone = "blue" | "green" | "amber";
 
 /* --------------------------------------------------------------------- card */
 
@@ -62,11 +62,11 @@ export function Card({
 /* -------------------------------------------------------------------- steps */
 
 /**
- * Numbered instructions, in blue.
+ * Numbered instructions, in the brand ink.
  *
  * Every page that takes money says what happens next, in order, before the
- * student commits. That one habit is most of the difference between a payment
- * screen that feels safe and one that feels like a gamble.
+ * student commits. That one habit is most of the difference between a
+ * payment screen that feels safe and one that feels like a gamble.
  */
 export function Steps({
 	steps,
@@ -148,8 +148,8 @@ export function Tiles({ children }: { children: ReactNode }) {
 
 /**
  * An empty state is a screen whose only job is to hand over the action that
- * fills it. Never red: nothing has gone wrong, and colouring it like an error
- * tells the student they broke something.
+ * fills it. Never red: nothing has gone wrong, and colouring it like an
+ * error tells the student they broke something.
  */
 export function Empty({
 	title,
