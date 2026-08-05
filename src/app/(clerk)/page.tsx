@@ -2,7 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LANDING } from "@/components/classic/landing-copy";
-import { IconBook, IconUsers } from "@/components/classic/icons";
+import { PublicHeader } from "@/components/classic/PublicHeader";
+import { SiteFooter } from "@/components/classic/SiteFooter";
+import {
+	IconBook,
+	IconSparkle,
+	IconUsers,
+} from "@/components/classic/icons";
 import {
 	Badge,
 	Band,
@@ -10,7 +16,6 @@ import {
 	Empty,
 	LinkButton,
 	Section,
-	Steps,
 } from "@/components/classic/pieces";
 import { getSession } from "@/lib/auth";
 import { getLandingData, type LandingTeacher } from "@/lib/classic/landing-data";
@@ -33,6 +38,19 @@ import "@/styles/classic-landing.css";
  * The redirect is deliberately server-side. Doing it in a client effect shows
  * the landing for one frame first, which is what makes an app feel like it
  * forgot who you are.
+ *
+ * Layout notes, all of them fixes for things the previous version got wrong:
+ *
+ *   - There is a header now. Before, a visitor landed on a bare hero with no
+ *     logo and no way to log in.
+ *   - The hero has one filled button and one quiet link. Before it had two
+ *     identical full-width outlined boxes, which read as empty text fields.
+ *   - Teachers and courses scroll in rails rather than filling a four-column
+ *     grid. With one course in the catalogue a grid leaves a screen-wide hole
+ *     and an orphaned last row; a rail with three items looks deliberate.
+ *   - Nothing advertises emptiness. A teacher with no published courses says
+ *     nothing rather than "0 courses", and a price only appears when booking
+ *     is actually open.
  */
 
 // Reads the auth cookie, so it can never be statically rendered.
@@ -89,18 +107,73 @@ export default async function HomePage() {
 	const { teachers, courses, unavailable } = await getLandingData();
 
 	return (
-		<main className="c-pub" dir="rtl">
-			<div className="c-pub__inner">
+		<div className="c-pub" dir="rtl">
+			<PublicHeader />
+
+			<main className="c-pub__inner">
+				{/*
+				 * Hero. Text on one side, a flat geometric panel on the other.
+				 * The panel is drawn in CSS rather than shipped as an
+				 * illustration: a stock vector of cartoon students is both a
+				 * 200KB download and the most interchangeable asset in this
+				 * market.
+				 */}
 				<section className="c-hero">
-					<h1 className="c-hero__title">{LANDING.heroTitle}</h1>
-					<p className="c-hero__text">{LANDING.heroText}</p>
-					<div className="c-hero__actions">
-						<LinkButton href="/signup" label={LANDING.signUp} />
-						<LinkButton href="/login" label={LANDING.logIn} variant="quiet" />
+					<div className="c-hero__text">
+						<span className="c-hero__kicker">{LANDING.heroKicker}</span>
+						<h1 className="c-hero__title">{LANDING.heroTitle}</h1>
+						<p className="c-hero__lead">{LANDING.heroText}</p>
+
+						<div className="c-hero__actions">
+							<LinkButton href="/signup" label={LANDING.startFree} inline />
+							<Link className="c-hero__alt" href="/courses">
+								{LANDING.courses}
+							</Link>
+						</div>
+
+						{/* Only real counts. A zero here would be an argument against us. */}
+						{teachers.length > 0 || courses.length > 0 ? (
+							<dl className="c-hero__stats">
+								{teachers.length > 0 ? (
+									<div className="c-hero__stat">
+										<dt>{LANDING.teachers}</dt>
+										<dd dir="ltr">{teachers.length}</dd>
+									</div>
+								) : null}
+								{courses.length > 0 ? (
+									<div className="c-hero__stat">
+										<dt>{LANDING.courses}</dt>
+										<dd dir="ltr">{courses.length}</dd>
+									</div>
+								) : null}
+							</dl>
+						) : null}
+					</div>
+
+					<div className="c-hero__art" aria-hidden="true">
+						<span className="c-hero__art-bar" data-i="1" />
+						<span className="c-hero__art-bar" data-i="2" />
+						<span className="c-hero__art-bar" data-i="3" />
+						<span className="c-hero__art-dot" />
 					</div>
 				</section>
 
 				{unavailable ? <Band tone="warning" text={LANDING.unavailable} /> : null}
+
+				{/* The one thing the competition does not have, stated plainly. */}
+				<Card
+					title={LANDING.aiTitle}
+					description={LANDING.aiText}
+					icon={<IconSparkle />}
+					footer={
+						<LinkButton
+							href="/signup"
+							label={LANDING.startFree}
+							variant="quiet"
+							inline
+						/>
+					}
+				/>
 
 				<Section title={LANDING.teachers} moreHref="/courses">
 					{teachers.length === 0 ? (
@@ -115,45 +188,52 @@ export default async function HomePage() {
 							/>
 						</Card>
 					) : (
-						<div className="c-teachers">
+						<ul className="c-rail">
 							{teachers.map((teacher) => {
 								const chip = bookingChip(teacher);
 								const price = priceLine(teacher);
 								return (
-									<Link
-										className="c-teacher"
-										href={`/${teacher.slug}`}
-										key={teacher.slug}
-									>
-										{teacher.photoUrl ? (
-											/* eslint-disable-next-line @next/next/no-img-element */
-											<img
-												alt={teacher.name}
-												className="c-teacher__photo"
-												src={teacher.photoUrl}
-											/>
-										) : (
-											<span aria-hidden className="c-teacher__initial">
-												{teacher.name.slice(0, 1)}
+									<li className="c-rail__cell" key={teacher.slug}>
+										<Link className="c-teacher" href={`/${teacher.slug}`}>
+											{teacher.photoUrl ? (
+												/* eslint-disable-next-line @next/next/no-img-element */
+												<img
+													alt={teacher.name}
+													className="c-teacher__photo"
+													src={teacher.photoUrl}
+												/>
+											) : (
+												<span aria-hidden className="c-teacher__initial">
+													{teacher.name.slice(0, 1)}
+												</span>
+											)}
+
+											<h3 className="c-teacher__name">{teacher.name}</h3>
+
+											{teacher.bio ? (
+												<p className="c-teacher__bio">{teacher.bio}</p>
+											) : null}
+
+											{/* Silence beats "0 كورس". */}
+											{teacher.courseCount > 0 ? (
+												<span className="c-teacher__meta">
+													{teacher.courseCount} {LANDING.course}
+												</span>
+											) : null}
+
+											<span className="c-teacher__foot">
+												<Badge label={chip.label} tone={chip.tone} />
+												{price ? (
+													<span className="c-teacher__price" dir="ltr">
+														{price}
+													</span>
+												) : null}
 											</span>
-										)}
-										<h3 className="c-teacher__name">{teacher.name}</h3>
-										{teacher.bio ? (
-											<p className="c-teacher__bio">{teacher.bio}</p>
-										) : null}
-										<span className="c-teacher__meta">
-											{teacher.courseCount} {LANDING.course}
-										</span>
-										<Badge label={chip.label} tone={chip.tone} />
-										{price ? (
-											<span className="c-course__price" dir="ltr">
-												{price}
-											</span>
-										) : null}
-									</Link>
+										</Link>
+									</li>
 								);
 							})}
-						</div>
+						</ul>
 					)}
 				</Section>
 
@@ -167,53 +247,84 @@ export default async function HomePage() {
 							/>
 						</Card>
 					) : (
-						<div className="c-courses">
+						<ul className="c-rail">
 							{courses.map((course) => (
-								<Link className="c-course" href={course.href} key={course.href}>
-									{course.thumbnailUrl ? (
-										/* eslint-disable-next-line @next/next/no-img-element */
-										<img
-											alt={course.title}
-											className="c-course__thumb"
-											src={course.thumbnailUrl}
-										/>
-									) : (
-										<span
-											aria-hidden
-											className="c-course__thumb c-course__thumb--empty"
-										>
-											<IconBook size={30} />
-										</span>
-									)}
-									<div className="c-course__body">
-										<h3 className="c-course__title">{course.title}</h3>
-										<span className="c-course__meta">
-											{course.subject ? <span>{course.subject}</span> : null}
-											<span>
-												{LANDING.stageLabels[course.stage] ?? course.stage}
+								<li className="c-rail__cell" key={course.href}>
+									<Link className="c-course" href={course.href}>
+										{course.thumbnailUrl ? (
+											/* eslint-disable-next-line @next/next/no-img-element */
+											<img
+												alt={course.title}
+												className="c-course__thumb"
+												src={course.thumbnailUrl}
+											/>
+										) : (
+											<span
+												aria-hidden
+												className="c-course__thumb c-course__thumb--empty"
+											>
+												<IconBook size={30} />
 											</span>
-										</span>
-										<div className="c-course__foot">
+										)}
+										<div className="c-course__body">
+											<h3 className="c-course__title">{course.title}</h3>
 											<span className="c-course__meta">
-												{course.lectureCount} {LANDING.lecture}
+												{course.subject ? <span>{course.subject}</span> : null}
+												<span>
+													{LANDING.stageLabels[course.stage] ?? course.stage}
+												</span>
 											</span>
-											<span className="c-course__price" dir="ltr">
-												{!course.isPaid
-													? LANDING.free
-													: `${formatPounds(course.pricePounds ?? 0)} ${LANDING.currency}`}
-											</span>
+											<div className="c-course__foot">
+												<span className="c-course__meta">
+													{course.lectureCount} {LANDING.lecture}
+												</span>
+												<span className="c-course__price" dir="ltr">
+													{!course.isPaid
+														? LANDING.free
+														: `${formatPounds(course.pricePounds ?? 0)} ${LANDING.currency}`}
+												</span>
+											</div>
 										</div>
-									</div>
-								</Link>
+									</Link>
+								</li>
 							))}
-						</div>
+						</ul>
 					)}
 				</Section>
 
-				<Card title={LANDING.howTitle}>
-					<Steps steps={[...LANDING.howSteps]} />
-				</Card>
-			</div>
-		</main>
+				{/*
+				 * How it works. Big numerals in their own tinted squares rather
+				 * than a bulleted list: the steps are the reassurance, so they get
+				 * the space.
+				 */}
+				<section className="c-how">
+					<div className="c-how__head">
+						<h2 className="c-how__title">{LANDING.howTitle}</h2>
+						<p className="c-how__lead">{LANDING.howLead}</p>
+					</div>
+					<ol className="c-how__grid">
+						{LANDING.howSteps.map((step, index) => (
+							<li className="c-how__step" key={step}>
+								<span className="c-how__num" aria-hidden="true">
+									{index + 1}
+								</span>
+								<p className="c-how__text">{step}</p>
+							</li>
+						))}
+					</ol>
+				</section>
+
+				{/* Teachers are the supply side; the page should recruit them too. */}
+				<section className="c-join">
+					<div>
+						<h2 className="c-join__title">{LANDING.joinTitle}</h2>
+						<p className="c-join__text">{LANDING.joinText}</p>
+					</div>
+					<LinkButton href="/signup" label={LANDING.joinCta} inline />
+				</section>
+			</main>
+
+			<SiteFooter />
+		</div>
 	);
 }
