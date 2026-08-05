@@ -9,13 +9,17 @@
  * safeAccent() does two things:
  *   1. Rejects anything that is not a plain 6-digit hex, so a stored value can
  *      never break a page or smuggle CSS into a style attribute.
- *   2. Rejects the banned AI palette and falls back to the platform blue.
+ *   2. Rejects the banned AI palette and falls back to the platform accent.
+ *
+ * CLASSIC_ACCENT must stay identical to --c-blue in classic-tokens.css. If the
+ * palette moves, move it here too, or teacher pages drift away from the shell.
  *
  * Add to BANNED rather than special-casing a colour at a call site; the point
  * of this file is that there is exactly one place to look.
  */
 
-export const CLASSIC_ACCENT = "#1266bd";
+// Keep in sync with --c-blue in src/styles/classic-tokens.css.
+export const CLASSIC_ACCENT = "#0e9a8a";
 
 const BANNED = new Set([
   // indigo
