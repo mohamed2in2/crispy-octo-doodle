@@ -26,6 +26,7 @@ const production = merged.NODE_ENV === "production";
 const placeholder = /replace-with|your-secret|your-.*key|change-me|example|xxxxxxxx|placeholder/i;
 const configured = (key) => (merged[key]?.trim() ?? "");
 const isPostgres = (value) => (value.startsWith("postgresql://") || value.startsWith("postgres://")) && !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(value);
+const validSecret = (value) => value.length >= 32 && !placeholder.test(value);
 
 const required = [
   {
@@ -40,9 +41,11 @@ const required = [
   },
   ...(production ? [
     { key: "DIRECT_URL", test: isPostgres, hint: "Use a direct non-placeholder PostgreSQL connection for migrations" },
-    { key: "CRON_SECRET", test: (value) => value.length >= 32 && !placeholder.test(value), hint: "Use a unique random secret of at least 32 characters" },
-    { key: "CONFIG_ENCRYPTION_KEY", test: (value) => value.length >= 32 && !placeholder.test(value), hint: "Use a stable unique encryption secret of at least 32 characters" },
+    { key: "CRON_SECRET", test: validSecret, hint: "Use a unique random secret of at least 32 characters" },
+    { key: "CONFIG_ENCRYPTION_KEY", test: validSecret, hint: "Use a stable unique encryption secret of at least 32 characters" },
     { key: "NEXT_PUBLIC_SITE_URL", test: (value) => /^https:\/\//.test(value) && !/localhost|example/i.test(value), hint: "Use the canonical HTTPS production URL" },
+    { key: "NEXT_PUBLIC_RECAPTCHA_SITE_KEY", test: (value) => value.length >= 20 && !placeholder.test(value), hint: "Configure the reCAPTCHA Enterprise site key" },
+    { key: "RECAPTCHA_API_KEY", test: (value) => value.length >= 20 && !placeholder.test(value), hint: "Configure the server-only reCAPTCHA Enterprise API key" },
   ] : []),
 ];
 
