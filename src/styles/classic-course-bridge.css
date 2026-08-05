@@ -1,0 +1,136 @@
+/*
+ * Transitional bridge for the feature-rich course detail and lesson viewer.
+ * Their authorization, payment and player logic stays untouched while their
+ * retired sky/indigo presentation is moved onto the active Classic tokens.
+ * New markup should use c-* classes directly instead of extending this file.
+ */
+.c-course-zone {
+	--bg: var(--c-bg);
+	--surface: var(--c-surface);
+	--surface-2: var(--c-surface-2);
+	--border: var(--c-border);
+	--ink: var(--c-text);
+	--ink-2: var(--c-text-muted);
+	--ink-3: var(--c-text-faint);
+	--ink-muted: var(--c-text-muted);
+	--brand: var(--c-blue);
+	--brand-strong: var(--c-blue-hover);
+	--brand-shadow: rgba(14, 154, 138, 0.28);
+	--error: var(--c-red);
+	--danger: var(--c-red);
+	--danger-soft: rgba(214, 69, 69, 0.12);
+	min-height: 100dvh;
+	background-color: var(--c-bg);
+	color: var(--c-text);
+}
+
+/* Retire decorative colour washes and glows without changing layout/logic. */
+.c-course-zone [class*="bg-gradient-to-"],
+.c-course-zone [class*="bg-gradient-from-"] {
+	background-image: none !important;
+	background-color: var(--c-navy) !important;
+}
+
+.c-course-zone [class*="bg-indigo-"],
+.c-course-zone [class*="text-indigo-"] {
+	background-color: transparent !important;
+	color: var(--c-blue-ink) !important;
+}
+
+.c-course-zone [class*="from-indigo-"],
+.c-course-zone [class*="via-indigo-"],
+.c-course-zone [class*="to-indigo-"] {
+	--tw-gradient-from: var(--c-blue) !important;
+	--tw-gradient-via: var(--c-blue-hover) !important;
+	--tw-gradient-to: var(--c-blue-active) !important;
+}
+
+/* Map the old sky action family to the deep-sea teal brand. */
+.c-course-zone .bg-sky-400,
+.c-course-zone .bg-sky-500,
+.c-course-zone .bg-sky-600,
+.c-course-zone .bg-blue-500,
+.c-course-zone .bg-blue-600 {
+	background-color: var(--c-blue) !important;
+}
+
+.c-course-zone .hover\:bg-sky-400:hover,
+.c-course-zone .hover\:bg-sky-500:hover,
+.c-course-zone .hover\:bg-blue-700:hover {
+	background-color: var(--c-blue-hover) !important;
+}
+
+.c-course-zone .text-sky-300,
+.c-course-zone .text-sky-400,
+.c-course-zone .text-sky-500,
+.c-course-zone .text-blue-400,
+.c-course-zone .text-blue-500 {
+	color: var(--c-blue-ink) !important;
+}
+
+.c-course-zone .border-sky-500,
+.c-course-zone .border-blue-500,
+.c-course-zone [class*="border-sky-500/"] {
+	border-color: var(--c-blue) !important;
+}
+
+.c-course-zone [class*="shadow-sky-"],
+.c-course-zone [class*="drop-shadow-"] {
+	filter: none !important;
+	box-shadow: none !important;
+}
+
+/* Tonal Classic surfaces replace the legacy slate/gray cards. */
+.c-course-zone .bg-slate-950,
+.c-course-zone .bg-gray-950,
+.c-course-zone .dark\:bg-gray-950 {
+	background-color: var(--c-bg) !important;
+}
+
+.c-course-zone .bg-slate-900,
+.c-course-zone .bg-gray-900,
+.c-course-zone .dark\:bg-gray-900 {
+	background-color: var(--c-surface) !important;
+}
+
+.c-course-zone .bg-white,
+.c-course-zone .dark\:bg-gray-800,
+.c-course-zone .bg-\[var\(--surface\)\] {
+	background-color: var(--c-surface) !important;
+}
+
+.c-course-zone .text-gray-900,
+.c-course-zone .dark\:text-white,
+.c-course-zone .text-\[var\(--ink\)\] {
+	color: var(--c-text) !important;
+}
+
+.c-course-zone .text-gray-500,
+.c-course-zone .text-gray-600,
+.c-course-zone .dark\:text-gray-400,
+.c-course-zone .text-\[var\(--ink-muted\)\] {
+	color: var(--c-text-muted) !important;
+}
+
+.c-course-zone button,
+.c-course-zone a,
+.c-course-zone input {
+	transition-duration: var(--c-dur) !important;
+}
+
+.c-course-zone button:focus-visible,
+.c-course-zone a:focus-visible,
+.c-course-zone input:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.c-course-zone *,
+	.c-course-zone *::before,
+	.c-course-zone *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+	}
+}
