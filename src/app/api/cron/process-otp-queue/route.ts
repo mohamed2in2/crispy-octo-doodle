@@ -1,17 +1,23 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { OtpService } from "@/services/otp/OtpService";
 
+function hasValidCronSecret(header: string | null): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !header?.startsWith("Bearer ")) return false;
+
+  const provided = Buffer.from(header.slice(7));
+  const expected = Buffer.from(secret);
+  return provided.length === expected.length && timingSafeEqual(provided, expected);
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET || "codeup_secret_cron";
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!hasValidCronSecret(req.headers.get("authorization"))) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
     const result = await OtpService.processQueuedOtps(25);
-
     return NextResponse.json({
       success: true,
       processed: result.processed,
