@@ -1,144 +1,91 @@
-/**
- * Validates required environment variables for this project.
- * Run: node scripts/validate-env.mjs
- */
-
-import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function loadEnvFile(filename) {
   const path = join(root, filename);
   if (!existsSync(path)) return {};
-  const content = readFileSync(path, "utf8");
-  const vars = {};
-  for (const line of content.split("\n")) {
+  const variables = {};
+  for (const line of readFileSync(path, "utf8").split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    vars[key] = value;
+    const separator = trimmed.indexOf("=");
+    if (separator < 0) continue;
+    const key = trimmed.slice(0, separator).trim();
+    let value = trimmed.slice(separator + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    variables[key] = value;
   }
-  return vars;
+  return variables;
 }
 
-const merged = {
-  ...loadEnvFile(".env"),
-  ...loadEnvFile(".env.local"),
-  ...process.env,
-};
+const merged = { ...loadEnvFile(".env"), ...loadEnvFile(".env.local"), ...process.env };
+const production = merged.NODE_ENV === "production";
+const placeholder = /replace-with|your-secret|your-.*key|change-me|example|xxxxxxxx|placeholder/i;
+const configured = (key) => (merged[key]?.trim() ?? "");
 
-const skipTwilioValidation = merged.TWILIO_BYPASS_VERIFICATION === "true";
-
-const REQUIRED = [
+const required = [
   {
     key: "DATABASE_URL",
-    test: (v) => {
-      if (v.startsWith("file:") || v.startsWith("libsql:")) return true;
-      return (
-        (v.startsWith("postgresql://") || v.startsWith("postgres://")) &&
-        !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(v)
-      );
+    test: (value) => {
+      if (!production && (value.startsWith("file:") || value.startsWith("libsql:"))) return true;
+      return (value.startsWith("postgresql://") || value.startsWith("postgres://")) && !/YOUR_DB_PASSWORD|USER:PASSWORD|replace-me/i.test(value);
     },
-    hint: "Use file:./dev.db (local) or a real Supabase PostgreSQL URI",
+    hint: production ? "A real PostgreSQL connection string is required in production" : "Use file:./dev.db locally or a real PostgreSQL URI",
   },
   {
     key: "JWT_SECRET",
-    test: (v) => v.length >= 16 && !/replace-with|your-secret|change-me/i.test(v),
-    hint: "At least 16 characters; not a placeholder",
+    test: (value) => value.length >= (production ? 32 : 16) && !placeholder.test(value),
+    hint: production ? "Use a unique random secret of at least 32 characters" : "Use at least 16 non-placeholder characters",
   },
-  ...(skipTwilioValidation
-    ? []
-    : [
-        {
-          key: "TWILIO_ACCOUNT_SID",
-          test: (v) => /^AC[0-9a-fA-F]{32}$/.test(v),
-          hint: "Twilio account SID (starts with AC...)",
-        },
-        {
-          key: "TWILIO_AUTH_TOKEN",
-          test: (v, merged) => {
-            // Accept either the classic account auth token or an API key pair
-            if (v && v.length >= 24) return true;
-            if (merged.TWILIO_API_KEY_SID && merged.TWILIO_API_SECRET) return true;
-            return false;
-          },
-          hint: "Twilio Auth Token OR set TWILIO_API_KEY_SID & TWILIO_API_SECRET (preferred)",
-        },
-        {
-          key: "TWILIO_FROM_NUMBER",
-          test: (v) => /^\+?[1-9]\d{7,14}$/.test(v.replace(/\s+/g, "")),
-          hint: "Twilio sender number in E.164 format, e.g. +201XXXXXXXXX",
-        },
-      ]),
+  ...(production ? [
+    { key: "CRON_SECRET", test: (value) => value.length >= 32 && !placeholder.test(value), hint: "Use a unique random secret of at least 32 characters" },
+    { key: "NEXT_PUBLIC_SITE_URL", test: (value) => /^https:\/\//.test(value) && !/localhost|example/i.test(value), hint: "Use the canonical HTTPS production URL" },
+  ] : []),
 ];
 
-const RECOMMENDED = [
-  "NEXT_PUBLIC_SITE_URL",
-];
-
+const unsafeProductionFlags = ["BYPASS_PHONE_VERIFICATION", "DEV_SKIP_SMS", "TWILIO_BYPASS_VERIFICATION", "RECAPTCHA_BYPASS"];
 let failed = 0;
+console.log(`Environment validation (${production ? "production" : "development"})\n`);
 
-console.log("Environment validation\n");
-
-const envFiles = [".env", ".env.local"].filter((f) => existsSync(join(root, f)));
-if (envFiles.length === 0) {
-  console.error("No .env or .env.local file found.");
-  console.error("Copy .env.example to .env and fill in your values.\n");
+const envFiles = [".env", ".env.local"].filter((file) => existsSync(join(root, file)));
+if (!envFiles.length && Object.keys(process.env).length === 0) {
+  console.error("No environment configuration found. Copy .env.example and set real values.");
   process.exit(1);
 }
+if (envFiles.length) console.log(`Loaded: ${envFiles.join(", ")}\n`);
 
-console.log(`Loaded: ${envFiles.join(", ")}\n`);
-
-for (const { key, test, hint } of REQUIRED) {
-  const value = merged[key]?.trim() ?? "";
-  if (!value) {
-    console.error(`MISSING: ${key}`);
-    console.error(`         ${hint}\n`);
-    failed++;
-    continue;
-  }
-  if (!test(value)) {
-    console.error(`INVALID: ${key}`);
-    console.error(`         ${hint}\n`);
-    failed++;
-    continue;
-  }
-  console.log(`OK: ${key}`);
-}
-
-for (const key of RECOMMENDED) {
-  const value = merged[key]?.trim() ?? "";
-  if (!value) {
-    console.warn(`WARN: ${key} is not set (optional but recommended)`);
-  }
-}
-
-if (merged.DATABASE_URL?.includes("file:")) {
-  const sqlitePath = merged.DATABASE_URL.replace(/^file:/, "");
-  if (process.platform !== "win32" && /^[A-Za-z]:[\\/]/.test(sqlitePath)) {
-    console.warn(
-      "\nWARN: DATABASE_URL points to a Windows SQLite path on a non-Windows system. Use file:./prisma/dev.db instead."
-    );
+for (const { key, test, hint } of required) {
+  const value = configured(key);
+  if (!value || !test(value)) {
+    console.error(`${value ? "INVALID" : "MISSING"}: ${key}\n         ${hint}\n`);
+    failed += 1;
   } else {
-    console.log("\nOK: DATABASE_URL is using SQLite for local development.");
+    console.log(`OK: ${key}`);
   }
 }
 
-if (failed > 0) {
-  console.error(`\n${failed} required variable(s) need fixing. See .env.example`);
-  process.exit(1);
+if (production) {
+  for (const key of unsafeProductionFlags) {
+    if (configured(key).toLowerCase() === "true") {
+      console.error(`UNSAFE: ${key} must not be true in production\n`);
+      failed += 1;
+    }
+  }
+  if (configured("DATABASE_URL").startsWith("file:") || configured("DATABASE_URL").startsWith("libsql:")) {
+    console.error("UNSAFE: SQLite/libSQL DATABASE_URL is not an approved production datastore\n");
+    failed += 1;
+  }
 }
 
-console.log("\nAll required environment variables look good.");
+for (const key of ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_APP_URL"]) {
+  if (!configured(key)) console.warn(`WARN: ${key} is not set`);
+}
+
+if (failed) {
+  console.error(`\n${failed} production configuration requirement(s) failed.`);
+  process.exit(1);
+}
+console.log("\nEnvironment configuration passed.");
