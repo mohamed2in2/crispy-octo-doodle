@@ -1,103 +1,68 @@
-/**
- * reCAPTCHA Enterprise — server-side token verification.
- *
- * Uses the REST API so there is no extra npm dependency:
- * https://cloud.google.com/recaptcha-enterprise/docs/create-assessment
- *
- * Required environment variables (never exposed to browser):
- *   RECAPTCHA_API_KEY   – Google Cloud API key with reCAPTCHA Enterprise enabled
- *
- * Public env var (safe to expose):
- *   NEXT_PUBLIC_RECAPTCHA_SITE_KEY – the site key shown in the reCAPTCHA console
- */
+/** Server-side reCAPTCHA Enterprise assessment validation. */
 
 const PROJECT_ID = "codeup-ef28b";
-const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "6LcJ2xUtAAAAAI4MhIos69DhEOTNN17K-QXmoIXr";
+const production = process.env.NODE_ENV === "production";
+const configuredSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 export interface RecaptchaResult {
-  /** Whether the token passed basic validation (score >= threshold). */
   success: boolean;
-  /** Risk score from 0.0 (likely bot) to 1.0 (likely human). */
   score: number;
-  /** Reason codes returned by the API (e.g. "BROWSER_ERROR"). */
   reasons: string[];
-  /** Raw assessment name (useful for annotation). */
   assessmentName?: string;
 }
 
-/**
- * Verify a reCAPTCHA Enterprise token on the server.
- *
- * @param token        The token produced by grecaptcha.enterprise.execute()
- * @param expectedAction  The action string you passed to execute(), e.g. "login"
- * @param scoreThreshold  Minimum score to consider valid (default 0.5)
- */
-export async function verifyRecaptchaToken(
-  token: string,
-  expectedAction: string,
-  scoreThreshold = 0.5
-): Promise<RecaptchaResult> {
-  // Allow bypass in dev/testing mode when explicitly set or bypass is enabled
-  if (process.env.RECAPTCHA_BYPASS === "true") {
-    return { success: true, score: 1, reasons: ["BYPASS"] };
+type AssessmentResponse = {
+  error?: unknown;
+  name?: string;
+  tokenProperties?: { valid?: boolean; action?: string; invalidReason?: string };
+  riskAnalysis?: { score?: number; reasons?: string[] };
+};
+
+function unavailable(reason: string): RecaptchaResult {
+  // A production authentication endpoint must not silently lose its bot control.
+  return { success: !production, score: production ? 0 : 1, reasons: [reason] };
+}
+
+export async function verifyRecaptchaToken(token: string, expectedAction: string, scoreThreshold = 0.5): Promise<RecaptchaResult> {
+  if (!production && process.env.RECAPTCHA_BYPASS === "true") {
+    return { success: true, score: 1, reasons: ["DEV_BYPASS"] };
   }
+  if (!token) return unavailable("MISSING_TOKEN");
 
   const apiKey = process.env.RECAPTCHA_API_KEY;
-
-  // If no API key is configured, skip verification gracefully (dev / CI).
-  if (!apiKey) {
-    console.warn("[reCAPTCHA] RECAPTCHA_API_KEY is not set — skipping verification.");
-    return { success: true, score: 1, reasons: ["SKIPPED_NO_API_KEY"] };
+  if (!apiKey || !configuredSiteKey) {
+    console.error("[reCAPTCHA] API key or site key is not configured.");
+    return unavailable("NOT_CONFIGURED");
   }
 
-  const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${PROJECT_ID}/assessments?key=${apiKey}`;
-
-  const body = {
-    event: {
-      token,
-      expectedAction,
-      siteKey: SITE_KEY,
-    },
-  };
-
-  let data: any;
+  const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${PROJECT_ID}/assessments?key=${encodeURIComponent(apiKey)}`;
+  let data: AssessmentResponse;
   try {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ event: { token, expectedAction, siteKey: configuredSiteKey } }),
     });
-    data = await res.json();
-  } catch (err) {
-    console.error("[reCAPTCHA] Network error calling assessment API:", err);
-    // Fail open so a network blip doesn't lock out all users.
-    return { success: true, score: 0.5, reasons: ["NETWORK_ERROR"] };
+    data = (await response.json()) as AssessmentResponse;
+  } catch (error) {
+    console.error("[reCAPTCHA] Assessment request failed:", error);
+    return unavailable("NETWORK_ERROR");
   }
 
-  // The API returns an error object when the token is invalid or malformed.
-  if (data?.error) {
-    console.error("[reCAPTCHA] Assessment API error:", data.error);
+  if (data.error) {
+    console.error("[reCAPTCHA] Assessment API returned an error.");
     return { success: false, score: 0, reasons: ["API_ERROR"] };
   }
 
-  const tokenProps = data?.tokenProperties ?? {};
-  const riskAnalysis = data?.riskAnalysis ?? {};
-  const score: number = riskAnalysis.score ?? 0;
-  const reasons: string[] = riskAnalysis.reasons ?? [];
-
-  // Token must be valid and the action must match what we expected.
-  if (!tokenProps.valid) {
-    return { success: false, score: 0, reasons: ["INVALID_TOKEN", ...(tokenProps.invalidReason ? [tokenProps.invalidReason] : []), ...reasons] };
+  const tokenProperties = data.tokenProperties ?? {};
+  const riskAnalysis = data.riskAnalysis ?? {};
+  const score = riskAnalysis.score ?? 0;
+  const reasons = riskAnalysis.reasons ?? [];
+  if (!tokenProperties.valid) {
+    return { success: false, score: 0, reasons: ["INVALID_TOKEN", ...(tokenProperties.invalidReason ? [tokenProperties.invalidReason] : []), ...reasons] };
   }
-
-  if (tokenProps.action && tokenProps.action !== expectedAction) {
+  if (tokenProperties.action !== expectedAction) {
     return { success: false, score, reasons: ["ACTION_MISMATCH", ...reasons] };
   }
-
-  return {
-    success: score >= scoreThreshold,
-    score,
-    reasons,
-    assessmentName: data?.name,
-  };
+  return { success: score >= scoreThreshold, score, reasons, assessmentName: data.name };
 }
