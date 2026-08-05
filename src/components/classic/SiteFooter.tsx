@@ -1,15 +1,20 @@
 import Link from "next/link";
 
 import { SHELL } from "./copy";
-import { IconSupport, IconWhatsapp } from "./icons";
+import { IconSparkle } from "./icons";
 
 /*
- * Footer and floating contact buttons.
+ * Footer and the floating assistant button.
  *
- * Both belong to the shell rather than to individual pages. The reference
- * platform's real advantage is that its chrome never moves; a footer that
- * appears on some pages and not others is one of the loudest "this is a
- * collection of pages" signals there is.
+ * Both belong to the shell rather than to individual pages: chrome that
+ * appears on some pages and not others is the loudest "this is a collection
+ * of pages" signal there is.
+ *
+ * The floating control used to be a pair of contact bubbles (WhatsApp and a
+ * support inbox). It is now a single labelled assistant button pointing at
+ * the AI study page. Two unlabelled circles in the corner is the most
+ * copied chrome on the Arabic ed-tech web; a labelled pill is both more
+ * legible and unmistakably not someone else's.
  */
 
 const SOCIAL: Array<{ label: string; href: string }> = [
@@ -82,33 +87,11 @@ export function SiteFooter() {
 	);
 }
 
-export function FloatingActions({
-	whatsappHref = "https://wa.me/201000000000",
-	supportHref = "/account/notifications",
-}: {
-	whatsappHref?: string;
-	supportHref?: string;
-}) {
+export function FloatingAssistant({ href = "/ai-study" }: { href?: string }) {
 	return (
-		<div className="c-float">
-			<a
-				className="c-float__btn"
-				data-kind="whatsapp"
-				href={whatsappHref}
-				target="_blank"
-				rel="noopener noreferrer"
-				aria-label={SHELL.whatsapp}
-			>
-				<IconWhatsapp />
-			</a>
-			<Link
-				className="c-float__btn"
-				data-kind="support"
-				href={supportHref}
-				aria-label={SHELL.support}
-			>
-				<IconSupport />
-			</Link>
-		</div>
+		<Link className="c-ai-float" href={href} aria-label={SHELL.ai}>
+			<IconSparkle size={20} />
+			<span className="c-ai-float__label">{SHELL.ai}</span>
+		</Link>
 	);
 }
