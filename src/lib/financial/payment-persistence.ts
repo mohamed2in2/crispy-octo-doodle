@@ -18,26 +18,14 @@ type CheckoutInput = {
   purpose: string;
 };
 
-type SettlementInput = {
-  provider: Provider;
-  reference: string;
-  transactionId: string;
-  totalPounds: number;
-};
+type SettlementInput = { provider: Provider; reference: string; transactionId: string; totalPounds: number };
 
-function invoiceNumber() {
-  return `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
-}
-
-function receiptNumber() {
-  return `RCP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
-}
+function invoiceNumber() { return `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`; }
+function receiptNumber() { return `RCP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`; }
 
 /**
- * Records the new durable financial projection without changing the existing
- * balance-transaction checkout path. Failures are intentionally non-blocking
- * until the migration is deployed everywhere and dual-write reconciliation is
- * complete; the legacy payment flow remains the operational source of truth.
+ * Best-effort durable projection during the staged migration. The legacy wallet
+ * transaction remains operational source of truth until reconciliation passes.
  */
 export async function persistProviderCheckout(input: CheckoutInput): Promise<void> {
   const subtotal = poundsToPiastres(input.subtotalPounds);
@@ -68,7 +56,7 @@ export async function persistProviderCheckout(input: CheckoutInput): Promise<voi
   }
 }
 
-/** Records a verified provider settlement and issues an idempotent receipt. */
+/** Records a verified provider settlement, one webhook event, and one receipt. */
 export async function persistProviderSettlement(input: SettlementInput): Promise<boolean> {
   const total = poundsToPiastres(input.totalPounds);
   if (!input.reference || !input.transactionId || total <= 0) return false;
@@ -84,6 +72,12 @@ export async function persistProviderSettlement(input: SettlementInput): Promise
       const invoice = invoices[0];
       if (!invoice) return false;
 
+      await tx.$executeRaw`
+        INSERT INTO "WebhookEvent" ("id", "provider", "dedupeKey", "eventType", "rawBody", "signatureValid", "status", "invoiceId", "receivedAt", "processedAt")
+        VALUES (${randomUUID()}, ${input.provider}, ${`${input.transactionId}:settled`}, 'payment.settled', ${JSON.stringify({ reference: input.reference, transactionId: input.transactionId, amountPiastres: total })}, NULL, 'processed', ${invoice.id}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT ("provider", "dedupeKey") DO NOTHING
+      `;
+
       const payments = await tx.$queryRaw<Array<{ id: string }>>`
         UPDATE "Payment"
         SET "status" = 'succeeded', "providerTxId" = ${input.transactionId}, "succeededAt" = CURRENT_TIMESTAMP
@@ -91,7 +85,6 @@ export async function persistProviderSettlement(input: SettlementInput): Promise
         RETURNING "id"
       `;
       const paymentId = payments[0]?.id ?? null;
-
       await tx.$executeRaw`
         INSERT INTO "PaymentEvent" ("id", "invoiceId", "paymentId", "type", "message", "actorType", "createdAt")
         VALUES (${randomUUID()}, ${invoice.id}, ${paymentId}, 'payment.succeeded', 'Provider payment verified', 'provider', CURRENT_TIMESTAMP),
