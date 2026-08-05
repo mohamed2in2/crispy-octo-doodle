@@ -7,6 +7,14 @@ const TRANSIENT_ERROR_CODES = new Set([
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function isDatabaseBusy(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = "code" in error ? error.code : undefined;
+  return error.message.includes("database is locked") ||
+    error.message.includes("SQLITE_BUSY") ||
+    code === "SQLITE_BUSY";
+}
+
 /**
  * Wraps a database operation with automatic retries for transient errors
  * like deadlocks or SQLite busy states.
@@ -20,19 +28,14 @@ export async function withDbRetry<T>(
   while (true) {
     try {
       return await operation();
-    } catch (error: any) {
+    } catch (error: unknown) {
       attempts++;
-      
+
       const isTransient =
         error instanceof Prisma.PrismaClientKnownRequestError &&
         TRANSIENT_ERROR_CODES.has(error.code);
-        
-      const isSqliteBusy =
-        error?.message?.includes("database is locked") ||
-        error?.message?.includes("SQLITE_BUSY") ||
-        error?.code === "SQLITE_BUSY";
 
-      if ((!isTransient && !isSqliteBusy) || attempts >= maxRetries) {
+      if ((!isTransient && !isDatabaseBusy(error)) || attempts >= maxRetries) {
         throw error;
       }
 
