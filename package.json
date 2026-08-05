@@ -7,8 +7,8 @@
     "build": "node scripts/prisma-generate.js && next build",
     "start": "next start",
     "prod:start": "pm2 start ecosystem.config.js",
-    "prod:cluster": "npm run build && pm2 start ecosystem.config.js",
-    "prod:reload": "pm2 reload ecosystem.config.js",
+    "prod:cluster": "npm run release:deploy && pm2 start ecosystem.config.js",
+    "prod:reload": "npm run release:deploy && pm2 reload ecosystem.config.js",
     "lint": "eslint --cache",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,7 +20,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:clear": "ts-node --project tsconfig.json scripts/clearDb.ts",
     "validate:env": "node scripts/validate-env.mjs",
-    "release:verify": "NODE_ENV=production npm run validate:env && npm run build && npm test",
+    "release:verify": "NODE_ENV=production npm run validate:env && npm run lint && npm run build && npm test",
+    "release:deploy": "npm run release:verify && npm run db:deploy",
     "postinstall": "node scripts/prisma-generate.js"
   },
   "dependencies": {
