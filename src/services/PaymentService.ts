@@ -57,7 +57,12 @@ export function assertMethodProviderSeparation(methodId: string): {
   }
 
   // Hard provider locks — never trust config alone for routing safety.
-  if (methodId === "we_pay" || methodId === "instapay" || methodId === "bank_card" || methodId === "meeza") {
+  if (
+    methodId === "we_pay" ||
+    methodId === "instapay" ||
+    methodId === "bank_card" ||
+    methodId === "meeza"
+  ) {
     return { ok: false, message: "طريقة الدفع غير مدعومة" };
   }
 
@@ -75,8 +80,7 @@ export function assertMethodProviderSeparation(methodId: string): {
     if (!SHA7NAWY_METHODS.has(methodId)) {
       return {
         ok: false,
-        message:
-          "Sha7nawy يدعم فودافون كاش واتصالات كاش وأورانج كاش فقط.",
+        message: "Sha7nawy يدعم فودافون كاش واتصالات كاش وأورانج كاش فقط.",
       };
     }
     return { ok: true, provider: "sha7nawy" };
@@ -156,7 +160,6 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
     const methodConfig = getPaymentMethod(params.method);
 
     // IMPORTANT: never silently fall back from Sha7nawy to Shake-Out.
-    // A failed wallet charge must fail closed so money routing stays auditable.
 
     return {
       success: res.status,
@@ -177,7 +180,7 @@ export class Sha7nawyPaymentProvider implements IPaymentProvider {
 export class InternalPaymentProvider implements IPaymentProvider {
   name = "internal";
 
-  async createPayment(_params: UnifiedPaymentParams): Promise<UnifiedPaymentResult> {
+  async createPayment(): Promise<UnifiedPaymentResult> {
     return {
       success: true,
       code: 200,

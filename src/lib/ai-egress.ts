@@ -33,11 +33,31 @@ export function normalizePrompt(raw: string, max = MAX_PROMPT_CHARS): string {
     .slice(0, max);
 }
 
-export function scrubDirectIdentifiers(text: string): string {
-  return String(text ?? "")
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Redact emails, phones, long ids, and any known learner name tokens. */
+export function scrubDirectIdentifiers(
+  text: string,
+  knownNames: string[] = [],
+): string {
+  let out = String(text ?? "")
     .replace(EMAIL_RE, "[redacted-email]")
     .replace(PHONE_RE, "[redacted-phone]")
     .replace(LONG_DIGIT_RE, "[redacted-id]");
+
+  const tokens = knownNames
+    .flatMap((name) => String(name).split(/\s+/))
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2);
+
+  for (const token of tokens) {
+    const re = new RegExp(`\\b${escapeRegExp(token)}\\b`, "gi");
+    out = out.replace(re, "[redacted-name]");
+  }
+
+  return out;
 }
 
 export function buildSafeLearnerContext(input: {
@@ -79,13 +99,18 @@ export function buildOutboundProviderMessages(args: {
   userMessage: string;
   safeContext: SafeLearnerContext;
   history?: Array<{ role: "user" | "assistant"; content: string }>;
+  knownNames?: string[];
 }): EgressMessage[] {
-  const userMessage = scrubDirectIdentifiers(normalizePrompt(args.userMessage));
+  const names = args.knownNames ?? [];
+  const userMessage = scrubDirectIdentifiers(
+    normalizePrompt(args.userMessage),
+    names,
+  );
   const history = (args.history ?? [])
     .slice(-MAX_HISTORY_TURNS)
     .map((m) => ({
       role: m.role,
-      content: scrubDirectIdentifiers(normalizePrompt(m.content, 800)),
+      content: scrubDirectIdentifiers(normalizePrompt(m.content, 800), names),
     }))
     .filter((m) => m.content.length > 0);
 
@@ -101,6 +126,9 @@ export function buildOutboundProviderMessages(args: {
 
 export function assertNoDirectIdentifiers(payload: unknown): void {
   const blob = JSON.stringify(payload);
+  // Reset sticky global regex state before testing.
+  EMAIL_RE.lastIndex = 0;
+  PHONE_RE.lastIndex = 0;
   if (EMAIL_RE.test(blob) || PHONE_RE.test(blob)) {
     throw new Error("AI egress blocked: direct learner identifiers detected");
   }

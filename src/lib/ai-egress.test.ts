@@ -34,6 +34,7 @@ describe("ai egress boundary", () => {
         subjects: ["math"],
         weakTopics: ["fractions"],
       }),
+      knownNames: ["Ahmed Ehab", "Sara"],
       history: [
         { role: "user", content: "my name is Sara and email sara@school.edu" },
         { role: "assistant", content: "Sure, let's continue." },
@@ -43,12 +44,14 @@ describe("ai egress boundary", () => {
     const blob = JSON.stringify(messages);
     expect(blob).not.toMatch(/Ahmed|Sara|a@b\.com|sara@school\.edu|01099998888/i);
     expect(blob).toContain("[redacted-email]");
+    expect(blob).toContain("[redacted-name]");
+    expect(blob).not.toContain('"name"');
     expect(() => assertNoDirectIdentifiers(messages)).not.toThrow();
   });
 
   it("blocks payloads that still contain direct identifiers", () => {
-    expect(() => assertNoDirectIdentifiers({ text: "reach me at leak@example.com" })).toThrow(
-      /blocked/i,
-    );
+    expect(() =>
+      assertNoDirectIdentifiers({ text: "reach me at leak@example.com" }),
+    ).toThrow(/blocked/i);
   });
 });
