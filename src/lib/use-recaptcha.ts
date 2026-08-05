@@ -35,6 +35,12 @@ export function useRecaptcha() {
     if (scriptLoaded.current) return;
     scriptLoaded.current = true;
 
+    const initWhenReady = () => {
+      if (window.grecaptcha?.enterprise) {
+        window.grecaptcha.enterprise.ready(() => setReady(true));
+      }
+    };
+
     // Inject the enterprise script if it isn't already present.
     const existing = document.querySelector(`script[src*="recaptcha/enterprise"]`);
     if (existing) {
@@ -49,12 +55,6 @@ export function useRecaptcha() {
     script.onload = initWhenReady;
     document.head.appendChild(script);
   }, []);
-
-  function initWhenReady() {
-    if (typeof window !== "undefined" && window.grecaptcha?.enterprise) {
-      window.grecaptcha.enterprise.ready(() => setReady(true));
-    }
-  }
 
   const execute = useCallback(
     async (action: string): Promise<string> => {
