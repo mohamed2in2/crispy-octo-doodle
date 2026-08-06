@@ -289,11 +289,6 @@ export default async function HomePage() {
 
 											<span className="c-teacher__foot">
 												<Badge label={chip.label} tone={chip.tone} />
-												{price ? (
-													<span className="c-teacher__price" dir="ltr">
-														{price}
-													</span>
-												) : null}
 											</span>
 										</Link>
 									</li>

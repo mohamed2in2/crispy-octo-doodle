@@ -3,6 +3,7 @@ export type NavIconName="home"|"book"|"users"|"user"|"play"|"wallet"|"code";
 export type NavItem={key:string;href:string;label:string;icon:NavIconName;exact?:boolean;sub?:Array<{key:string;href:string;label:string}>};
 export const SIDEBAR:NavItem[]=[
  {key:"home",href:"/account/home",label:SHELL.home,icon:"home",exact:true},
+ {key:"plans",href:"/plans",label:"الخطط الدراسية",icon:"play"},
  {key:"courses",href:"/courses",label:SHELL.courses,icon:"book",sub:[{key:"enrolled",href:"/library",label:SHELL.myCourses},{key:"quizzes",href:"/bankofanswers",label:SHELL.questionBank},{key:"homeworks",href:"/homeworks",label:"الواجبات"}]},
  {key:"environments",href:"/environments",label:"بيئات التعلم",icon:"code",sub:[{key:"editor",href:"/environments/html-css-js",label:"محرر الأكواد"}]},
  {key:"account",href:"/account",label:SHELL.account,icon:"user",exact:true},
