@@ -189,7 +189,7 @@ export function ClassicShell({
 					<div className="c-topbar__tools">
 						<Link className="c-wallet-chip" href="/account/financial">
 							<IconWallet size={16} />
-							<span dir="ltr">{balanceLabel}</span>
+							<span>{balanceLabel}</span>
 						</Link>
 
 						<Link

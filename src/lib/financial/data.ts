@@ -1,12 +1,12 @@
 /**
  * The single data access point for the Financial Center.
  *
- * Wallet data remains on the legacy endpoint during the dual-write migration.
- * Invoice, receipt, and refund reads use the additive persistence tables and
- * are always scoped to the signed-in student.
+ * Wallet balance and ledger read directly from Prisma scoped to the signed-in
+ * user to avoid HTTP loopback network failures during SSR.
  */
 
-import { cookies, headers } from "next/headers"
+import { prisma } from "@/lib/prisma"
+import { getSession } from "@/lib/auth"
 
 import type {
 	PaymentMethodSummary,
@@ -24,46 +24,49 @@ import {
 	listPersistedRefunds,
 } from "./invoice-read-model"
 
-async function resolveOrigin(): Promise<string> {
+/** Wallet balance and ledger read directly from Prisma for signed-in user. */
+export async function getWalletSummary(): Promise<WalletSummary> {
 	try {
-		const headerList = await headers()
-		const host = headerList.get("x-forwarded-host") ?? headerList.get("host")
-		if (host) {
-			const protocol = headerList.get("x-forwarded-proto") ??
-				(host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https")
-			return `${protocol}://${host}`
+		const session = await getSession()
+		if (!session) return { balancePiastres: 0, pendingPiastres: 0, entries: [] }
+
+		const [user, rawTransactions] = await Promise.all([
+			prisma.user.findUnique({ where: { id: session.id }, select: { balance: true } }),
+			prisma.balanceTransaction.findMany({
+				where: { userId: session.id },
+				orderBy: { createdAt: "desc" },
+				take: 50,
+				select: { id: true, type: true, amount: true, note: true, createdAt: true },
+			}),
+		])
+
+		const balancePiastres = poundsToPiastres(user?.balance ?? 0)
+
+		const entries: WalletEntry[] = rawTransactions.map((row, index) => {
+			const amount = poundsToPiastres(row.amount)
+			const pending = (row.type ?? "").toLowerCase().includes("pending")
+			return {
+				id: String(row.id ?? `entry-${index}`),
+				direction: amount < 0 ? "debit" : "credit",
+				amountPiastres: Math.abs(amount),
+				pending,
+				occurredAt: row.createdAt ? row.createdAt.toISOString() : "",
+				description: row.note ?? "",
+				reference: null,
+				checkoutUrl: null,
+			}
+		})
+
+		return {
+			balancePiastres,
+			pendingPiastres: entries
+				.filter((entry) => entry.pending && entry.direction === "credit")
+				.reduce((total, entry) => total + entry.amountPiastres, 0),
+			entries: entries.filter((entry) => !entry.pending),
 		}
 	} catch {
-		// Fall through outside a request scope.
+		return { balancePiastres: 0, pendingPiastres: 0, entries: [] }
 	}
-	return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://code-up.tech"
-}
-
-async function authorizedFetch(path: string): Promise<Response | null> {
-	try {
-		const [origin, cookieStore] = await Promise.all([resolveOrigin(), cookies()])
-		const cookieHeader = cookieStore.getAll().map((entry) => `${entry.name}=${entry.value}`).join("; ")
-		return await fetch(`${origin}${path}`, { headers: cookieHeader ? { cookie: cookieHeader } : undefined, cache: "no-store" })
-	} catch {
-		return null
-	}
-}
-
-type BalanceApiTransaction = { id?: string | number; amount?: number; type?: string; note?: string; status?: string; reference?: string; url?: string; createdAt?: string }
-type BalanceApiResponse = { balance?: number; transactions?: BalanceApiTransaction[] }
-
-/** Wallet balance and ledger still read the production legacy endpoint. */
-export async function getWalletSummary(): Promise<WalletSummary> {
-	const response = await authorizedFetch("/api/student/balance")
-	if (!response || !response.ok) return { balancePiastres: 0, pendingPiastres: 0, entries: [] }
-	let payload: BalanceApiResponse
-	try { payload = (await response.json()) as BalanceApiResponse } catch { return { balancePiastres: 0, pendingPiastres: 0, entries: [] } }
-	const entries: WalletEntry[] = (Array.isArray(payload.transactions) ? payload.transactions : []).map((row, index) => {
-		const amount = poundsToPiastres(row.amount)
-		const pending = (row.type ?? "").toLowerCase().includes("pending")
-		return { id: String(row.id ?? `entry-${index}`), direction: amount < 0 ? "debit" : "credit", amountPiastres: Math.abs(amount), pending, occurredAt: row.createdAt ?? "", description: row.note ?? "", reference: row.reference ?? null, checkoutUrl: row.url ?? null }
-	})
-	return { balancePiastres: poundsToPiastres(payload.balance), pendingPiastres: entries.filter((entry) => entry.pending && entry.direction === "credit").reduce((total, entry) => total + entry.amountPiastres, 0), entries: entries.filter((entry) => !entry.pending) }
 }
 
 /** Persisted invoices, scoped in the read model to the signed-in student. */

@@ -590,7 +590,7 @@
 	height: 48px;
 	padding: 0 var(--c-s5);
 	border-radius: var(--c-r-pill);
-	background: var(--c-blue);
+	background: #009688;
 	color: #ffffff;
 	font-size: 14.5px;
 	font-weight: 800;
@@ -602,7 +602,7 @@
 }
 
 .c-ai-float:hover {
-	background: var(--c-blue-hover);
+	background: #00796b;
 	transform: translateY(-2px);
 }
 
