@@ -833,6 +833,10 @@
 	padding: 8px 14px;
 	color: #ffffff;
 	font-weight: 700;
+	font-size: 12px;
+	cursor: pointer;
+}
+
 .c-ai-modal__header-info {
 	display: flex;
 	align-items: center;
