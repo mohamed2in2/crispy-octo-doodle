@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ClassicShell } from "@/components/classic/ClassicShell";
@@ -256,7 +256,7 @@ function AnswerModal({ resultId, quizTitle, onClose }: { resultId: string; quizT
 }
 
 /* ─── Main component ─────────────────────────────────────────────────────── */
-export default function AccountPage() {
+function AccountPageContent() {
   const router = useRouter();
   const [section, setSection] = useState("profile");
   const [user, setUser] = useState<User | null>(null);
@@ -1491,3 +1491,20 @@ export default function AccountPage() {
     </ClassicShell>
   );
 }
+
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <ClassicShell title={SHELL.account} balanceLabel="0 جنيه">
+          <div className="flex-1 flex items-center justify-center py-20">
+            <div className="w-12 h-12 border-4 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
+          </div>
+        </ClassicShell>
+      }
+    >
+      <AccountPageContent />
+    </Suspense>
+  );
+}
+
