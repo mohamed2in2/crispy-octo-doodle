@@ -1,4 +1,5 @@
 import { StudentContext } from "./ai-context";
+import { callAI } from "./ai-caller";
 import {
   assertNoDirectIdentifiers,
   buildOutboundProviderMessages,
@@ -6,19 +7,12 @@ import {
   normalizePrompt,
 } from "./ai-egress";
 
-const PRIMARY_API_KEY = process.env.AI_PRIMARY_API_KEY || "";
+const PRIMARY_API_KEY =
+  process.env.AI_PRIMARY_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 const PRIMARY_API_URL =
   process.env.AI_PRIMARY_BASE_URL || "https://api.anthropic.com/v1/messages";
 const PRIMARY_MODEL =
   process.env.AI_PRIMARY_MODEL || "claude-3-5-sonnet-20241022";
-
-const BACKUP_API_KEY =
-  process.env.AI_BACKUP_API_KEY || process.env.GEMINI_API_KEY || "";
-const BACKUP_BASE_RAW =
-  process.env.AI_BACKUP_BASE_URL ||
-  "https://generativelanguage.googleapis.com/v1beta";
-const BACKUP_BASE_URL = BACKUP_BASE_RAW.replace(/\/+$/, "");
-const BACKUP_MODEL = process.env.AI_BACKUP_MODEL || "gemini-2.0-flash-lite";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -45,19 +39,18 @@ export interface AIChatResult {
 const SYSTEM_PROMPT = `أنت "مرشد Code-UP"، مساعد تدريبي ذكي يخدم المتعلمين المصريين على منصة Code-UP.
 
 دورك:
-- تتحدث مع المتعلم باللغة العربية المصرية الودودة
-- تعتمد فقط على ملخص الأداء الآمن المرفق (بدون أسماء أو هواتف أو إيميلات)
-- تساعد في الخطة التدريبية وتحليل الأداء وطلبات الدعم
+- تتحدث مع المتعلم باللغة العربية المصرية الودودة والواضحة
+- تساعد في الخطة التدريبية، الشرح، تحليل الأداء وطلبات الدعم
+- تفهم أي سؤال تسأله وتجيب عنه بدقة وبسرعة
 
 قواعد:
-- لا تطلب ولا تخمّن بيانات تعريف مباشرة (اسم، إيميل، هاتف)
-- لا تعدّل الدرجات مباشرة
-- كن صادقاً ومختصراً
+- لا تطلب ولا تخمّن بيانات تعريف شخصية حساسة (كلمات مرور أو أرقام حسابات)
+- كن صادقاً ومختصراً ومفيداً
 
 الرد JSON:
 {
-  "message": "...",
-  "actions": [{ "type": "none" | "show_insights" | "create_grade_request" | "create_ticket" | "submit_feedback" | "navigate", "payload": {} }]
+  "message": "نص إجابتك هنا بأسلوب ممتاز ومباشر",
+  "actions": [{ "type": "none" }]
 }`;
 
 async function callPrimary(
@@ -91,10 +84,13 @@ async function callPrimary(
     const data = (await res.json()) as { content: Array<{ text: string }> };
     const raw = data.content[0]?.text || "{}";
     const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = match ? JSON.parse(match[0]) : {};
+    let parsed: Record<string, unknown> = {};
+    if (match) {
+      try { parsed = JSON.parse(match[0]); } catch { /* fallback to raw */ }
+    }
     return {
       message: String(parsed.message || raw),
-      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
+      actions: Array.isArray(parsed.actions) ? (parsed.actions as AIAction[]) : [],
       source: "primary",
     };
   } catch {
@@ -103,57 +99,93 @@ async function callPrimary(
   }
 }
 
-async function callBackup(
+async function callGeminiProvider(
   messages: ChatMessage[],
 ): Promise<AIChatResult | null> {
-  if (!BACKUP_API_KEY) return null;
+  const hasKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY_1 ||
+    process.env.GEMINI_API_KEY_2 ||
+    process.env.AI_BACKUP_API_KEY ||
+    process.env.AI_PRIMARY_API_KEY;
+
+  if (!hasKey) return null;
+
   try {
     assertNoDirectIdentifiers(messages);
-    const sys = messages.find((m) => m.role === "system")?.content || "";
+    const sys = messages.find((m) => m.role === "system")?.content || SYSTEM_PROMPT;
     const userMsgs = messages.filter((m) => m.role !== "system");
-    const promptText = sys
-      ? `[النظام: ${sys}]\n\n` +
-        userMsgs
-          .map(
-            (m) =>
-              `${m.role === "user" ? "المتعلم" : "المرشد"}: ${m.content}`,
-          )
-          .join("\n")
-      : userMsgs
-          .map(
-            (m) =>
-              `${m.role === "user" ? "المتعلم" : "المرشد"}: ${m.content}`,
-          )
-          .join("\n");
+    const promptText = userMsgs
+      .map((m) => `${m.role === "user" ? "المتعلم" : "المرشد"}: ${m.content}`)
+      .join("\n");
 
-    const geminiBase = BACKUP_BASE_URL.endsWith("/models")
-      ? BACKUP_BASE_URL
-      : `${BACKUP_BASE_URL}/models`;
-    const url = `${geminiBase}/${BACKUP_MODEL}:generateContent?key=${BACKUP_API_KEY}`;
-    const res = await fetch(url, {
+    const { text } = await callAI(promptText, {
+      systemPrompt: sys,
+      maxTokens: 1200,
+      temperature: 0.7,
+    });
+
+    if (!text) return null;
+    const match = text.match(/\{[\s\S]*\}/);
+    let parsed: Record<string, unknown> = {};
+    if (match) {
+      try { parsed = JSON.parse(match[0]); } catch { /* fallback */ }
+    }
+    return {
+      message: String(parsed.message || text),
+      actions: Array.isArray(parsed.actions) ? (parsed.actions as AIAction[]) : [],
+      source: "backup",
+    };
+  } catch (err) {
+    console.error("[ai-assistant] Gemini provider error:", err);
+    return null;
+  }
+}
+
+async function callOpenAIProvider(
+  messages: ChatMessage[],
+): Promise<AIChatResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    assertNoDirectIdentifiers(messages);
+    const sys = messages.find((m) => m.role === "system")?.content || SYSTEM_PROMPT;
+    const userMsgs = messages.filter((m) => m.role !== "system");
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { maxOutputTokens: 1200, temperature: 0.7 },
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: [
+          { role: "system", content: sys },
+          ...userMsgs.map((m) => ({ role: m.role, content: m.content })),
+        ],
+        temperature: 0.7,
+        max_tokens: 1200,
       }),
       signal: AbortSignal.timeout(15000),
     });
 
-    if (!res.ok) throw new Error(`Backup AI ${res.status}`);
-    const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    if (!res.ok) return null;
+    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const raw = data.choices?.[0]?.message?.content || "";
     const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = match ? JSON.parse(match[0]) : {};
+    let parsed: Record<string, unknown> = {};
+    if (match) {
+      try { parsed = JSON.parse(match[0]); } catch { /* fallback */ }
+    }
     return {
       message: String(parsed.message || raw),
-      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
-      source: "backup",
+      actions: Array.isArray(parsed.actions) ? (parsed.actions as AIAction[]) : [],
+      source: "primary",
     };
-  } catch {
-    console.error("[ai-assistant] backup provider failed");
+  } catch (err) {
+    console.error("[ai-assistant] OpenAI provider error:", err);
     return null;
   }
 }
@@ -195,80 +227,26 @@ function buildPerformanceAnalysis(ctx: StudentContext): string {
   );
   let a = `تحليل أدائك:\n\nمتوسط الدرجات: ${ctx.overallStats.averageScore}%\nكويزات محلولة: ${allQuizResults.length}\nفيديوهات متشافة: ${ctx.overallStats.totalVideosWatched}\n`;
   if (lowQuizzes.length > 0) {
-    a += `\nمحتاج تراجع:\n${lowQuizzes.slice(0, 3).join("\n")}\n`;
-  }
-  if (ctx.weakAreas.length > 0) {
-    a += `\nنقاط ضعف:\n${ctx.weakAreas
-      .slice(0, 3)
-      .map((w) => `• ${w.subject}: ${w.topic}`)
-      .join("\n")}\n`;
-  }
-  if (lowQuizzes.length === 0 && ctx.weakAreas.length === 0) {
-    a += `\nأداء ممتاز! مفيش نقاط ضعف.\n`;
+    a += `\nمواضيع محتاجة تحسين:\n${lowQuizzes.join("\n")}\n`;
+  } else {
+    a += `\nأداءك ممتاز مافيش مواضيع قاطعة لـ 60%\n`;
   }
   a += `\nاكتب 0 للرجوع\n\n[م:1]`;
   return a;
 }
 
-function buildStudyPlan(ctx: StudentContext): string {
-  const weakSubjects = ctx.weakAreas
-    .map((w) => w.subject)
-    .filter((v, i, a) => a.indexOf(v) === i);
-  const coursesInfo = ctx.courses.map((c) => ({
-    title: c.subject,
-    unwatched: c.progress.totalVideos - c.progress.videosWatched,
-    lowQuizzes: c.quizResults.filter((q) => q.date && q.percentage < 60)
-      .length,
-    progress: c.progress.percentage,
-  }));
-  const priority = coursesInfo.filter(
-    (c) => c.unwatched > 0 || c.lowQuizzes > 0,
-  );
-  let plan = `خطتك النهاردة:\n\n`;
-  if (priority.length > 0) {
-    plan += priority
-      .slice(0, 3)
-      .map((c) => {
-        const tasks: string[] = [];
-        if (c.unwatched > 0) tasks.push(`شوف ${Math.min(c.unwatched, 2)} فيديو`);
-        if (c.lowQuizzes > 0) tasks.push(`راجع الكويزات الضعيفة`);
-        return `${c.title} (${c.progress}%):\n   ${tasks.join(" + ")}`;
-      })
-      .join("\n\n");
-    if (weakSubjects.length > 0) {
-      plan += `\n\nركّز على: ${weakSubjects.join("، ")}`;
+function buildTrainingPlan(ctx: StudentContext): string {
+  let p = `خطة تدريبية مخصصة:\n\n`;
+  if (ctx.weakAreas.length > 0) {
+    p += `التركيز على:\n`;
+    for (const w of ctx.weakAreas) {
+      p += `• ${w.subject}: ${w.topic}\n`;
     }
   } else {
-    plan += `ممتاز! راجع الكويزات اللي أقل من 80%.`;
+    p += `شاهد كورس واحد واعمل كويز تجريبي يومياً.\n`;
   }
-  plan += `\n\nاكتب 0 للرجوع\n\n[م:2]`;
-  return plan;
-}
-
-function buildQuizList(ctx: StudentContext): {
-  list: string;
-  hasQuizzes: boolean;
-} {
-  const quizzes = ctx.courses.flatMap((c) =>
-    c.quizResults
-      .filter((q) => q.date)
-      .map((q) => ({
-        code: q.quizId.slice(-8).toUpperCase(),
-        score: Math.round(q.percentage),
-        subject: c.subject,
-      })),
-  );
-  if (quizzes.length === 0) return { list: "", hasQuizzes: false };
-  return {
-    list: quizzes
-      .map((q) => `  ${q.code} → ${q.subject} - ${q.score}%`)
-      .join("\n"),
-    hasQuizzes: true,
-  };
-}
-
-function stripFallbackMarkers(content: string): string {
-  return content.replace(/\[م:[^\]]+\]/g, "").trim();
+  p += `\nاكتب 0 للرجوع\n\n[م:2]`;
+  return p;
 }
 
 function fallbackResponse(
@@ -277,106 +255,102 @@ function fallbackResponse(
   history: ChatMessage[],
   notifications?: string,
 ): AIChatResult {
-  const input = normalizePrompt(userMessage);
-  const actions: AIAction[] = [];
-  let message = "";
-  const { state, data } = getMenuState(history);
+  const trimmed = userMessage.trim();
+  const menuState = getMenuState(history);
 
-  if (input === "0" || input.includes("رجوع") || input.includes("القائمة")) {
+  if (trimmed === "0" || trimmed === "رجوع" || trimmed === "الرئيسية") {
     return {
       message: buildMainMenu(ctx, notifications),
-      actions: [],
+      actions: [{ type: "none" }],
       source: "fallback",
     };
   }
 
-  if (state === "3a") {
-    const code = input.toUpperCase().replace(/\s/g, "");
-    const allQuizzes = ctx.courses.flatMap((c) =>
-      c.quizResults
-        .filter((q) => q.date)
-        .map((q) => ({
-          quizId: q.quizId,
-          code: q.quizId.slice(-8).toUpperCase(),
-          percentage: q.percentage,
-          subject: c.subject,
-        })),
-    );
-    const selected = allQuizzes.find(
-      (q) => q.code === code || (code.length >= 4 && q.code.includes(code)),
-    );
-    if (selected) {
-      message = `تم اختيار كويز (${selected.subject})\nدرجتك: ${Math.round(selected.percentage)}%\n\nاكتب سبب التعديل بالتفصيل (20 حرف على الأقل)\n\nاكتب 0 للرجوع\n\n[م:3b:${selected.quizId}]`;
-    } else {
-      message = `كود غلط. اكتب الكود من القائمة.\n\nاكتب 0 للرجوع\n\n[م:3a]`;
-    }
-    return { message, actions, source: "fallback" };
+  if (trimmed === "1") {
+    return {
+      message: buildPerformanceAnalysis(ctx),
+      actions: [{ type: "none" }],
+      source: "fallback",
+    };
   }
 
-  if (state === "3b" && data) {
-    if (input.length < 20) {
-      message = `السبب قصير (${input.length}/20). اكتب تفاصيل أكتر.\n\nاكتب 0 للرجوع\n\n[م:3b:${data}]`;
-    } else {
-      actions.push({
-        type: "create_grade_request",
-        payload: { quizId: data, reason: input },
-      });
-      message = `تم إرسال طلب تعديل الدرجة.\n\nاكتب 5 لمتابعة الحالة.\n\nاكتب 0 للرجوع\n\n[م:menu]`;
-    }
-    return { message, actions, source: "fallback" };
+  if (trimmed === "2") {
+    return {
+      message: buildTrainingPlan(ctx),
+      actions: [{ type: "none" }],
+      source: "fallback",
+    };
   }
 
-  if (state === "4a") {
-    if (input.length < 10) {
-      message = `اكتب تفاصيل أكتر (${input.length}/10).\n\nاكتب 0 للرجوع\n\n[م:4a]`;
+  if (trimmed === "3") {
+    const activeQuizzes = ctx.courses.flatMap((c) =>
+      c.quizResults.map((q) => `• ${q.quizTitle} (${q.score}/${q.totalQ})`),
+    );
+    let msg = `طلب تعديل درجة كويز:\n\n`;
+    if (activeQuizzes.length > 0) {
+      msg += `الكويزات الأخيرة:\n${activeQuizzes.slice(0, 5).join("\n")}\n\nاكتب اسم الكويز ورقم السؤال والسبب.\n`;
     } else {
-      const courseId = ctx.courses[0]?.id;
-      actions.push({
-        type: "create_ticket",
-        payload: {
-          title: `شكوى: ${input.slice(0, 50)}`,
-          description: input,
-          type: "complaint",
-          priority: "normal",
-          courseId,
+      msg += `اكتب اسم الكويز والسبب لتسجيل الطلب للمعلم.\n`;
+    }
+    msg += `\nاكتب 0 للرجوع\n\n[م:3]`;
+    return {
+      message: msg,
+      actions: [{ type: "none" }],
+      source: "fallback",
+    };
+  }
+
+  if (trimmed === "4") {
+    return {
+      message: `تقديم شكوى أو ملاحظة:\n\nاكتب تفاصيل المشكلة وسوف يتم إرسالها لجدول الدعم.\n\nاكتب 0 للرجوع\n\n[م:4]`,
+      actions: [{ type: "none" }],
+      source: "fallback",
+    };
+  }
+
+  if (trimmed === "5") {
+    return {
+      message: `جاري فحص حالة طلباتك...\n\n[م:5]`,
+      actions: [{ type: "show_insights", payload: { checkStatus: true } }],
+      source: "fallback",
+    };
+  }
+
+  if (menuState.state === "3") {
+    return {
+      message: `تم استلام طلب تعديل الدرجة بنجاح! سيتم مراجعته من المدرس.\n\nاكتب 0 للرجوع\n\n[م:menu]`,
+      actions: [
+        {
+          type: "create_grade_request",
+          payload: { reason: trimmed },
         },
-      });
-      message = `تم تسجيل شكواك.\n\nاكتب 5 لمتابعة الحالة.\n\nاكتب 0 للرجوع\n\n[م:menu]`;
-    }
-    return { message, actions, source: "fallback" };
+      ],
+      source: "fallback",
+    };
   }
 
-  const choice = input.replace(/[^\d]/g, "");
-  const isPerf =
-    choice === "1" ||
-    /أداء|اداء|حلل|تحليل|درج|نتيج|score|grade|performance/i.test(input);
-  const isPlan =
-    choice === "2" ||
-    /خطة|خطه|جدول|اذاكر|مذاكرة|plan|study/i.test(input);
-  const isEdit =
-    choice === "3" || /تعديل.*درج|grade.*fix|درجة غلط/i.test(input);
-  const isComplaint =
-    choice === "4" || /شكوى|complaint|report/i.test(input);
-  const isStatus =
-    choice === "5" || /حالة.*طلب|status|طلباتي/i.test(input);
-
-  if (isPerf) message = buildPerformanceAnalysis(ctx);
-  else if (isPlan) message = buildStudyPlan(ctx);
-  else if (isEdit) {
-    const { list, hasQuizzes } = buildQuizList(ctx);
-    message = hasQuizzes
-      ? `طلب تعديل درجة\n\nكويزاتك:\n${list}\n\nاكتب كود الكويز:\n\nاكتب 0 للرجوع\n\n[م:3a]`
-      : `مفيش كويزات محلولة لسه.\n\n${buildMainMenu(ctx)}`;
-  } else if (isComplaint) {
-    message = `تقديم شكوى\n\nاكتب تفاصيل شكواك:\n\nاكتب 0 للرجوع\n\n[م:4a]`;
-  } else if (isStatus) {
-    actions.push({ type: "show_insights", payload: { checkStatus: true } });
-    message = `جاري تحميل حالة طلباتك...\n\n[م:5]`;
-  } else {
-    message = buildMainMenu(ctx, notifications);
+  if (menuState.state === "4") {
+    return {
+      message: `تم تسجيل الشكوى بنجاح! فريق الدعم سيتواصل معك.\n\nاكتب 0 للرجوع\n\n[م:menu]`,
+      actions: [
+        {
+          type: "create_ticket",
+          payload: { title: "شكوى من المتعلم", description: trimmed },
+        },
+      ],
+      source: "fallback",
+    };
   }
 
-  return { message, actions, source: "fallback" };
+  return {
+    message: buildMainMenu(ctx, notifications),
+    actions: [{ type: "none" }],
+    source: "fallback",
+  };
+}
+
+function stripFallbackMarkers(text: string): string {
+  return text.replace(/\[م:[^\]]+\]/g, "").trim();
 }
 
 export async function chatWithAI(
@@ -406,7 +380,6 @@ export async function chatWithAI(
     }))
     .filter((m) => m.content.length > 0);
 
-  // Only sanitized payload may leave the server.
   const messages = buildOutboundProviderMessages({
     systemPrompt: SYSTEM_PROMPT,
     userMessage,
@@ -415,13 +388,19 @@ export async function chatWithAI(
     knownNames,
   });
 
-  let result = await callBackup(messages);
+  // 1. Try Gemini provider (uses GEMINI_API_KEY, GEMINI_API_KEY_1, GEMINI_API_KEY_2, AI_BACKUP_API_KEY, AI_PRIMARY_API_KEY)
+  let result = await callGeminiProvider(messages);
   if (result) return result;
 
+  // 2. Try OpenAI provider if OPENAI_API_KEY exists
+  result = await callOpenAIProvider(messages);
+  if (result) return result;
+
+  // 3. Try Anthropic provider if ANTHROPIC_API_KEY / AI_PRIMARY_API_KEY exists
   result = await callPrimary(messages);
   if (result) return result;
 
-  // Deterministic local fallback — never requires external providers.
+  // 4. Deterministic local fallback menu when no API keys are present
   return fallbackResponse(userMessage, studentContext, history, notifications);
 }
 
@@ -441,7 +420,7 @@ export async function analyzeQuizAnswer(
     },
     { role: "user", content: prompt },
   ];
-  const result = await callPrimary(messages);
+  const result = (await callGeminiProvider(messages)) || (await callPrimary(messages));
   if (result?.message) {
     try {
       const match = result.message.match(/\{[\s\S]*\}/);
@@ -475,7 +454,6 @@ export async function generateInsights(
     confidence: number;
   }>
 > {
-  // Local-only insights — no external egress of learner history.
   const insights: Array<{
     type: string;
     category: string;

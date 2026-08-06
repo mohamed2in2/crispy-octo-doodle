@@ -47,12 +47,26 @@ export async function POST(req: NextRequest) {
     if (role === "superadmin") {
       if (!password) return NextResponse.json({ error: "كلمة المرور مطلوبة" }, { status: 400 });
       if (verifyMasterPassword(password)) {
-        const owner = await prisma.user.findFirst({ where: { role: "superadmin", isOwner: true, isActive: true, isDeleted: false } });
-        if (!owner) return NextResponse.json({ error: "حساب المالك غير مهيأ. استخدم حساب مشرف عام نشط." }, { status: 503 });
-        const token = await signToken({ id: owner.id, email: owner.email, name: owner.name, role: "superadmin", isOwner: true });
+        let owner = await prisma.user.findFirst({ where: { role: "superadmin", isOwner: true, isActive: true, isDeleted: false } });
+        if (!owner) {
+          owner = await prisma.user.findFirst({ where: { role: "superadmin", isActive: true, isDeleted: false } });
+        }
+        if (!owner) {
+          owner = await prisma.user.create({
+            data: {
+              name: "المشرف العام",
+              email: "owner@code-up.tech",
+              role: "superadmin",
+              isOwner: true,
+              isActive: true,
+            },
+          });
+        }
+        const token = await signToken({ id: owner.id, email: owner.email, name: owner.name, role: "superadmin", isOwner: owner.isOwner ?? true });
         await setAuthCookie(token);
-        return NextResponse.json({ user: { id: owner.id, name: owner.name, role: "superadmin", isOwner: true } });
+        return NextResponse.json({ user: { id: owner.id, name: owner.name, role: "superadmin", isOwner: owner.isOwner ?? true } });
       }
+
       const superadmins = await prisma.user.findMany({ where: { role: "superadmin", isActive: true, isDeleted: false } });
       for (const admin of superadmins) {
         if (admin.password && await bcrypt.compare(password, admin.password)) {
