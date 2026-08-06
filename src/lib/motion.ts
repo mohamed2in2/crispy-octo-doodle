@@ -51,7 +51,7 @@ export function useCountUp(target: number, suffix = "") {
         controls = animate(0, target, {
           duration: 1.6,
           ease: [0.16, 1, 0.3, 1],
-          onUpdate: (v) => {
+          onUpdate: (v: number) => {
             el.textContent = fmt(Math.round(v));
           },
         });

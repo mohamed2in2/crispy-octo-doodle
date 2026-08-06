@@ -217,7 +217,7 @@ function CircuitTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdap
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -274,7 +274,7 @@ function CircuitTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdap
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 1400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);
@@ -429,7 +429,7 @@ function AnglePickerGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
     setHitResult(null);
     setQIdx(idx);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {

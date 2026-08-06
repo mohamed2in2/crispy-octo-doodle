@@ -79,7 +79,7 @@ export default async function AccountHomePage() {
 			unreadCount={notifications.unreadCount}
 		>
 			{notifications.unavailable ? (
-				<Band tone="warning" text={HOME.unavailable} />
+				<Band tone="info" text={HOME.unavailable} />
 			) : null}
 
 			{/*

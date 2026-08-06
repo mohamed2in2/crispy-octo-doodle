@@ -244,7 +244,7 @@ function DynamicGameEngine({ subject, genQuestion, renderQ, onFinish, accentGrad
       setLevel(levelRef.current);
     }
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 900);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);

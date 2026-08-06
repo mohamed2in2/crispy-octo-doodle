@@ -10,7 +10,7 @@ export class PromptOptimizer {
     const originalTokens = Math.ceil(rawPrompt.length / 4);
 
     // Remove redundant whitespace, duplicate newlines, and trailing lines
-    let optimized = rawPrompt
+    const optimized = rawPrompt
       .replace(/\n{3,}/g, "\n\n")
       .replace(/[ \t]+/g, " ")
       .trim();

@@ -294,7 +294,7 @@ function genGeneticsQ(level: number, usedQuestions: Set<string>): GeneticsQuesti
           [a2[0] + a1[0], a2[1] + a1[0]],
           [a2[0] + a1[1], a2[1] + a1[1]]
         ].map(row => row.map(cell => {
-          let alleles = cell.match(/X.|Y/g) || [];
+          const alleles = cell.match(/X.|Y/g) || [];
           alleles.sort((x, y) => {
             if (x === "Y") return 1;
             if (y === "Y") return -1;
@@ -578,7 +578,7 @@ function PunnettSquareGame({ onFinish, isAdaptive }: { onFinish: () => void; isA
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -634,7 +634,7 @@ function PunnettSquareGame({ onFinish, isAdaptive }: { onFinish: () => void; isA
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 2000);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);
@@ -879,7 +879,7 @@ function CellTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdaptiv
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -936,7 +936,7 @@ function CellTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdaptiv
     }
 
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 1400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);

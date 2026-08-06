@@ -232,7 +232,7 @@ function DynamicMCQEngine<T extends { answer: string; choices: string[] }>({
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [subject, genQ, onFinish]);
 
   const start = () => {
@@ -289,7 +289,7 @@ function DynamicMCQEngine<T extends { answer: string; choices: string[] }>({
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 900);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);

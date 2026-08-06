@@ -42,7 +42,7 @@ export function PlanDetailsTab({ planId, onDelete }: { planId: string; onDelete?
       .then(data => {
         if (data.plan) {
           setPlan(data.plan);
-          let desc = data.plan.description || "";
+          const desc = data.plan.description || "";
           let parsed: string[] = [];
           if (desc.startsWith('[') && desc.endsWith(']')) {
             try {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Navbar } from "@/components/ui/Navbar";
-import { Footer } from "@/components/ui/Footer";
+import { ClassicShell } from "@/components/classic/ClassicShell";
+import { SHELL } from "@/components/classic/copy";
 import { EDUCATIONAL_STAGES } from "@/types";
 import { fetchMeWithRetry } from "@/lib/fetch-me";
 import { getIQData, SKILL_LABELS, SKILL_COLORS, getIQLevel, type IQData, type IQSkillName } from "@/lib/iq-system";
@@ -367,7 +367,26 @@ export default function AccountPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats, courses, results, devices, wrongQuestions, balance]);
 
-  const go = (s: string) => { setSection(s); loadSection(s); setResultPage(1); };
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const sec = searchParams.get("section") || searchParams.get("tab");
+    if (sec && SECTIONS.some((item) => item.id === sec)) {
+      setSection(sec);
+      loadSection(sec);
+    }
+  }, [searchParams, loadSection]);
+
+  const go = (s: string) => {
+    setSection(s);
+    loadSection(s);
+    setResultPage(1);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("section", s);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -433,25 +452,22 @@ export default function AccountPage() {
 
   /* ── Loading states ── */
   if (!resolved) return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      <Navbar user={null} />
-      <div className="flex-1 flex items-center justify-center">
+    <ClassicShell title={SHELL.account} balanceLabel="0 جنيه">
+      <div className="flex-1 flex items-center justify-center py-20">
         <div className="w-12 h-12 border-4 border-[var(--brand)] border-t-transparent rounded-full animate-spin" />
       </div>
-    </div>
+    </ClassicShell>
   );
   if (!user) return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      <Navbar user={null} />
-      <div className="flex-1 flex items-center justify-center px-4 text-center">
+    <ClassicShell title={SHELL.account} balanceLabel="0 جنيه">
+      <div className="flex-1 flex items-center justify-center px-4 text-center py-20">
         <div>
           <div className="text-5xl mb-4">🔒</div>
           <h2 style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 22, color: "var(--ink)", marginBottom: 16 }}>يجب تسجيل الدخول أولاً</h2>
           <Link href="/login" className="inline-block no-underline rounded-[12px] text-white hover:opacity-90" style={{ padding: "12px 28px", background: "var(--brand)", fontWeight: 700 }}>تسجيل الدخول</Link>
         </div>
       </div>
-      <Footer />
-    </div>
+    </ClassicShell>
   );
 
   /* ── Pagination helpers ── */
@@ -463,10 +479,10 @@ export default function AccountPage() {
     ? (wrongFilter === "all" ? wrongQuestions.questions : (wrongQuestions.bySubject[wrongFilter] ?? []))
     : [];
 
-  return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)", fontFamily: "var(--font-body)" }}>
-      <Navbar user={{ name: user.name ?? "", role: user.role }} />
+  const balancePounds = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format((balance ?? 0) / 100);
 
+  return (
+    <ClassicShell title={SHELL.account} balanceLabel={`${balancePounds} ${SHELL.currency}`}>
       {answerModal && <AnswerModal resultId={answerModal.id} quizTitle={answerModal.title} onClose={() => setAnswerModal(null)} />}
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 md:py-10">
@@ -529,7 +545,7 @@ export default function AccountPage() {
             </div>
             <nav style={{ padding: "8px 8px" }}>
               {filteredSections.map(s => (
-                <button key={s.id} onClick={() => go(s.id)} className="w-full flex items-center gap-3 cursor-pointer border-none transition-colors rounded-[10px]"
+                <button key={s.id} type="button" onClick={() => go(s.id)} className="w-full flex items-center gap-3 cursor-pointer border-none transition-colors rounded-[10px]"
                   style={{
                     padding: "10px 12px", marginBottom: 2, textAlign: "right", fontFamily: "var(--font-body)",
                     background: section === s.id ? "rgba(20,184,166,0.1)" : "transparent",
@@ -542,7 +558,7 @@ export default function AccountPage() {
               ))}
             </nav>
             <div style={{ padding: "8px 8px", borderTop: "1px solid var(--border)" }}>
-              <button onClick={handleSignOut} disabled={signingOut} className="w-full flex items-center justify-between gap-3 cursor-pointer border-none rounded-[10px] transition-colors"
+              <button type="button" onClick={handleSignOut} disabled={signingOut} className="w-full flex items-center justify-between gap-3 cursor-pointer border-none rounded-[10px] transition-colors"
                 style={{ padding: "10px 12px", background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 700, fontSize: 13.5, fontFamily: "var(--font-body)" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                 {signingOut ? "جارٍ الخروج..." : "تسجيل الخروج"}
@@ -569,7 +585,7 @@ export default function AccountPage() {
               {/* Horizontal scrollable tabs */}
               <div className="flex overflow-x-auto gap-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
                 {filteredSections.map(s => (
-                  <button key={s.id} onClick={() => go(s.id)}
+                  <button key={s.id} type="button" onClick={() => go(s.id)}
                     className="shrink-0 flex flex-col items-center gap-1 cursor-pointer border-none rounded-[12px] transition-colors"
                     style={{
                       padding: "10px 14px",
@@ -1059,14 +1075,14 @@ export default function AccountPage() {
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {[
                               { id: "vf_cash", label: "فودافون كاش", color: "#E60000", disabled: false },
-                              { id: "or_cash", label: "أورانج كاش", color: "#FF7900", disabled: false },
+                              { id: "or_cash", label: "أورانج كاش (معطلة)", color: "#FF7900", disabled: true },
                               { id: "et_cash", label: "اتصالات كاش (e&)", color: "#76B900", disabled: false },
                             ].map(m => (
                               <button key={m.id} type="button" onClick={() => {
-                                setSelectedWalletMethod(m.id as any);
                                 if (m.disabled) {
-                                  setWalletMsg("⚠️ وسيلة اتصالات كاش معطلة حالياً من مزود الخدمة — نوصي باستخدام فودافون كاش أو فوري كشك");
+                                  setWalletMsg("⚠️ محفظة أورانج كاش معطلة حالياً بناءً على طلب الإدارة — نوصي باستخدام فودافون كاش، اتصالات كاش، أو فوري");
                                 } else {
+                                  setSelectedWalletMethod(m.id as any);
                                   setWalletMsg("");
                                 }
                               }}
@@ -1472,7 +1488,6 @@ export default function AccountPage() {
           </div>
         </div>
       </main>
-      <Footer />
-    </div>
+    </ClassicShell>
   );
 }

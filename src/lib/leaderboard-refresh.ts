@@ -26,24 +26,28 @@ interface AdminRow {
   age: number | null;
 }
 
+interface LeaderboardUser extends AdminRow {
+  pointsUpdatedAt: Date | null;
+  lastLoginDate: Date | null;
+}
+
 export function getCompetitionTier(stage: string | null): string[] {
   if (!stage) return [];
   if (stage.startsWith("primary")) return ["primary_4", "primary_5", "primary_6"];
-  if (stage.startsWith("prep"))    return ["prep_1", "prep_2", "prep_3"];
-  if (stage.startsWith("sec"))     return ["sec_1", "sec_2"];
+  if (stage.startsWith("prep")) return ["prep_1", "prep_2", "prep_3"];
+  if (stage.startsWith("sec")) return ["sec_1", "sec_2"];
   return [];
 }
 
 export async function refreshLeaderboard(force = false) {
   const now = new Date();
   const lockKey = "leaderboard_lock";
-  const lockTimeoutMs = 5 * 60 * 1000; // 5 minutes
+  const lockTimeoutMs = 5 * 60 * 1000;
   const cutoffTime = new Date(now.getTime() - lockTimeoutMs);
 
   console.log(`[${now.toISOString()}] 🔄 Leaderboard refresh check initiated (force=${force})...`);
 
   if (!force) {
-    // Ensure the lock row exists
     await prisma.leaderboardCache.upsert({
       where: { key: lockKey },
       update: {},
@@ -54,7 +58,6 @@ export async function refreshLeaderboard(force = false) {
       },
     });
 
-    // Attempt to acquire lock atomically
     const affected = await prisma.$executeRaw`
       UPDATE "LeaderboardCache"
       SET "updatedAt" = ${now}
@@ -70,8 +73,7 @@ export async function refreshLeaderboard(force = false) {
   }
 
   try {
-    // Fetch all student users
-    const users = await prisma.user.findMany({
+    const users: LeaderboardUser[] = await prisma.user.findMany({
       where: { role: "student" },
       select: {
         id: true,
@@ -90,92 +92,83 @@ export async function refreshLeaderboard(force = false) {
 
     console.log(`[${new Date().toISOString()}] Retrieved ${users.length} student users for ranking computation.`);
 
-    // Helper functions for sorting
-    const getPointsTime = (u: any) => u.pointsUpdatedAt ? new Date(u.pointsUpdatedAt).getTime() : 0;
-    const getStreakTime = (u: any) => u.lastLoginDate ? new Date(u.lastLoginDate).getTime() : 0;
+    const getPointsTime = (user: LeaderboardUser) => (user.pointsUpdatedAt ? new Date(user.pointsUpdatedAt).getTime() : 0);
+    const getStreakTime = (user: LeaderboardUser) => (user.lastLoginDate ? new Date(user.lastLoginDate).getTime() : 0);
 
-    const sortPoints = (a: any, b: any) => {
+    const sortPoints = (a: LeaderboardUser, b: LeaderboardUser) => {
       if (b.points !== a.points) {
         return b.points - a.points;
       }
       return getPointsTime(a) - getPointsTime(b);
     };
 
-    const sortStreaks = (a: any, b: any) => {
+    const sortStreaks = (a: LeaderboardUser, b: LeaderboardUser) => {
       if (b.loginStreak !== a.loginStreak) {
         return b.loginStreak - a.loginStreak;
       }
       return getStreakTime(b) - getStreakTime(a);
     };
 
-    // Helper for mapping to student view (no phone/email/parentPhone/age)
-    const mapToStudent = (u: any): StudentPointsRow => ({
-      id: u.id,
-      name: u.name,
-      points: u.points,
-      educationalStage: u.educationalStage,
+    const mapToStudent = (user: LeaderboardUser): StudentPointsRow => ({
+      id: user.id,
+      name: user.name,
+      points: user.points,
+      educationalStage: user.educationalStage,
     });
 
-    const mapToStreakStudent = (u: any): StudentStreakRow => ({
-      id: u.id,
-      name: u.name,
-      loginStreak: u.loginStreak,
-      educationalStage: u.educationalStage,
+    const mapToStreakStudent = (user: LeaderboardUser): StudentStreakRow => ({
+      id: user.id,
+      name: user.name,
+      loginStreak: user.loginStreak,
+      educationalStage: user.educationalStage,
     });
 
-    const mapToAdmin = (u: any): AdminRow => ({
-      id: u.id,
-      name: u.name,
-      points: u.points,
-      loginStreak: u.loginStreak,
-      educationalStage: u.educationalStage,
-      phone: u.phone,
-      email: u.email,
-      parentPhone: u.parentPhone,
-      age: u.age,
+    const mapToAdmin = (user: LeaderboardUser): AdminRow => ({
+      id: user.id,
+      name: user.name,
+      points: user.points,
+      loginStreak: user.loginStreak,
+      educationalStage: user.educationalStage,
+      phone: user.phone,
+      email: user.email,
+      parentPhone: user.parentPhone,
+      age: user.age,
     });
 
-    // Group users into tiers
-    const primaryUsers = users.filter(u => getCompetitionTier(u.educationalStage).length > 0 && u.educationalStage?.startsWith("primary"));
-    const prepUsers    = users.filter(u => getCompetitionTier(u.educationalStage).length > 0 && u.educationalStage?.startsWith("prep"));
-    const secUsers     = users.filter(u => getCompetitionTier(u.educationalStage).length > 0 && u.educationalStage?.startsWith("sec"));
-    const allUsers     = users; // no filter
+    const primaryUsers = users.filter((user) => getCompetitionTier(user.educationalStage).length > 0 && user.educationalStage?.startsWith("primary"));
+    const prepUsers = users.filter((user) => getCompetitionTier(user.educationalStage).length > 0 && user.educationalStage?.startsWith("prep"));
+    const secUsers = users.filter((user) => getCompetitionTier(user.educationalStage).length > 0 && user.educationalStage?.startsWith("sec"));
+    const allUsers = users;
 
-    // Compute top 10 lists
-    // points top 10
-    const topStudentsAdmin = allUsers.filter(u => u.points > 0).sort(sortPoints).slice(0, 10).map(mapToAdmin);
-    const topStudentsAll = allUsers.filter(u => u.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
-    const topStudentsPrimary = primaryUsers.filter(u => u.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
-    const topStudentsPrep = prepUsers.filter(u => u.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
-    const topStudentsSec = secUsers.filter(u => u.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
+    const topStudentsAdmin = allUsers.filter((user) => user.points > 0).sort(sortPoints).slice(0, 10).map(mapToAdmin);
+    const topStudentsAll = allUsers.filter((user) => user.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
+    const topStudentsPrimary = primaryUsers.filter((user) => user.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
+    const topStudentsPrep = prepUsers.filter((user) => user.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
+    const topStudentsSec = secUsers.filter((user) => user.points > 0).sort(sortPoints).slice(0, 10).map(mapToStudent);
 
-    // streak top 10
-    const topStreakersAdmin = allUsers.filter(u => u.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToAdmin);
-    const topStreakersAll = allUsers.filter(u => u.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
-    const topStreakersPrimary = primaryUsers.filter(u => u.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
-    const topStreakersPrep = prepUsers.filter(u => u.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
-    const topStreakersSec = secUsers.filter(u => u.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
+    const topStreakersAdmin = allUsers.filter((user) => user.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToAdmin);
+    const topStreakersAll = allUsers.filter((user) => user.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
+    const topStreakersPrimary = primaryUsers.filter((user) => user.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
+    const topStreakersPrep = prepUsers.filter((user) => user.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
+    const topStreakersSec = secUsers.filter((user) => user.loginStreak > 0).sort(sortStreaks).slice(0, 10).map(mapToStreakStudent);
 
-    // Calculate ranks for all student users
     const userRanks: Record<string, { pointsRank: number; streakRank: number }> = {};
 
-    // For points rank: sort each tier's entire list
     const sortedPointsAll = [...allUsers].sort(sortPoints);
     const sortedPointsPrimary = [...primaryUsers].sort(sortPoints);
     const sortedPointsPrep = [...prepUsers].sort(sortPoints);
     const sortedPointsSec = [...secUsers].sort(sortPoints);
 
-    // For streak rank: sort each tier's entire list
     const sortedStreaksAll = [...allUsers].sort(sortStreaks);
     const sortedStreaksPrimary = [...primaryUsers].sort(sortStreaks);
     const sortedStreaksPrep = [...prepUsers].sort(sortStreaks);
     const sortedStreaksSec = [...secUsers].sort(sortStreaks);
 
-    for (const u of allUsers) {
+    for (const user of allUsers) {
       let tierPointsList = sortedPointsAll;
       let tierStreaksList = sortedStreaksAll;
 
-      const stage = u.educationalStage;
+      const stage = user.educationalStage;
       if (stage) {
         if (stage.startsWith("primary")) {
           tierPointsList = sortedPointsPrimary;
@@ -189,16 +182,10 @@ export async function refreshLeaderboard(force = false) {
         }
       }
 
-      // Points rank is index + 1 in the sorted points list (stable total ordering)
-      const pointsRank = tierPointsList.findIndex(x => x.id === u.id) + 1;
+      const pointsRank = tierPointsList.findIndex((entry) => entry.id === user.id) + 1;
+      const streakRank = user.loginStreak > 0 ? tierStreaksList.filter((entry) => entry.loginStreak > user.loginStreak).length + 1 : 0;
 
-      // Streak rank is count of students with strictly higher streak + 1
-      let streakRank = 0;
-      if (u.loginStreak > 0) {
-        streakRank = tierStreaksList.filter(x => x.loginStreak > u.loginStreak).length + 1;
-      }
-
-      userRanks[u.id] = { pointsRank, streakRank };
+      userRanks[user.id] = { pointsRank, streakRank };
     }
 
     const computedData = {
@@ -220,7 +207,6 @@ export async function refreshLeaderboard(force = false) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Save to Cache Table
     await prisma.leaderboardCache.upsert({
       where: { key: "leaderboard_data" },
       update: {
@@ -240,7 +226,6 @@ export async function refreshLeaderboard(force = false) {
     throw error;
   } finally {
     if (!force) {
-      // Release lock by setting updatedAt to a very old date (unlocked)
       await prisma.leaderboardCache.update({
         where: { key: lockKey },
         data: { updatedAt: new Date(0) },

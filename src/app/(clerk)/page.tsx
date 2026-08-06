@@ -413,15 +413,6 @@ export default async function HomePage() {
 						))}
 					</ol>
 				</section>
-
-				{/* Teachers are the supply side; the page should recruit them too. */}
-				<section className="c-join">
-					<div>
-						<h2 className="c-join__title">{LANDING.joinTitle}</h2>
-						<p className="c-join__text">{LANDING.joinText}</p>
-					</div>
-					<LinkButton href="/signup" label={LANDING.joinCta} inline />
-				</section>
 			</main>
 
 			<SiteFooter />

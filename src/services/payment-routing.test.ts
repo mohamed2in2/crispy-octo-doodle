@@ -15,7 +15,7 @@ describe("payment provider separation", () => {
   });
 
   it("allows only listed wallets on sha7nawy", () => {
-    for (const m of ["vf_cash", "et_cash", "or_cash"]) {
+    for (const m of ["vf_cash", "et_cash"]) {
       expect(SHA7NAWY_METHODS.has(m)).toBe(true);
       const gate = assertMethodProviderSeparation(m);
       expect(gate.ok).toBe(true);

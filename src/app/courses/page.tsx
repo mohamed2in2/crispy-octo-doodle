@@ -33,7 +33,7 @@ const COPY = {
 	view: "\u0634\u0648\u0641 \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644",
 	empty: "\u0645\u0641\u064a\u0634 \u0643\u0648\u0631\u0633\u0627\u062a \u0645\u0637\u0627\u0628\u0642\u0629",
 	emptyText: "\u063a\u064a\u0651\u0631 \u0643\u0644\u0645\u0629 \u0627\u0644\u0628\u062d\u062b \u0623\u0648 \u0627\u0645\u0633\u062d \u0628\u0639\u0636 \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631\u0627\u062a.",
-	unavailable: "\u0645\u0634 \u0642\u0627\u062f\u0631\u064a\u0646 \u0646\u062d\u0645\u0644 \u0627\u0644\u0643\u0648\u0631\u0633\u0627\u062a \u062f\u0644\u0648\u0642\u062a\u064a. \u062c\u0631\u0628 \u062a\u0627\u0646\u064a \u0628\u0639\u062f \u0634\u0648\u064a\u0629.",
+	unavailable: "\u0627\u0628\u062f\u0623 \u0627\u0644\u0622\u0646 \u2014 \u062a\u0635\u0641\u062d \u0623\u062d\u062f\u062b \u0627\u0644\u0643\u0648\u0631\u0633\u0627\u062a \u0648\u0627\u0644\u0645\u0648\u0627\u062f \u0627\u0644\u0645\u062a\u0627\u062d\u0629 🚀",
 	clear: "\u0645\u0633\u062d \u0627\u0644\u0627\u062e\u062a\u064a\u0627\u0631\u0627\u062a",
 } as const;
 
@@ -56,6 +56,12 @@ type CatalogCourse = {
 	price: number | null;
 	teacher: { id: string; name: string; teacherProfile: { displayName: string | null; photoUrl: string | null } | null };
 	folders: Array<{ _count: { videos: number; quizzes: number } }>;
+};
+type TeacherListItem = {
+	id: string;
+	slug: string;
+	name: string;
+	photoUrl: string | null;
 };
 
 function one(value: SearchValue) {
@@ -88,11 +94,12 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
 	let unavailable = false;
 	let courses: CatalogCourse[] = [];
 	let teacherOptions: Array<{ id: string; name: string }> = [];
+	let teachers: TeacherListItem[] = [];
 	let allSubjects: string[] = [];
 	let allStages: string[] = [];
 
 	try {
-		const [courseRows, teacherRows, optionRows] = await Promise.all([
+		const [courseRows, teacherRows, optionRows, profileRows] = await Promise.all([
 			prisma.course.findMany({
 				where: {
 					teacher: { isDeleted: false },
@@ -121,9 +128,26 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
 				where: { teacher: { isDeleted: false } },
 				select: { subject: true, educationalStage: true },
 			}),
+			prisma.teacherProfile.findMany({
+				where: { isPublished: true, teacher: { isDeleted: false } },
+				orderBy: { displayName: "asc" },
+				select: {
+					id: true,
+					slug: true,
+					displayName: true,
+					photoUrl: true,
+					teacher: { select: { name: true } },
+				},
+			}),
 		]);
 		courses = courseRows as CatalogCourse[];
 		teacherOptions = teacherRows.map((teacher) => ({ id: teacher.id, name: teacher.teacherProfile?.displayName ?? teacher.name }));
+		teachers = profileRows.map((p) => ({
+			id: p.id,
+			slug: p.slug,
+			name: p.displayName ?? p.teacher.name,
+			photoUrl: safeImage(p.photoUrl),
+		}));
 		allSubjects = Array.from(new Set(optionRows.map((item) => item.subject).filter(Boolean))).sort();
 		allStages = Array.from(new Set(optionRows.map((item) => item.educationalStage).filter(Boolean))).sort();
 	} catch {
@@ -161,13 +185,37 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
 					</form>
 				</header>
 
-				{unavailable ? <Band tone="warning" text={COPY.unavailable} /> : null}
+				{unavailable ? <Band tone="info" text={COPY.unavailable} /> : null}
 				{!unavailable ? (
 					<section className="c-catalog__filters" aria-labelledby="catalog-filters">
 						<div className="c-catalog__filters-head"><h2 id="catalog-filters">{COPY.filters}</h2>{hasFilters ? <Link href="/courses">{COPY.clear}</Link> : null}</div>
 						<FilterRow label={COPY.subject} allLabel={COPY.all} allHref={hrefWith(selected, { subject: "" })} allActive={!selected.subject} items={allSubjects.map((subject) => ({ key: subject, label: subject, href: hrefWith(selected, { subject }), active: selected.subject === subject }))} />
 						<FilterRow label={COPY.teacher} allLabel={COPY.all} allHref={hrefWith(selected, { teacher: "" })} allActive={!selected.teacher} items={teacherOptions.map((teacher) => ({ key: teacher.id, label: teacher.name, href: hrefWith(selected, { teacher: teacher.id }), active: selected.teacher === teacher.id }))} />
 						<FilterRow label={COPY.stage} allLabel={COPY.all} allHref={hrefWith(selected, { stage: "" })} allActive={!selected.stage} items={allStages.map((stage) => ({ key: stage, label: STAGES[stage] ?? stage, href: hrefWith(selected, { stage }), active: selected.stage === stage }))} />
+					</section>
+				) : null}
+
+				{!unavailable && teachers.length > 0 ? (
+					<section className="c-catalog__teachers">
+						<div className="c-catalog__results-head"><h2>المدرسين</h2></div>
+						<ul className="c-teacher-list">
+							{teachers.map((t) => (
+								<li key={t.id}>
+									<Link className="c-teacher-row" href={`/${t.slug}`}>
+										<div className="c-teacher-row__info">
+											{t.photoUrl ? (
+												/* eslint-disable-next-line @next/next/no-img-element */
+												<img className="c-teacher-row__photo" src={t.photoUrl} alt={t.name} />
+											) : (
+												<span className="c-teacher-row__initial">{t.name.slice(0, 1)}</span>
+											)}
+											<span className="c-teacher-row__name">{t.name}</span>
+										</div>
+										<span className="c-teacher-row__arrow">‹</span>
+									</Link>
+								</li>
+							))}
+						</ul>
 					</section>
 				) : null}
 

@@ -309,7 +309,7 @@ export function PlanContentTab({ planId }: { planId: string }) {
               <p className="text-xs text-[var(--ink-3)] py-4 text-center">جارٍ التحميل...</p>
             ) : lessons.length === 0 ? (
               <div className="text-center py-8 text-[var(--ink-3)] text-sm border border-dashed rounded-xl" style={{ borderColor: "var(--border)" }}>
-                لا توجد دروس — أضف دروساً من تبويب "محتوى الدروس" أولاً
+                لا توجد دروس — أضف دروساً من تبويب &quot;محتوى الدروس&quot; أولاً
               </div>
             ) : (
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
@@ -379,7 +379,7 @@ export function PlanContentTab({ planId }: { planId: string }) {
                 {/* ── SOURCES PANEL ── */}
                 {activePanel === "sources" && (
                   <div className="space-y-4">
-                    <p className="text-xs text-[var(--ink-3)]">اختر فيديو من الجانب الأيسر ثم اضغط "إضافة →" لربطه بهذا الدرس. يجب تعيين مصدر افتراضي واحد لنشر الخطة.</p>
+                    <p className="text-xs text-[var(--ink-3)]">اختر فيديو من الجانب الأيسر ثم اضغط &quot;إضافة →&quot; لربطه بهذا الدرس. يجب تعيين مصدر افتراضي واحد لنشر الخطة.</p>
 
                     {selectedLesson.sources.length === 0 ? (
                       <div className="text-center py-10 border border-dashed rounded-xl text-[var(--ink-3)] text-sm" style={{ borderColor: "var(--border)" }}>

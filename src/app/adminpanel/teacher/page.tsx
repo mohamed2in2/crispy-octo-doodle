@@ -1487,7 +1487,7 @@ export default function TeacherDashboardPage() {
                             />
                           </span>
                           <div className="flex-1 text-right">
-                            <div>تفعيل زر "تثبيت الكورس" 📲</div>
+                            <div>تفعيل زر &quot;تثبيت الكورس&quot; 📲</div>
                             <div className="text-xs font-normal mt-0.5" style={{ color: "var(--ink-3)" }}>
                               {pricingSettings.allowDirectInstall
                                 ? "الطلاب يرون زر تثبيت مباشر بدون كود"
