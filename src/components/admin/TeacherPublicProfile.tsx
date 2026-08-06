@@ -360,7 +360,7 @@ export function TeacherPublicProfile() {
           </div>
           {!p.languagesEnabled && (
             <p className="text-[11px] text-amber-400 font-semibold px-1">
-              سيظهر للطلاب نص: "متاح للحجز باللغة العربية فقط (This teacher teaches Arabic only)"
+              سيظهر للطلاب نص: &quot;متاح للحجز باللغة العربية فقط (This teacher teaches Arabic only)&quot;
             </p>
           )}
         </div>

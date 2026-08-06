@@ -260,7 +260,7 @@ function WordDuelGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -317,7 +317,7 @@ function WordDuelGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapti
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 900);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);
@@ -486,7 +486,7 @@ function ErrorSniperGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -545,7 +545,7 @@ function ErrorSniperGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
     }
 
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 1600);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);
@@ -554,7 +554,7 @@ function ErrorSniperGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
     <div className="rounded-[20px] p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
       <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
       <p className="text-sm mb-2" style={{ color: "var(--ink)" }}>اضغط الكلمة الخاطئة نحوياً في الجملة</p>
-      <p className="text-xs mb-4" style={{ color: "var(--ink-3)" }}>أو اضغط "مفيش خطأ" إذا كانت الجملة سليمة</p>
+      <p className="text-xs mb-4" style={{ color: "var(--ink-3)" }}>أو اضغط &quot;مفيش خطأ&quot; إذا كانت الجملة سليمة</p>
       
       {!isAdaptive && (
         <div className="flex gap-2 justify-center mb-6">

@@ -9,6 +9,7 @@
  * distinguish it.
  */
 
+import { ClassicShell } from "@/components/classic/ClassicShell"
 import { AlertBand } from "@/components/ui/AlertBand"
 import { Card } from "@/components/ui/Card"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -17,28 +18,35 @@ import { ActionLink } from "@/components/financial/ActionLink"
 import { MarkAllReadButton } from "@/components/notifications/MarkAllReadButton"
 import { NOTIFICATIONS_COPY } from "@/lib/notifications/copy"
 import { getNotifications } from "@/lib/notifications/data"
+import { getWalletSummary } from "@/lib/financial/data"
+import { piastresToPounds } from "@/lib/financial/money"
 import { COPY } from "@/lib/financial/copy"
 import { formatTimestamp } from "@/lib/financial/status"
 
-// Notification state changes constantly and is per-user.
 export const dynamic = "force-dynamic"
 
+function money(p: number) {
+	return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(piastresToPounds(p))} \u062c\u0646\u064a\u0647`
+}
+
 export default async function NotificationsPage() {
-	const { notifications, unreadCount, unavailable } = await getNotifications()
+	const [{ notifications, unreadCount, unavailable }, wallet] = await Promise.all([
+		getNotifications(),
+		getWalletSummary(),
+	])
 
 	return (
-		<>
+		<ClassicShell
+			title={NOTIFICATIONS_COPY.title}
+			balanceLabel={money(wallet.balancePiastres)}
+			unreadCount={unreadCount}
+		>
 			<PageHeader
 				title={NOTIFICATIONS_COPY.title}
 				description={NOTIFICATIONS_COPY.description}
 				actions={<MarkAllReadButton unreadCount={unreadCount} />}
 			/>
 
-			{/*
-			 * A failed read is reported as a failure. Showing the "nothing here yet"
-			 * empty state would be a lie, and on a page that carries payment
-			 * confirmations that lie is expensive.
-			 */}
 			{unavailable ? (
 				<AlertBand
 					tone="danger"
@@ -66,11 +74,7 @@ export default async function NotificationsPage() {
 							description={formatTimestamp(notification.createdAt)}
 							headerAction={
 								notification.isRead ? null : (
-									<span
-										className="ds-badge ds-badge--warning"
-										// Announced to screen readers as part of the heading area
-										// rather than relying on the visual treatment.
-									>
+									<span className="ds-badge ds-badge--warning">
 										<span className="ds-badge__dot" aria-hidden="true" />
 										{NOTIFICATIONS_COPY.unread}
 									</span>
@@ -91,6 +95,6 @@ export default async function NotificationsPage() {
 					))}
 				</div>
 			)}
-		</>
+		</ClassicShell>
 	)
 }

@@ -672,7 +672,7 @@ export default function CourseProductPage() {
                           )}
                         </button>
                         {!user && <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}><button onClick={() => router.push(`/login?redirect_url=/courses/${courseId}`)} className="underline" style={{ color: "var(--brand)" }}>سجّل الدخول</button> أولاً</p>}
-                        <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}>يمكنك إضافة رصيد من قسم "رصيدي" في حسابك</p>
+                        <p className="text-xs text-center" style={{ color: "var(--ink-3)" }}>يمكنك إضافة رصيد من قسم &quot;رصيدي&quot; في حسابك</p>
                       </>
                     )}
 

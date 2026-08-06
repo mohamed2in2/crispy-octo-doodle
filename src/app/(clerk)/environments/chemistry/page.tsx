@@ -327,7 +327,7 @@ export default function ChemistryPage() {
         hint: hintText
       };
     } else {
-      let pool = USAGE_QUESTIONS;
+      const pool = USAGE_QUESTIONS;
       let chosen = pool[Math.floor(Math.random() * pool.length)];
       let key = `usage-${chosen.element}`;
       

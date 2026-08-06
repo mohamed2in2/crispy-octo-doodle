@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
@@ -36,9 +37,9 @@ export default async function StudentDailyExamPage({ params }: { params: Promise
             </div>
             <h1 className="text-2xl font-bold text-slate-800 mb-2">لقد أكملت هذا التحدي مسبقاً!</h1>
             <p className="text-slate-600 mb-6">لقد حصلت على درجة {existingResult.score} من {existingResult.totalQ}.</p>
-            <a href="/leaderboard" className="block w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition">
+            <Link href="/leaderboard" className="block w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition">
               العودة للوحة الشرف
-            </a>
+            </Link>
           </div>
         </main>
         <Footer />

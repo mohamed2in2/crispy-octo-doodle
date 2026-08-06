@@ -489,7 +489,7 @@ function CognitiveArenaGame({ onFinish, isAdaptive }: { onFinish: () => void; is
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -545,7 +545,7 @@ function CognitiveArenaGame({ onFinish, isAdaptive }: { onFinish: () => void; is
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 2200);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);

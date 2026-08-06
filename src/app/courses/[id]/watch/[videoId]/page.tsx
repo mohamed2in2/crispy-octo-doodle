@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SecurePlayer } from "@/components/ui/SecurePlayer";
+import { FloatingAssistant } from "@/components/classic/SiteFooter";
 
 type VideoProvider = "vdocipher" | "bunny" | "youtube";
 
@@ -587,6 +588,7 @@ export default function VideoWatchPage() {
           </div>
         </div>
       </main>
+      <FloatingAssistant />
     </div>
   );
 }

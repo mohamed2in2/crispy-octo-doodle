@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npx tsx scripts/repair-sqlite-db.ts && next dev --webpack",
-    "build": "node scripts/prisma-generate.js && next build",
+    "build": "node scripts/prisma-generate.js && next build --webpack",
     "start": "next start",
     "prod:start": "pm2 start ecosystem.config.js",
     "prod:cluster": "npm run release:deploy && pm2 start ecosystem.config.js",
@@ -20,7 +20,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:clear": "ts-node --project tsconfig.json scripts/clearDb.ts",
     "validate:env": "node scripts/validate-env.mjs",
-    "release:verify": "NODE_ENV=production npm run validate:env && npm run lint && npm run build && npm test",
+    "release:verify": "cross-env NODE_ENV=production npm run validate:env && npm run lint && npm run build && npm test",
     "release:deploy": "npm run release:verify && npm run db:deploy",
     "postinstall": "node scripts/prisma-generate.js"
   },
@@ -35,12 +35,14 @@
     "bcryptjs": "^3.0.3",
     "confbox": "^0.2.4",
     "firebase": "^12.14.0",
-    "framer-motion": "^12.40.0",
+    "framer-motion": "^12.4.10",
     "jose": "^6.2.3",
+    "language-subtag-registry": "^0.4.2",
     "libsql": "^0.5.29",
     "lightningcss": "^1.32.0",
-    "lucide-react": "^1.17.0",
-    "motion-dom": "^12.40.0",
+    "lucide-react": "0.475.0",
+    "motion-dom": "^12.4.10",
+    "motion-utils": "^12.4.10",
     "next": "^16.2.6",
     "next-auth": "^5.0.0-beta.31",
     "node-cron": "^4.5.0",
@@ -52,6 +54,11 @@
     "twilio": "^6.0.2"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
+    "@libsql/win32-x64-msvc": "0.5.29",
+    "@next/swc-win32-x64-msvc": "16.3.0",
+    "@rollup/rollup-win32-x64-msvc": "4.62.4",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.3.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/node-cron": "^3.0.11",
@@ -61,10 +68,15 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "hermes-parser": "^0.37.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.3",
     "typescript": "^5",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "lightningcss-win32-x64-msvc": "^1.33.0"
   }
 }

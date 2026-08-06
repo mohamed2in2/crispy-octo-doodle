@@ -247,3 +247,85 @@
 	.c-catalog-grid { grid-template-columns: minmax(0, 1fr); }
 	.c-catalog__results-head { align-items: center; }
 }
+
+/* ------------------------------------------------------------- teacher list */
+
+.c-catalog__teachers {
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s4);
+}
+
+.c-teacher-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--c-s3);
+}
+
+.c-teacher-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--c-s3) var(--c-s5);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-r);
+	background: var(--c-surface);
+	color: var(--c-text);
+	text-decoration: none;
+	transition: border-color var(--c-dur) var(--c-ease), background var(--c-dur) var(--c-ease), transform var(--c-dur) var(--c-ease);
+}
+
+.c-teacher-row:hover {
+	border-color: var(--c-blue);
+	background: var(--c-surface-2);
+	transform: translateX(-3px);
+}
+
+.c-teacher-row:focus-visible {
+	outline: none;
+	box-shadow: var(--c-ring);
+}
+
+.c-teacher-row__info {
+	display: flex;
+	align-items: center;
+	gap: var(--c-s3);
+}
+
+.c-teacher-row__photo,
+.c-teacher-row__initial {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	object-fit: cover;
+	background: var(--c-surface-3);
+	flex-shrink: 0;
+}
+
+.c-teacher-row__initial {
+	display: grid;
+	place-items: center;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--c-blue-ink);
+}
+
+.c-teacher-row__name {
+	font-size: 16px;
+	font-weight: 800;
+	color: var(--c-text);
+}
+
+.c-teacher-row__arrow {
+	font-size: 22px;
+	font-weight: 700;
+	color: var(--c-text-muted);
+	transition: color var(--c-dur) var(--c-ease);
+}
+
+.c-teacher-row:hover .c-teacher-row__arrow {
+	color: var(--c-blue-ink);
+}

@@ -235,7 +235,7 @@ function TimelineTapGame({ onFinish, isAdaptive }: { onFinish: () => void; isAda
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -487,7 +487,7 @@ function WhoSaidItGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapt
       }
     }, 100);
     tStartRef.current = Date.now();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [onFinish]);
 
   const start = () => {
@@ -544,7 +544,7 @@ function WhoSaidItGame({ onFinish, isAdaptive }: { onFinish: () => void; isAdapt
     }
     
     advRef.current = setTimeout(() => nextQ(qIdx + 1), 900);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [selected, q, qIdx, nextQ]);
 
   useEffect(() => () => clear(), []);

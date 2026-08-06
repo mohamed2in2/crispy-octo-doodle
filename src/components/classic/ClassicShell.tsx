@@ -14,6 +14,7 @@ import {
 	IconBook,
 	IconChevronEnd,
 	IconChevronStart,
+	IconCode,
 	IconHome,
 	IconMoon,
 	IconPlay,
@@ -40,6 +41,7 @@ import {
 const NAV_ICONS: Record<NavIconName, (props: { size?: number }) => ReactNode> = {
 	home: IconHome,
 	book: IconBook,
+	code: IconCode,
 	users: IconUsers,
 	user: IconUser,
 	play: IconPlay,

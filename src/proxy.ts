@@ -22,8 +22,61 @@ function isAdminLoginPage(pathname: string) { return pathname === "/adminpanel" 
 function isCrossOriginAuthenticatedMutation(req: NextRequest): boolean {
   if (SAFE_METHODS.has(req.method) || !req.nextUrl.pathname.startsWith("/api/")) return false;
   if (!req.cookies.get("auth_token")?.value) return false;
-  const origin = req.headers.get("origin");
-  return origin !== req.nextUrl.origin;
+
+  const rawOrigin = req.headers.get("origin");
+  const rawReferer = req.headers.get("referer");
+
+  let reqOrigin = rawOrigin && rawOrigin !== "null" ? rawOrigin : null;
+  if (!reqOrigin && rawReferer) {
+    try {
+      reqOrigin = new URL(rawReferer).origin;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (!reqOrigin) return false;
+
+  let reqHost = "";
+  try {
+    reqHost = new URL(reqOrigin).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  const allowedHosts = new Set<string>();
+
+  // 1. Current request URL hostname
+  allowedHosts.add(req.nextUrl.hostname.toLowerCase());
+
+  // 2. Host header
+  const hostHeader = req.headers.get("host");
+  if (hostHeader) {
+    allowedHosts.add(hostHeader.split(":")[0].toLowerCase());
+  }
+
+  // 3. X-Forwarded-Host header
+  const fwdHost = req.headers.get("x-forwarded-host");
+  if (fwdHost) {
+    allowedHosts.add(fwdHost.split(":")[0].toLowerCase());
+  }
+
+  // 4. Environment URLs
+  [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_SITE_URL].forEach((envUrl) => {
+    if (envUrl) {
+      try {
+        allowedHosts.add(new URL(envUrl).hostname.toLowerCase());
+      } catch {
+        allowedHosts.add(envUrl.replace(/^https?:\/\//, "").split("/")[0].split(":")[0].toLowerCase());
+      }
+    }
+  });
+
+  // Local development hostnames
+  allowedHosts.add("localhost");
+  allowedHosts.add("127.0.0.1");
+
+  return !allowedHosts.has(reqHost);
 }
 
 async function hasValidSession(req: NextRequest) {

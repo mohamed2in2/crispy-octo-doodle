@@ -55,14 +55,14 @@ export function VideoWatermark({ label, onFlash }: Props) {
       setPos(randomPos());
       setVisible(true);
       onFlash?.();
-      hideTimer = window.setTimeout(() => setVisible(false), VISIBLE_MS);
+      hideTimer = setTimeout(() => setVisible(false), VISIBLE_MS);
     };
 
     flash();
-    const cycle = window.setInterval(flash, CYCLE_MS);
+    const cycle = setInterval(flash, CYCLE_MS);
     return () => {
-      window.clearInterval(cycle);
-      if (hideTimer) window.clearTimeout(hideTimer);
+      clearInterval(cycle);
+      if (hideTimer) clearTimeout(hideTimer);
     };
   }, [onFlash]);
 

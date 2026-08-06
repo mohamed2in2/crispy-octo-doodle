@@ -4,9 +4,10 @@ import { randomInt } from "crypto";
 const TWILIO_API_BASE = "https://api.twilio.com/2010-04-01";
 const TWILIO_VERIFY_BASE = "https://verify.twilio.com/v2";
 
-const DEV_SKIP_SMS = process.env.DEV_SKIP_SMS === "true";
+/** Development-only escape hatches. Deliberately impossible in production. */
+const DEV_SKIP_SMS = process.env.NODE_ENV !== "production" && process.env.DEV_SKIP_SMS === "true";
 const USE_VERIFY = process.env.TWILIO_USE_VERIFY === "true";
-const BYPASS_PHONE_VERIFICATION = process.env.TWILIO_BYPASS_VERIFICATION === "true";
+const BYPASS_PHONE_VERIFICATION = process.env.NODE_ENV !== "production" && process.env.TWILIO_BYPASS_VERIFICATION === "true";
 
 export function isDevSkipSmsEnabled() {
   return DEV_SKIP_SMS;
